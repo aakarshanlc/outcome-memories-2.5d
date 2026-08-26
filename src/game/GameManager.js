@@ -131,6 +131,7 @@ export class GameManager {
     }
 
     endGame(title, subtitle) {
+        this.state = 'GAME_OVER'; // This pauses the movement and updates!
         this.phase = 'GAME_OVER';
         if (this.ring) { this.ring.destroy(); this.ring = null; }
         this.ui.showGameOver(title, subtitle);
