@@ -37,12 +37,13 @@ export class GameManager {
 
         this.gameSetup = {
             survivorCount: 1,
+            selectedSurvivorType: 'Sonic', // NEW: Track solo survivor type
             selectedKillerType: 'Tripwire',
             killerPlayer: 2,
+            killerIsAI: false,
             selectedMap: 'Open Field'
         };
 
-        // FIX: Start menu music on first user interaction to bypass browser autoplay block
         const startAudio = () => {
             this.audio.playMusic('menu');
             window.removeEventListener('click', startAudio);
@@ -62,7 +63,6 @@ export class GameManager {
             } else if (e.key === 'Escape' && this.state === 'PAUSED') {
                 this.state = 'PLAYING';
                 this.ui.initHUD();
-                // Resume chase music
                 this.audio.playMusic(this.gameSetup.selectedKillerType);
             }
         });
@@ -88,7 +88,7 @@ export class GameManager {
         return { x, z };
     }
 
-    startGame() {
+        startGame() {
         this.state = 'PLAYING';
         this.phase = 'ROUND';
         
@@ -108,17 +108,31 @@ export class GameManager {
         this.mapManager.loadMap(this.gameSetup.selectedMap);
 
         const allPlayers = ['p1', 'p2', 'p3', 'p4'];
-        const killerId = `p${this.gameSetup.killerPlayer}`;
+        const killerId = this.gameSetup.killerIsAI ? null : `p${this.gameSetup.killerPlayer}`;
         const survivorIds = allPlayers.filter(id => id !== killerId);
 
-        const survivorColors = { p1: 0x0064ff, p2: 0xffd700, p3: 0xcf2020, p4: 0x00ff00 };
-        const survivorTypes = ['Sonic', 'Tails', 'Knuckles', 'Sonic'];
+        // Map character types to their correct colors
+        const survivorTypeColors = {
+            'Sonic': 0x0064ff,
+            'Tails': 0xffd700,
+            'Knuckles': 0xcf2020
+        };
+        const defaultSurvivorTypes = ['Sonic', 'Tails', 'Knuckles', 'Sonic'];
 
         for (let i = 0; i < this.gameSetup.survivorCount; i++) {
             const sId = survivorIds[i];
             const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
-            const charName = survivorTypes[i]; 
-            const player = new Player(this.engine.scene, controlsObj, survivorColors[sId], charName);
+            
+            // If solo, use the selected type. Otherwise, use default cycle.
+            let charName = defaultSurvivorTypes[i];
+            if (this.gameSetup.survivorCount === 1) {
+                charName = this.gameSetup.selectedSurvivorType;
+            }
+            
+            // Get the correct color for the character type
+            const pColor = survivorTypeColors[charName] || 0x0064ff;
+            
+            const player = new Player(this.engine.scene, controlsObj, pColor, charName);
             const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
             player.mesh.position.set(pSpawn.x, 6, pSpawn.z);
             player.controlId = sId;
@@ -134,7 +148,12 @@ export class GameManager {
         this.killer = new Killer(this.engine.scene, k1Controls, killerColor, this.gameSetup.selectedKillerType);
         const kSpawn = this.findSafeSpawn(this.mapManager.obstacles, 50, 90);
         this.killer.mesh.position.set(kSpawn.x, 6, kSpawn.z);
-        this.killer.controlId = killerId;
+        
+        if (this.gameSetup.killerIsAI) {
+            this.killer.isAI = true;
+        } else {
+            this.killer.controlId = killerId;
+        }
         this.killers.push(this.killer);
 
         this.ui.initHUD();
@@ -143,23 +162,20 @@ export class GameManager {
         this.lmsTimer = 60 * 60;   
         this.ringTimer = 15 * 60;  
         
-        // Music Logic
         if (this.totalSurvivors <= 1) {
             this.phase = 'LMS';
             this.playLmsMusic(this.players[0]);
         } else {
-            // Play Killer Chase Music
             this.audio.playMusic(this.gameSetup.selectedKillerType);
         }
     }
 
-    // Helper to figure out which LMS track to play
     playLmsMusic(survivor) {
         if (!survivor) return;
         const charName = survivor.characterName;
         if (charName === 'Tails') this.audio.playMusic('Tails_lms');
         else if (charName === 'Knuckles') this.audio.playMusic('Knuckles_lms');
-        else this.audio.playMusic('default_lms'); // Sonic or anyone else
+        else this.audio.playMusic('default_lms');
     }
 
     stopGame() {
@@ -206,12 +222,14 @@ export class GameManager {
             });
 
             this.killers.forEach(k => {
-                const scheme = this.controls.getScheme(k.controlId);
-                k.controls.up = this.keys[scheme.up];
-                k.controls.down = this.keys[scheme.down];
-                k.controls.left = this.keys[scheme.left];
-                k.controls.right = this.keys[scheme.right];
-                k.controls.m1 = this.keys[scheme.m1];
+                if (!k.isAI) {
+                    const scheme = this.controls.getScheme(k.controlId);
+                    k.controls.up = this.keys[scheme.up];
+                    k.controls.down = this.keys[scheme.down];
+                    k.controls.left = this.keys[scheme.left];
+                    k.controls.right = this.keys[scheme.right];
+                    k.controls.m1 = this.keys[scheme.m1];
+                }
                 k.update(this.mapManager.obstacles, this.players, this);
             });
 

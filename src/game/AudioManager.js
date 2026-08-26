@@ -14,7 +14,6 @@ export class AudioManager {
         this.audioElement = new Audio();
         this.audioElement.loop = true;
         
-        // Map imported tracks to logical game events
         this.tracks = {
             menu: menuTrack,
             Tripwire: tripwireTrack,
@@ -50,7 +49,7 @@ export class AudioManager {
         
         this.audioElement.src = url;
         this.applyVolume();
-        this.audioElement.play().catch(e => console.log("Audio play prevented by browser until user clicks."));
+        this.audioElement.play().catch(() => {}); // Silent catch
         this.currentTrack = trackName;
     }
 
@@ -61,6 +60,6 @@ export class AudioManager {
     }
 
     playSfx(soundName) {
-        console.log(`Playing SFX: ${soundName}`);
+        // Base for future SFX. 
     }
 }

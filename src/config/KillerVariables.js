@@ -4,12 +4,16 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 60,
-            windup: 0,
+            windup: 30, // 0.5s delay
             duration: 10,
             damage: 5,
-            hitboxWidth: 20, // Changed to square
+            hitboxWidth: 20,
             hitboxDepth: 20,
             hitboxType: 'killer_m1'
+        },
+        ai: {
+            attackRange: 14,
+            visionRange: 9999
         }
     },
     '2011X': {
@@ -17,14 +21,18 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 30,
-            windup: 12,
+            windup: 30, // 0.5s delay
             attackDuration: 12,
             hitCount: 6,
             damage: 5,
-            hitboxWidth: 20, // Changed to square
+            hitboxWidth: 20,
             hitboxDepth: 20,
             hitboxType: 'killer_m1_2011x',
             applyBleed: true
+        },
+        ai: {
+            attackRange: 14,
+            visionRange: 9999
         }
     },
     'Starved': {
@@ -32,10 +40,10 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 60,
-            windup: 0,
+            windup: 30, // 0.5s delay
             duration: 10,
             damage: 5,
-            hitboxWidth: 20, // Changed to square
+            hitboxWidth: 20,
             hitboxDepth: 20,
             hitboxType: 'starved_m1'
         },
@@ -43,6 +51,10 @@ export const KillerVariables = {
             speed: 3.5,
             damage: 4,
             stunDuration: 12
+        },
+        ai: {
+            attackRange: 14,
+            visionRange: 9999
         }
     }
 };

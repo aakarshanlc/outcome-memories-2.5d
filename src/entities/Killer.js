@@ -16,13 +16,15 @@ export class Killer {
         this.mesh.castShadow = true;
         scene.add(this.mesh);
 
-        this.maxSpeed = this.config.speed; // The speed from variables.js
-        this.currentSpeed = 1.0;           // Starts at 1.0
+        this.maxSpeed = this.config.speed;
+        this.currentSpeed = 1.0;
         this.size = this.config.size;
         this.stunned = 0;
         this.controlId = 'p2';
         
-        // Smooth Physics
+        // AI Flag
+        this.isAI = false;
+        
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.acceleration = 0.2;
         this.damping = 0.85;
@@ -48,19 +50,55 @@ export class Killer {
         }
 
         let dx = 0, dz = 0;
-        if (this.controls.up) dz -= 1;
-        if (this.controls.down) dz += 1;
-        if (this.controls.left) dx -= 1;
-        if (this.controls.right) dx += 1;
+
+        // --- AI LOGIC ---
+        if (this.isAI) {
+            let target = null;
+            let minDist = Infinity;
+            
+            // Find closest alive player within vision range
+            players.forEach(p => {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
+                    const vision = this.config.ai?.visionRange || 9999;
+                    if (d < minDist && d <= vision) { minDist = d; target = p; }
+                }
+            });
+
+            if (target) {
+                let tdx = target.mesh.position.x - this.mesh.position.x;
+                let tdz = target.mesh.position.z - this.mesh.position.z;
+                let dist = Math.hypot(tdx, tdz);
+                
+                const attackRange = this.config.ai?.attackRange || 12;
+                
+                // Move towards player if outside attack range
+                if (dist > attackRange && dist > 0) {
+                    dx = tdx / dist;
+                    dz = tdz / dist;
+                }
+                
+                // Attack if close enough
+                this.controls.m1 = dist <= attackRange;
+            } else {
+                this.controls.m1 = false;
+            }
+        } 
+        // --- HUMAN LOGIC ---
+        else {
+            if (this.controls.up) dz -= 1;
+            if (this.controls.down) dz += 1;
+            if (this.controls.left) dx -= 1;
+            if (this.controls.right) dx += 1;
+        }
+
         if (dx !== 0 && dz !== 0) { dx *= 0.707; dz *= 0.707; }
 
         // --- KILLER ACCELERATION LOGIC ---
         let isMoving = (dx !== 0 || dz !== 0);
         if (isMoving) {
-            // Ramp up towards max speed
             this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02; 
         } else {
-            // Decay back to base speed 1.0 when not chasing
             this.currentSpeed += (1.0 - this.currentSpeed) * 0.05;
         }
 

@@ -5,12 +5,10 @@ export class UIManager {
         this.activeScreen = null;
         this.waitingForKey = null;
         this.hudElement = null;
-        
-        this.btnIcon = `<svg height="24" width="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"></path><path d="M16.172 11l-5.364-5.364 1.414-1.414L20 12l-7.778 7.778-1.414-1.414L16.172 13H4v-2z" fill="currentColor"></path></svg>`;
     }
 
     btn(text, id, small = false) {
-        return `<button class="cssbuttons-io-button ${small ? 'btn-sm' : ''}" id="${id}"><span>${text}</span><div class="icon">${this.btnIcon}</div></button>`;
+        return `<button class="button-49 ${small ? 'btn-sm' : ''}" id="${id}" role="button" data-text="${text}">${text}</button>`;
     }
 
     initHUD() {
@@ -56,26 +54,20 @@ export class UIManager {
 
         if (screenName === 'main') {
             html = `
-                <div class="window" id="draggable-window">
-                    <div class="window-title" id="window-drag-handle">
-                        <p>2011X.exe</p>
-                        <div class="window-buttons">
-                            <div class="window-button reduce"></div>
-                            <div class="window-button fullscreen"></div>
-                            <div class="window-button close"></div>
-                        </div>
-                    </div>
-                    <div class="console">
-                        <img src="./2011x.jpeg" alt="2011X" id="console-img">
-                    </div>
-                </div>
+                <video autoplay loop muted playsinline class="menu-bg-video">
+                    <source src="./backgrounds/menu-animation.mp4" type="video/mp4">
+                </video>
                 
-                <div class="menu-screen" id="main-menu">
-                    <h1>Outcome Memories 2.5D</h1>
-                    <h2>Three.js Engine Port</h2>
-                    ${this.btn('PLAY', 'btn-play')}
-                    ${this.btn('SETTINGS', 'btn-settings')}
-                    ${this.btn('CREDITS', 'btn-credits')}
+                <div class="main-menu-overlay">
+                    <div class="menu-title-top">
+                        <h1>Outcome Memories 2.5D</h1>
+                    </div>
+                    
+                    <div class="menu-buttons-left">
+                        ${this.btn('PLAY', 'btn-play')}
+                        ${this.btn('SETTINGS', 'btn-settings')}
+                        ${this.btn('CREDITS', 'btn-credits')}
+                    </div>
                 </div>
             `;
         } else if (screenName === 'settings') {
@@ -132,6 +124,8 @@ export class UIManager {
                 </div>
             `;
         } else if (screenName === 'setup') {
+            const aiChecked = this.gameManager.gameSetup.killerIsAI;
+            const isSolo = this.gameManager.gameSetup.survivorCount === 1;
             html = `
                 <div class="menu-screen" id="setup-menu" style="justify-content: center; padding-top: 30px;">
                     <h1>GAME SETUP</h1>
@@ -139,14 +133,21 @@ export class UIManager {
                         <div class="setup-item">
                             <h3>SURVIVORS</h3>
                             ${this.btn('Change Count', 'btn-cycle-surv', true)}
-                            <p>Selected: <span id="surv-count">${this.gameManager.gameSetup.survivorCount}</span></p>
+                            <p>Count: <span id="surv-count">${this.gameManager.gameSetup.survivorCount}</span></p>
+                            ${isSolo ? `
+                                <div style="margin-top: 15px;">${this.btn('Change Type', 'btn-cycle-surv-type', true)}</div>
+                                <p>Type: <span id="surv-type">${this.gameManager.gameSetup.selectedSurvivorType}</span></p>
+                            ` : ''}
                         </div>
                         <div class="setup-item">
                             <h3>KILLER TYPE</h3>
-                            ${this.btn('Change Type', 'btn-cycle-killer', true)}
-                            <p><span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                ${this.btn('Change Type', 'btn-cycle-killer', true)}
+                                <button id="btn-toggle-ai" style="background: ${aiChecked ? '#ff3333' : '#333'}; color: white; border: 2px solid #ff3333; border-radius: 0.5em; width: 60px; height: 60px; cursor: pointer; margin: 8px 0; font-weight: bold; font-size: 14px; font-family: inherit;">AI<br><span id="ai-status">${aiChecked ? 'ON' : 'OFF'}</span></button>
+                            </div>
+                            <p>Type: <span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
                         </div>
-                        <div class="setup-item">
+                        <div class="setup-item" id="killer-player-box" style="${aiChecked ? 'display: none;' : ''}">
                             <h3>KILLER PLAYER</h3>
                             ${this.btn('Change Player', 'btn-cycle-killer-player', true)}
                             <p><span id="killer-player">P${this.gameManager.gameSetup.killerPlayer}</span></p>
@@ -178,7 +179,7 @@ export class UIManager {
             const val = scheme[key].toUpperCase();
             return `<div class="control-row">
                         <span>${label}:</span> 
-                        <button class="cssbuttons-io-button btn-sm" data-player="${playerId}" data-key="${key}"><span>${val}</span><div class="icon">${this.btnIcon}</div></button>
+                        <button class="button-49 btn-sm" data-player="${playerId}" data-key="${key}" data-text="${val}">${val}</button>
                     </div>`;
         }).join('');
     }
@@ -190,48 +191,6 @@ export class UIManager {
             document.getElementById('btn-play').onclick = () => this.showScreen('setup');
             document.getElementById('btn-settings').onclick = () => this.showScreen('settings');
             document.getElementById('btn-credits').onclick = () => this.showScreen('credits');
-
-            // --- DRAG AND TELEPORT LOGIC ---
-            const windowEl = document.getElementById('draggable-window');
-            const dragHandle = document.getElementById('window-drag-handle');
-            const imgEl = document.getElementById('console-img');
-
-            let isDragging = false;
-            let offsetX = 0, offsetY = 0;
-
-            // 1. Click image to teleport randomly
-            if (imgEl) {
-                imgEl.addEventListener('click', () => {
-                    const x = Math.random() * (window.innerWidth - 320) + 10;
-                    const y = Math.random() * (window.innerHeight - 240) + 10;
-                    windowEl.style.left = `${x}px`;
-                    windowEl.style.top = `${y}px`;
-                });
-            }
-
-            // 2. Drag title bar to move smoothly
-            dragHandle.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                const rect = windowEl.getBoundingClientRect();
-                offsetX = e.clientX - rect.left;
-                offsetY = e.clientY - rect.top;
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    let x = e.clientX - offsetX;
-                    let y = e.clientY - offsetY;
-                    // Keep it on screen
-                    x = Math.max(0, Math.min(window.innerWidth - 300, x));
-                    y = Math.max(0, Math.min(window.innerHeight - 230, y));
-                    windowEl.style.left = `${x}px`;
-                    windowEl.style.top = `${y}px`;
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
         } 
         else if (this.activeScreen === 'settings') {
             document.getElementById('btn-settings-back').onclick = () => this.showScreen('main');
@@ -257,9 +216,10 @@ export class UIManager {
 
             document.querySelectorAll('button[data-player]').forEach(btn => {
                 btn.onclick = (e) => {
-                    const spanEl = e.currentTarget.querySelector('span');
-                    this.waitingForKey = { player: e.currentTarget.dataset.player, key: e.currentTarget.dataset.key, button: spanEl };
-                    spanEl.innerText = "...";
+                    const btnEl = e.currentTarget;
+                    this.waitingForKey = { player: btnEl.dataset.player, key: btnEl.dataset.key, button: btnEl };
+                    btnEl.innerText = "...";
+                    btnEl.dataset.text = "..."; 
                 };
             });
             document.onkeydown = (e) => {
@@ -269,6 +229,7 @@ export class UIManager {
                     this.gameManager.controls.schemes[this.waitingForKey.player][this.waitingForKey.key] = key;
                     this.gameManager.controls.save();
                     this.waitingForKey.button.innerText = key.toUpperCase();
+                    this.waitingForKey.button.dataset.text = key.toUpperCase();
                     this.waitingForKey = null;
                 }
             };
@@ -284,8 +245,20 @@ export class UIManager {
                 let count = this.gameManager.gameSetup.survivorCount;
                 count = (count % 3) + 1; 
                 this.gameManager.gameSetup.survivorCount = count;
-                document.getElementById('surv-count').innerText = count;
+                this.showScreen('setup'); // Refresh screen to show/hide solo type button
             };
+
+            // NEW: Cycle Survivor Type
+            const survTypeBtn = document.getElementById('btn-cycle-surv-type');
+            if (survTypeBtn) {
+                survTypeBtn.onclick = () => {
+                    const types = ['Sonic', 'Tails', 'Knuckles'];
+                    let current = types.indexOf(this.gameManager.gameSetup.selectedSurvivorType);
+                    current = (current + 1) % types.length;
+                    this.gameManager.gameSetup.selectedSurvivorType = types[current];
+                    document.getElementById('surv-type').innerText = types[current];
+                };
+            }
 
             document.getElementById('btn-cycle-killer').onclick = () => {
                 const killers = ['Tripwire', '2011X', 'Starved'];
@@ -293,6 +266,20 @@ export class UIManager {
                 current = (current + 1) % killers.length;
                 this.gameManager.gameSetup.selectedKillerType = killers[current];
                 document.getElementById('killer-name').innerText = killers[current];
+            };
+
+            document.getElementById('btn-toggle-ai').onclick = () => {
+                this.gameManager.gameSetup.killerIsAI = !this.gameManager.gameSetup.killerIsAI;
+                const isAI = this.gameManager.gameSetup.killerIsAI;
+                
+                const aiBtn = document.getElementById('btn-toggle-ai');
+                aiBtn.style.background = isAI ? '#ff3333' : '#333';
+                document.getElementById('ai-status').innerText = isAI ? 'ON' : 'OFF';
+                
+                const playerBox = document.getElementById('killer-player-box');
+                if (playerBox) {
+                    playerBox.style.display = isAI ? 'none' : 'flex';
+                }
             };
 
             document.getElementById('btn-cycle-killer-player').onclick = () => {
