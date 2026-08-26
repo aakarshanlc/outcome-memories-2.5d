@@ -5,7 +5,7 @@ export const SurvivorVariables = {
         size: 3,
         abilities: {
             dash: {
-                cooldown: 480,
+                cooldown: 180,
                 duration: 30,
                 multiplier: 3.0
             }

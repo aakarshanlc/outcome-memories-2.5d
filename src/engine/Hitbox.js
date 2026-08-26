@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export class Hitbox {
-    constructor(scene, x, z, radius, duration, owner, type, damage = 0, data = null, shape = 'sphere', width = 0, depth = 0) {
+    constructor(gameManager, scene, x, z, radius, duration, owner, type, damage = 0, data = null, shape = 'sphere', width = 0, depth = 0) {
         this.scene = scene;
         this.x = x; this.z = z;
         this.radius = radius;
@@ -12,7 +12,6 @@ export class Hitbox {
         this.shape = shape;
         this.hasHit = new Set();
 
-        // 3D Visual
         let geo, mat;
         mat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.5 });
         
@@ -23,13 +22,15 @@ export class Hitbox {
         }
         
         this.mesh = new THREE.Mesh(geo, mat);
-        this.mesh.position.set(x, 5, z); // Hover above the ground
+        this.mesh.position.set(x, 5, z); 
+        this.mesh.visible = gameManager.settings.showHitboxes;
         scene.add(this.mesh);
     }
 
-    update() {
+    update(gameManager) {
         this.duration--;
         this.mesh.material.opacity = (this.duration / this.maxDuration) * 0.5;
+        this.mesh.visible = gameManager.settings.showHitboxes; // Check every frame
         
         if (this.duration <= 0) {
             this.scene.remove(this.mesh);

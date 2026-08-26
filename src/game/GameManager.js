@@ -4,9 +4,11 @@ import { Player } from '../entities/Player.js';
 import { Killer } from '../entities/Killer.js';
 import { UIManager } from '../ui/UIManager.js';
 import { Controls } from './Controls.js';
+import { AudioManager } from './AudioManager.js';
 import { Hitbox } from '../engine/Hitbox.js';
 import { Projectile } from '../entities/Projectile.js';
 import { Ring } from '../entities/Ring.js';
+import { PointerArrow } from '../entities/PointerArrow.js';
 import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
 
 export class GameManager {
@@ -15,6 +17,13 @@ export class GameManager {
         this.mapManager = new MapManager(this.engine.scene);
         this.ui = new UIManager(this);
         this.controls = new Controls();
+        this.audio = new AudioManager();
+        
+        // Fixed default settings
+        const savedHit = localStorage.getItem('om_show_hitboxes');
+        this.settings = {
+            showHitboxes: savedHit === null ? true : savedHit === 'true'
+        };
         
         this.state = 'MENU';
         this.keys = {};
@@ -25,9 +34,10 @@ export class GameManager {
         this.activeHitboxes = [];
         this.projectiles = [];
         this.ring = null;
+        this.arrow = null;
 
         this.gameSetup = {
-            selectedCharacter: 'Sonic',
+            survivorCount: 1,
             selectedKillerType: 'Tripwire',
             selectedMap: 'Open Field'
         };
@@ -59,10 +69,7 @@ export class GameManager {
             z = Math.random() * (maxZ - minZ) + minZ;
             safe = true;
             for (let obs of obstacles) {
-                if (checkCircleBoxCollision(x, z, 6, obs.x, obs.z, obs.w, obs.d)) {
-                    safe = false;
-                    break;
-                }
+                if (checkCircleBoxCollision(x, z, 6, obs.x, obs.z, obs.w, obs.d)) { safe = false; break; }
             }
             attempts++;
         }
@@ -71,11 +78,12 @@ export class GameManager {
 
     startGame() {
         this.state = 'PLAYING';
-        this.phase = 'ROUND'; // ROUND, LMS, RING, GAME_OVER
+        this.phase = 'ROUND';
         
         this.players.forEach(p => this.engine.scene.remove(p.mesh));
         this.killers.forEach(k => this.engine.scene.remove(k.mesh));
         if (this.ring) this.ring.destroy();
+        if (this.arrow) this.arrow.destroy();
         this.activeHitboxes.forEach(h => this.engine.scene.remove(h.mesh));
         this.projectiles.forEach(p => this.engine.scene.remove(p.mesh));
         this.players = [];
@@ -83,24 +91,26 @@ export class GameManager {
         this.activeHitboxes = [];
         this.projectiles = [];
         this.ring = null;
+        this.arrow = null;
 
         this.mapManager.loadMap(this.gameSetup.selectedMap);
 
-        const p1Scheme = this.controls.getScheme('p1');
-        this.p1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
-        
-        let pColor = 0x0064ff;
-        if (this.gameSetup.selectedCharacter === 'Knuckles') pColor = 0xcf2020;
-        else if (this.gameSetup.selectedCharacter === 'Tails') pColor = 0xffd700;
+        const survivorSchemes = ['p1', 'p3', 'p4'];
+        const survivorColors = [0x0064ff, 0xffd700, 0xcf2020];
+        const survivorTypes = ['Sonic', 'Tails', 'Knuckles'];
 
-        this.player1 = new Player(this.engine.scene, this.p1Controls, pColor, this.gameSetup.selectedCharacter);
-        const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
-        this.player1.mesh.position.set(pSpawn.x, 6, pSpawn.z);
-        this.players.push(this.player1);
+        for (let i = 0; i < this.gameSetup.survivorCount; i++) {
+            const sId = survivorSchemes[i];
+            const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
+            const charName = survivorTypes[i]; 
+            const player = new Player(this.engine.scene, controlsObj, survivorColors[i], charName);
+            const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
+            player.mesh.position.set(pSpawn.x, 6, pSpawn.z);
+            player.controlId = sId;
+            this.players.push(player);
+        }
 
-        const k1Scheme = this.controls.getScheme('p2');
         this.k1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
-        
         let killerColor = 0xff0000;
         if (this.gameSetup.selectedKillerType === 'Tripwire') killerColor = 0xfcba03;
         else if (this.gameSetup.selectedKillerType === '2011X') killerColor = 0xb30000;
@@ -109,36 +119,36 @@ export class GameManager {
         this.killer = new Killer(this.engine.scene, this.k1Controls, killerColor, this.gameSetup.selectedKillerType);
         const kSpawn = this.findSafeSpawn(this.mapManager.obstacles, 50, 90);
         this.killer.mesh.position.set(kSpawn.x, 6, kSpawn.z);
+        this.killer.controlId = 'p2';
         this.killers.push(this.killer);
 
-        // Initialize UI and Timers
         this.ui.initHUD();
         this.totalSurvivors = this.players.length;
-        this.gameTimer = 180 * 60; // 180s
-        this.lmsTimer = 60 * 60;   // 60s
-        this.ringTimer = 15 * 60;  // 15s
+        this.gameTimer = 180 * 60; 
+        this.lmsTimer = 60 * 60;   
+        this.ringTimer = 15 * 60;  
         
-        // If solo, skip straight to LMS
-        if (this.totalSurvivors <= 1) {
-            this.phase = 'LMS';
-        }
+        if (this.totalSurvivors <= 1) this.phase = 'LMS';
     }
 
     stopGame() {
         this.state = 'MENU';
         if (this.ring) this.ring.destroy();
+        if (this.arrow) this.arrow.destroy();
         this.ring = null;
+        this.arrow = null;
     }
 
     endGame(title, subtitle) {
-        this.state = 'GAME_OVER'; // This pauses the movement and updates!
+        this.state = 'GAME_OVER'; 
         this.phase = 'GAME_OVER';
         if (this.ring) { this.ring.destroy(); this.ring = null; }
+        if (this.arrow) { this.arrow.destroy(); this.arrow = null; }
         this.ui.showGameOver(title, subtitle);
     }
 
     spawnHitbox(x, z, radius, duration, owner, type, damage, data, shape = 'sphere', width = 0, depth = 0) {
-        this.activeHitboxes.push(new Hitbox(this.engine.scene, x, z, radius, duration, owner, type, damage, data, shape, width, depth));
+        this.activeHitboxes.push(new Hitbox(this, this.engine.scene, x, z, radius, duration, owner, type, damage, data, shape, width, depth));
     }
 
     spawnProjectile(x, z, dx, dz, owner, damage, stunDuration, speed) {
@@ -149,23 +159,27 @@ export class GameManager {
         requestAnimationFrame(() => this.gameLoop());
 
         if (this.state === 'PLAYING') {
-            const p1S = this.controls.getScheme('p1');
-            this.p1Controls.up = this.keys[p1S.up];
-            this.p1Controls.down = this.keys[p1S.down];
-            this.p1Controls.left = this.keys[p1S.left];
-            this.p1Controls.right = this.keys[p1S.right];
-            this.p1Controls.ability1 = this.keys[p1S.ability1];
-            this.p1Controls.ability2 = this.keys[p1S.ability2];
+            this.players.forEach(p => {
+                const scheme = this.controls.getScheme(p.controlId);
+                p.controls.up = this.keys[scheme.up];
+                p.controls.down = this.keys[scheme.down];
+                p.controls.left = this.keys[scheme.left];
+                p.controls.right = this.keys[scheme.right];
+                p.controls.ability1 = this.keys[scheme.ability1];
+                p.controls.ability2 = this.keys[scheme.ability2];
+                p.controls.m1 = this.keys[scheme.m1];
+                p.update(this.mapManager.obstacles, this.killers, this);
+            });
 
-            const k1S = this.controls.getScheme('p2');
-            this.k1Controls.up = this.keys[k1S.up];
-            this.k1Controls.down = this.keys[k1S.down];
-            this.k1Controls.left = this.keys[k1S.left];
-            this.k1Controls.right = this.keys[k1S.right];
-            this.k1Controls.m1 = this.keys[k1S.m1];
-
-            this.players.forEach(p => p.update(this.mapManager.obstacles, this.killers, this));
-            this.killers.forEach(k => k.update(this.mapManager.obstacles, this.players, this));
+            this.killers.forEach(k => {
+                const scheme = this.controls.getScheme(k.controlId);
+                k.controls.up = this.keys[scheme.up];
+                k.controls.down = this.keys[scheme.down];
+                k.controls.left = this.keys[scheme.left];
+                k.controls.right = this.keys[scheme.right];
+                k.controls.m1 = this.keys[scheme.m1];
+                k.update(this.mapManager.obstacles, this.players, this);
+            });
 
             for (let i = this.projectiles.length - 1; i >= 0; i--) {
                 let p = this.projectiles[i];
@@ -180,11 +194,8 @@ export class GameManager {
                     this.players.forEach(p => {
                         if (p.health > 0 && !h.hasHit.has(p)) {
                             let hit = false;
-                            if (h.shape === 'box') {
-                                hit = checkCircleBoxCollision(p.mesh.position.x, p.mesh.position.z, p.size, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
-                            } else {
-                                hit = checkCircleCircleCollision(h.x, h.z, h.radius, p.mesh.position.x, p.mesh.position.z, p.size);
-                            }
+                            if (h.shape === 'box') hit = checkCircleBoxCollision(p.mesh.position.x, p.mesh.position.z, p.size, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
+                            else hit = checkCircleCircleCollision(h.x, h.z, h.radius, p.mesh.position.x, p.mesh.position.z, p.size);
 
                             if (hit) {
                                 p.takeDamage(h.damage, h.owner);
@@ -198,18 +209,14 @@ export class GameManager {
                     this.killers.forEach(k => {
                         if (!h.hasHit.has(k)) {
                             let hit = false;
-                            if (h.shape === 'box') {
-                                hit = checkCircleBoxCollision(k.mesh.position.x, k.mesh.position.z, k.size, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
-                            } else {
-                                hit = checkCircleCircleCollision(h.x, h.z, h.radius, k.mesh.position.x, k.mesh.position.z, k.size);
-                            }
+                            if (h.shape === 'box') hit = checkCircleBoxCollision(k.mesh.position.x, k.mesh.position.z, k.size, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
+                            else hit = checkCircleCircleCollision(h.x, h.z, h.radius, k.mesh.position.x, k.mesh.position.z, k.size);
 
                             if (hit) {
                                 k.stun(75);
                                 const kbVec = new THREE.Vector3(k.mesh.position.x - h.x, 0, k.mesh.position.z - h.z);
                                 if (kbVec.lengthSq() === 0) kbVec.set(0, 0, 1);
                                 kbVec.normalize();
-                                
                                 const knockbackForce = h.owner.config.abilities.punch.knockback || 15;
                                 k.mesh.position.x += kbVec.x * knockbackForce;
                                 k.mesh.position.z += kbVec.z * knockbackForce;
@@ -218,31 +225,26 @@ export class GameManager {
                         }
                     });
                 }
-
-                if (!h.update()) this.activeHitboxes.splice(i, 1);
+                // Pass 'this' so Hitbox can check settings.showHitboxes dynamically
+                if (!h.update(this)) this.activeHitboxes.splice(i, 1);
             }
 
-            // --- GAME LOOP PHASE LOGIC ---
             let alivePlayers = this.players.filter(p => p.health > 0);
 
             if (this.phase === 'ROUND') {
-                if (alivePlayers.length === 1 && this.totalSurvivors > 1) {
-                    this.phase = 'LMS'; // Trigger LMS early
-                }
+                if (alivePlayers.length === 1 && this.totalSurvivors > 1) this.phase = 'LMS';
                 this.gameTimer--;
                 this.ui.updateHUD('ROUND', this.gameTimer / 60);
-                if (this.gameTimer <= 0) {
-                    this.phase = 'LMS';
-                }
+                if (this.gameTimer <= 0) this.phase = 'LMS';
             } 
             else if (this.phase === 'LMS') {
                 this.lmsTimer--;
                 this.ui.updateHUD('LAST MAN STANDING', this.lmsTimer / 60);
                 if (this.lmsTimer <= 0) {
                     this.phase = 'RING';
-                    // Spawn ring randomly, checking for walls
                     const rSpawn = this.findSafeSpawn(this.mapManager.obstacles, -80, 80);
                     this.ring = new Ring(this.engine.scene, rSpawn.x, rSpawn.z);
+                    this.arrow = new PointerArrow(this.engine.scene);
                 }
             } 
             else if (this.phase === 'RING') {
@@ -250,7 +252,10 @@ export class GameManager {
                 this.ring.update();
                 this.ui.updateHUD('ESCAPE!', this.ringTimer / 60);
                 
-                // Check if player reached ring
+                if (this.ring && this.arrow && alivePlayers.length > 0) {
+                    this.arrow.update(alivePlayers[0].mesh.position, this.ring.mesh.position);
+                }
+
                 if (this.ring) {
                     for(let p of alivePlayers) {
                         let dist = Math.hypot(p.mesh.position.x - this.ring.mesh.position.x, p.mesh.position.z - this.ring.mesh.position.z);
@@ -260,22 +265,16 @@ export class GameManager {
                         }
                     }
                 }
-
-                if (this.ringTimer <= 0) {
-                    this.endGame('KILLER WINS', 'Survivor was too slow');
-                }
+                if (this.ringTimer <= 0) this.endGame('KILLER WINS', 'Survivor was too slow');
             }
 
-            // Check if all players are dead at any point
-            if (alivePlayers.length === 0 && this.phase !== 'GAME_OVER') {
-                this.endGame('KILLER WINS', 'All survivors eliminated');
-            }
+            if (alivePlayers.length === 0 && this.phase !== 'GAME_OVER') this.endGame('KILLER WINS', 'All survivors eliminated');
 
-            // Camera
-            if (this.player1) {
-                this.engine.camera.position.x = this.player1.mesh.position.x;
-                this.engine.camera.position.z = this.player1.mesh.position.z + 50;
-                this.engine.camera.lookAt(this.player1.mesh.position.x, 0, this.player1.mesh.position.z);
+            let camTarget = alivePlayers[0] || this.players[0];
+            if (camTarget) {
+                this.engine.camera.position.x = camTarget.mesh.position.x;
+                this.engine.camera.position.z = camTarget.mesh.position.z + 50;
+                this.engine.camera.lookAt(camTarget.mesh.position.x, 0, camTarget.mesh.position.z);
             }
         }
 
