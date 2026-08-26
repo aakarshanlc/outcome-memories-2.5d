@@ -90,10 +90,10 @@ export class UIManager {
                     </div>
 
                     <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P1 (Survivor)</h3>${this.generateControlButtons('p1', schemes.p1)}</div>
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P2 (Killer)</h3>${this.generateControlButtons('p2', schemes.p2)}</div>
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P3 (Survivor)</h3>${this.generateControlButtons('p3', schemes.p3)}</div>
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P4 (Survivor)</h3>${this.generateControlButtons('p4', schemes.p4)}</div>
+                        <div style="min-width: 220px;"><h3 style="text-align:center;">P1</h3>${this.generateControlButtons('p1', schemes.p1)}</div>
+                        <div style="min-width: 220px;"><h3 style="text-align:center;">P2</h3>${this.generateControlButtons('p2', schemes.p2)}</div>
+                        <div style="min-width: 220px;"><h3 style="text-align:center;">P3</h3>${this.generateControlButtons('p3', schemes.p3)}</div>
+                        <div style="min-width: 220px;"><h3 style="text-align:center;">P4</h3>${this.generateControlButtons('p4', schemes.p4)}</div>
                     </div>
                     <div style="display: flex; justify-content: center; margin-top: 30px;">
                         <div class="btn" id="btn-settings-back" style="width: 200px;">BACK</div>
@@ -123,8 +123,11 @@ export class UIManager {
                         </div>
                         <div style="flex: 1;">
                             <h3>KILLER</h3>
-                            <div class="btn" id="btn-cycle-killer">Change Killer</div>
-                            <p>Selected: <span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
+                            <div class="btn" id="btn-cycle-killer">Change Killer Type</div>
+                            <p>Type: <span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
+                            
+                            <div class="btn" id="btn-cycle-killer-player" style="margin-top: 15px;">Change Killer Player</div>
+                            <p>Played by: <span id="killer-player">P${this.gameManager.gameSetup.killerPlayer}</span></p>
                         </div>
                         <div style="flex: 1;">
                             <h3>MAP</h3>
@@ -222,6 +225,14 @@ export class UIManager {
                 current = (current + 1) % killers.length;
                 this.gameManager.gameSetup.selectedKillerType = killers[current];
                 document.getElementById('killer-name').innerText = killers[current];
+            };
+
+            // NEW: Cycle which player is the killer
+            document.getElementById('btn-cycle-killer-player').onclick = () => {
+                let p = this.gameManager.gameSetup.killerPlayer;
+                p = (p % 4) + 1; // Cycles 1 -> 2 -> 3 -> 4 -> 1
+                this.gameManager.gameSetup.killerPlayer = p;
+                document.getElementById('killer-player').innerText = `P${p}`;
             };
 
             document.getElementById('btn-cycle-map').onclick = () => {

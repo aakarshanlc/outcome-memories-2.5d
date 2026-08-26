@@ -1,6 +1,6 @@
 export const KillerVariables = {
     'Tripwire': {
-        speed: 1.0,
+        speed: 1.3,
         size: 4,
         m1: {
             cooldown: 60,
@@ -13,7 +13,7 @@ export const KillerVariables = {
         }
     },
     '2011X': {
-        speed: 1.1,
+        speed: 1.5,
         size: 4,
         m1: {
             cooldown: 30,
@@ -28,7 +28,7 @@ export const KillerVariables = {
         }
     },
     'Starved': {
-        speed: 0.9,
+        speed: 1.1,
         size: 4,
         m1: {
             cooldown: 60,

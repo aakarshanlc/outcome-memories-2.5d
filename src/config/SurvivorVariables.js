@@ -1,6 +1,6 @@
 export const SurvivorVariables = {
     'Sonic': {
-        speed: 0.8,
+        speed: 0.99,
         maxHealth: 100,
         size: 3,
         abilities: {
@@ -12,7 +12,7 @@ export const SurvivorVariables = {
         }
     },
     'Tails': {
-        speed: 0.75,
+        speed: 0.85,
         maxHealth: 100,
         size: 3,
         abilities: {
@@ -30,7 +30,7 @@ export const SurvivorVariables = {
         }
     },
     'Knuckles': {
-        speed: 0.7,
+        speed: 0.8,
         maxHealth: 125,
         size: 3,
         abilities: {

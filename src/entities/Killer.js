@@ -16,10 +16,11 @@ export class Killer {
         this.mesh.castShadow = true;
         scene.add(this.mesh);
 
-        this.speed = this.config.speed;
+        this.maxSpeed = this.config.speed; // The speed from variables.js
+        this.currentSpeed = 1.0;           // Starts at 1.0
         this.size = this.config.size;
         this.stunned = 0;
-        this.controlId = 'p2'; // Default
+        this.controlId = 'p2';
         
         // Smooth Physics
         this.velocity = new THREE.Vector3(0, 0, 0);
@@ -33,7 +34,7 @@ export class Killer {
         this.m1AttackAngle = new THREE.Vector3(0, 0, 1);
     }
 
-    stun(duration) { this.stunned = duration; this.mesh.material.emissive.setHex(0xffffff); this.velocity.set(0,0,0); }
+    stun(duration) { this.stunned = duration; this.mesh.material.emissive.setHex(0xffffff); this.velocity.set(0,0,0); this.currentSpeed = 1.0; }
     takeDamage(amount, attacker) {}
 
     update(obstacles, players, gameManager) {
@@ -53,8 +54,18 @@ export class Killer {
         if (this.controls.right) dx += 1;
         if (dx !== 0 && dz !== 0) { dx *= 0.707; dz *= 0.707; }
 
-        let targetVx = dx * this.speed;
-        let targetVz = dz * this.speed;
+        // --- KILLER ACCELERATION LOGIC ---
+        let isMoving = (dx !== 0 || dz !== 0);
+        if (isMoving) {
+            // Ramp up towards max speed
+            this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02; 
+        } else {
+            // Decay back to base speed 1.0 when not chasing
+            this.currentSpeed += (1.0 - this.currentSpeed) * 0.05;
+        }
+
+        let targetVx = dx * this.currentSpeed;
+        let targetVz = dz * this.currentSpeed;
         this.velocity.x += (targetVx - this.velocity.x) * this.acceleration;
         this.velocity.z += (targetVz - this.velocity.z) * this.acceleration;
         if (dx === 0) this.velocity.x *= this.damping;
@@ -63,7 +74,7 @@ export class Killer {
         let nextX = this.mesh.position.x + this.velocity.x;
         let nextZ = this.mesh.position.z + this.velocity.z;
 
-        let collideX = false, collideZ = false; // FIXED MISSING DECLARATION
+        let collideX = false, collideZ = false;
         for (let obs of obstacles) {
             if (checkCircleBoxCollision(nextX, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) { collideX = true; }
             if (checkCircleBoxCollision(this.mesh.position.x, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) { collideZ = true; }

@@ -19,7 +19,6 @@ export class GameManager {
         this.controls = new Controls();
         this.audio = new AudioManager();
         
-        // Fixed default settings
         const savedHit = localStorage.getItem('om_show_hitboxes');
         this.settings = {
             showHitboxes: savedHit === null ? true : savedHit === 'true'
@@ -39,6 +38,7 @@ export class GameManager {
         this.gameSetup = {
             survivorCount: 1,
             selectedKillerType: 'Tripwire',
+            killerPlayer: 2, // Default Killer is Player 2
             selectedMap: 'Open Field'
         };
     }
@@ -95,33 +95,40 @@ export class GameManager {
 
         this.mapManager.loadMap(this.gameSetup.selectedMap);
 
-        const survivorSchemes = ['p1', 'p3', 'p4'];
-        const survivorColors = [0x0064ff, 0xffd700, 0xcf2020];
-        const survivorTypes = ['Sonic', 'Tails', 'Knuckles'];
+        // Determine who is killer and who are survivors
+        const allPlayers = ['p1', 'p2', 'p3', 'p4'];
+        const killerId = `p${this.gameSetup.killerPlayer}`;
+        const survivorIds = allPlayers.filter(id => id !== killerId);
 
+        const survivorColors = { p1: 0x0064ff, p2: 0xffd700, p3: 0xcf2020, p4: 0x00ff00 };
+        const survivorTypes = ['Sonic', 'Tails', 'Knuckles', 'Sonic']; // Cycle through available survivors
+
+        // Spawn Survivors
         for (let i = 0; i < this.gameSetup.survivorCount; i++) {
-            const sId = survivorSchemes[i];
+            const sId = survivorIds[i];
             const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
             const charName = survivorTypes[i]; 
-            const player = new Player(this.engine.scene, controlsObj, survivorColors[i], charName);
+            const player = new Player(this.engine.scene, controlsObj, survivorColors[sId], charName);
             const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
             player.mesh.position.set(pSpawn.x, 6, pSpawn.z);
             player.controlId = sId;
             this.players.push(player);
         }
 
-        this.k1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
+        // Spawn Killer
+        const k1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
         let killerColor = 0xff0000;
         if (this.gameSetup.selectedKillerType === 'Tripwire') killerColor = 0xfcba03;
         else if (this.gameSetup.selectedKillerType === '2011X') killerColor = 0xb30000;
         else if (this.gameSetup.selectedKillerType === 'Starved') killerColor = 0x8B0000;
 
-        this.killer = new Killer(this.engine.scene, this.k1Controls, killerColor, this.gameSetup.selectedKillerType);
+        this.killer = new Killer(this.engine.scene, k1Controls, killerColor, this.gameSetup.selectedKillerType);
         const kSpawn = this.findSafeSpawn(this.mapManager.obstacles, 50, 90);
         this.killer.mesh.position.set(kSpawn.x, 6, kSpawn.z);
-        this.killer.controlId = 'p2';
+        this.killer.controlId = killerId;
         this.killers.push(this.killer);
 
+        // Initialize UI and Timers
         this.ui.initHUD();
         this.totalSurvivors = this.players.length;
         this.gameTimer = 180 * 60; 
@@ -225,7 +232,6 @@ export class GameManager {
                         }
                     });
                 }
-                // Pass 'this' so Hitbox can check settings.showHitboxes dynamically
                 if (!h.update(this)) this.activeHitboxes.splice(i, 1);
             }
 
