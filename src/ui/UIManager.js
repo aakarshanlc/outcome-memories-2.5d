@@ -174,6 +174,7 @@ export class UIManager {
             mSlider.oninput = () => {
                 this.gameManager.audio.musicVolume = mSlider.value / 100;
                 document.getElementById('music-val').innerText = mSlider.value;
+                this.gameManager.audio.applyVolume(); // Apply volume instantly!
                 this.gameManager.audio.save();
             };
             const sSlider = document.getElementById('sfx-slider');

@@ -38,9 +38,12 @@ export class GameManager {
         this.gameSetup = {
             survivorCount: 1,
             selectedKillerType: 'Tripwire',
-            killerPlayer: 2, // Default Killer is Player 2
+            killerPlayer: 2,
             selectedMap: 'Open Field'
         };
+
+        // Play menu music on load
+        this.audio.playMusic('menu');
     }
 
     setupInput() {
@@ -48,10 +51,13 @@ export class GameManager {
             this.keys[e.key.toLowerCase()] = true;
             if (e.key === 'Escape' && this.state === 'PLAYING') {
                 this.state = 'PAUSED';
+                this.audio.stopMusic();
                 this.ui.showScreen('setup');
             } else if (e.key === 'Escape' && this.state === 'PAUSED') {
                 this.state = 'PLAYING';
                 this.ui.initHUD();
+                // Resume chase music
+                this.audio.playMusic(this.gameSetup.selectedKillerType);
             }
         });
         window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
@@ -95,15 +101,13 @@ export class GameManager {
 
         this.mapManager.loadMap(this.gameSetup.selectedMap);
 
-        // Determine who is killer and who are survivors
         const allPlayers = ['p1', 'p2', 'p3', 'p4'];
         const killerId = `p${this.gameSetup.killerPlayer}`;
         const survivorIds = allPlayers.filter(id => id !== killerId);
 
         const survivorColors = { p1: 0x0064ff, p2: 0xffd700, p3: 0xcf2020, p4: 0x00ff00 };
-        const survivorTypes = ['Sonic', 'Tails', 'Knuckles', 'Sonic']; // Cycle through available survivors
+        const survivorTypes = ['Sonic', 'Tails', 'Knuckles', 'Sonic'];
 
-        // Spawn Survivors
         for (let i = 0; i < this.gameSetup.survivorCount; i++) {
             const sId = survivorIds[i];
             const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
@@ -115,7 +119,6 @@ export class GameManager {
             this.players.push(player);
         }
 
-        // Spawn Killer
         const k1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
         let killerColor = 0xff0000;
         if (this.gameSetup.selectedKillerType === 'Tripwire') killerColor = 0xfcba03;
@@ -128,14 +131,29 @@ export class GameManager {
         this.killer.controlId = killerId;
         this.killers.push(this.killer);
 
-        // Initialize UI and Timers
         this.ui.initHUD();
         this.totalSurvivors = this.players.length;
         this.gameTimer = 180 * 60; 
         this.lmsTimer = 60 * 60;   
         this.ringTimer = 15 * 60;  
         
-        if (this.totalSurvivors <= 1) this.phase = 'LMS';
+        // Music Logic
+        if (this.totalSurvivors <= 1) {
+            this.phase = 'LMS';
+            this.playLmsMusic(this.players[0]);
+        } else {
+            // Play Killer Chase Music
+            this.audio.playMusic(this.gameSetup.selectedKillerType);
+        }
+    }
+
+    // Helper to figure out which LMS track to play
+    playLmsMusic(survivor) {
+        if (!survivor) return;
+        const charName = survivor.characterName;
+        if (charName === 'Tails') this.audio.playMusic('Tails_lms');
+        else if (charName === 'Knuckles') this.audio.playMusic('Knuckles_lms');
+        else this.audio.playMusic('default_lms'); // Sonic or anyone else
     }
 
     stopGame() {
@@ -144,6 +162,8 @@ export class GameManager {
         if (this.arrow) this.arrow.destroy();
         this.ring = null;
         this.arrow = null;
+        this.audio.stopMusic();
+        this.audio.playMusic('menu');
     }
 
     endGame(title, subtitle) {
@@ -151,6 +171,7 @@ export class GameManager {
         this.phase = 'GAME_OVER';
         if (this.ring) { this.ring.destroy(); this.ring = null; }
         if (this.arrow) { this.arrow.destroy(); this.arrow = null; }
+        this.audio.stopMusic();
         this.ui.showGameOver(title, subtitle);
     }
 
@@ -238,10 +259,16 @@ export class GameManager {
             let alivePlayers = this.players.filter(p => p.health > 0);
 
             if (this.phase === 'ROUND') {
-                if (alivePlayers.length === 1 && this.totalSurvivors > 1) this.phase = 'LMS';
+                if (alivePlayers.length === 1 && this.totalSurvivors > 1) {
+                    this.phase = 'LMS';
+                    this.playLmsMusic(alivePlayers[0]);
+                }
                 this.gameTimer--;
                 this.ui.updateHUD('ROUND', this.gameTimer / 60);
-                if (this.gameTimer <= 0) this.phase = 'LMS';
+                if (this.gameTimer <= 0) {
+                    this.phase = 'LMS';
+                    this.playLmsMusic(alivePlayers[0]);
+                }
             } 
             else if (this.phase === 'LMS') {
                 this.lmsTimer--;
