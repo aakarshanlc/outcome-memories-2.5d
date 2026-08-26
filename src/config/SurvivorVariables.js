@@ -25,7 +25,7 @@ export const SurvivorVariables = {
             fly: {
                 cooldown: 540,
                 duration: 60,
-                flyHeight: 15
+                flyHeight: 50
             }
         }
     },

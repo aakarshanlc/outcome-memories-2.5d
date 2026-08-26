@@ -4,9 +4,50 @@ export class UIManager {
         this.root = document.getElementById('ui-layer');
         this.activeScreen = null;
         this.waitingForKey = null;
+        this.hudElement = null;
+    }
+
+    initHUD() {
+        this.hideAll();
+        this.root.innerHTML = `
+            <div id="hud" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); text-align: center; color: white; font-size: 24px; pointer-events: none; text-shadow: 2px 2px 4px black;">
+                <div id="phase-text" style="font-weight: bold; color: #ff4444;"></div>
+                <div id="timer-text" style="font-size: 32px;"></div>
+            </div>
+        `;
+        this.hudElement = this.root.querySelector('#hud');
+    }
+
+    updateHUD(phase, timeLeft) {
+        if (!this.hudElement) return;
+        let phaseText = "";
+        let timerText = Math.max(0, Math.ceil(timeLeft));
+
+        if (phase === 'ROUND') phaseText = "SURVIVE";
+        else if (phase === 'LMS') phaseText = "LAST MAN STANDING";
+        else if (phase === 'RING') phaseText = "ESCAPE!";
+
+        this.root.querySelector('#phase-text').innerText = phaseText;
+        this.root.querySelector('#timer-text').innerText = `${timerText}s`;
+    }
+
+    showGameOver(title, subtitle) {
+        this.hideAll();
+        this.root.innerHTML = `
+            <div class="menu-screen" style="background: rgba(0,0,0,0.85);">
+                <h1 style="font-size: 80px; color: ${title.includes('ESCAPES') ? '#00ff00' : '#ff0000'};">${title}</h1>
+                <h2 style="font-size: 30px; color: #aaa;">${subtitle}</h2>
+                <div class="btn btn-primary" id="btn-game-over" style="margin-top: 40px;">BACK TO MENU</div>
+            </div>
+        `;
+        document.getElementById('btn-game-over').onclick = () => {
+            this.gameManager.stopGame();
+            this.showScreen('main');
+        };
     }
 
     showScreen(screenName) {
+        // [Keep the existing showScreen code exactly as it is...]
         this.hideAll();
         let html = '';
 
@@ -94,7 +135,7 @@ export class UIManager {
         }).join('');
     }
 
-    hideAll() { this.root.innerHTML = ''; }
+    hideAll() { this.root.innerHTML = ''; this.hudElement = null; }
 
     setupEventListeners() {
         if (this.activeScreen === 'main') {
@@ -127,7 +168,6 @@ export class UIManager {
         else if (this.activeScreen === 'setup') {
             document.getElementById('btn-setup-back').onclick = () => this.showScreen('main');
             document.getElementById('btn-start-game').onclick = () => {
-                this.hideAll();
                 this.gameManager.startGame();
             };
 
