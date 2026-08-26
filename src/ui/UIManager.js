@@ -5,6 +5,12 @@ export class UIManager {
         this.activeScreen = null;
         this.waitingForKey = null;
         this.hudElement = null;
+        
+        this.btnIcon = `<svg height="24" width="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"></path><path d="M16.172 11l-5.364-5.364 1.414-1.414L20 12l-7.778 7.778-1.414-1.414L16.172 13H4v-2z" fill="currentColor"></path></svg>`;
+    }
+
+    btn(text, id, small = false) {
+        return `<button class="cssbuttons-io-button ${small ? 'btn-sm' : ''}" id="${id}"><span>${text}</span><div class="icon">${this.btnIcon}</div></button>`;
     }
 
     initHUD() {
@@ -32,10 +38,10 @@ export class UIManager {
     showGameOver(title, subtitle) {
         this.hideAll();
         this.root.innerHTML = `
-            <div class="menu-screen" style="background: rgba(0,0,0,0.85);">
+            <div class="menu-screen" style="background: rgba(0,0,0,0.9);">
                 <h1 style="font-size: 80px; color: ${title.includes('ESCAPES') ? '#00ff00' : '#ff0000'};">${title}</h1>
                 <h2 style="font-size: 30px; color: #aaa;">${subtitle}</h2>
-                <div class="btn btn-primary" id="btn-game-over" style="margin-top: 40px;">BACK TO MENU</div>
+                ${this.btn('BACK TO MENU', 'btn-game-over')}
             </div>
         `;
         document.getElementById('btn-game-over').onclick = () => {
@@ -50,12 +56,26 @@ export class UIManager {
 
         if (screenName === 'main') {
             html = `
+                <div class="window" id="draggable-window">
+                    <div class="window-title" id="window-drag-handle">
+                        <p>2011X.exe</p>
+                        <div class="window-buttons">
+                            <div class="window-button reduce"></div>
+                            <div class="window-button fullscreen"></div>
+                            <div class="window-button close"></div>
+                        </div>
+                    </div>
+                    <div class="console">
+                        <img src="./2011x.jpeg" alt="2011X" id="console-img">
+                    </div>
+                </div>
+                
                 <div class="menu-screen" id="main-menu">
                     <h1>Outcome Memories 2.5D</h1>
                     <h2>Three.js Engine Port</h2>
-                    <div class="btn btn-primary" id="btn-play">PLAY</div>
-                    <div class="btn" id="btn-settings">SETTINGS</div>
-                    <div class="btn" id="btn-credits">CREDITS</div>
+                    ${this.btn('PLAY', 'btn-play')}
+                    ${this.btn('SETTINGS', 'btn-settings')}
+                    ${this.btn('CREDITS', 'btn-credits')}
                 </div>
             `;
         } else if (screenName === 'settings') {
@@ -63,25 +83,24 @@ export class UIManager {
             const audio = this.gameManager.audio;
             const showHit = this.gameManager.settings.showHitboxes ? "checked" : "";
             html = `
-                <div class="menu-screen" id="settings-menu" style="display: block; padding: 30px; overflow-y: auto; width: 100%; height: 100%; box-sizing: border-box;">
-                    <h1 style="font-size: 40px; text-align:center; margin-bottom: 20px;">SETTINGS</h1>
+                <div class="menu-screen" id="settings-menu" style="justify-content: flex-start; padding-top: 30px; overflow-y: auto;">
+                    <h1>SETTINGS</h1>
                     
-                    <div style="display: flex; justify-content: center; gap: 50px; margin-bottom: 30px; flex-wrap: wrap; border-bottom: 1px solid #444; padding-bottom: 20px;">
-                        <div style="min-width: 250px;">
-                            <h3 style="text-align:center;">AUDIO</h3>
-                            <div style="display: flex; flex-direction: column; gap: 15px; align-items: center;">
-                                <div>
-                                    <label>Music Volume: <span id="music-val">${Math.round(audio.musicVolume*100)}</span>%</label><br>
-                                    <input type="range" id="music-slider" min="0" max="100" value="${audio.musicVolume*100}" style="width: 200px;">
-                                </div>
-                                <div>
-                                    <label>SFX Volume: <span id="sfx-val">${Math.round(audio.sfxVolume*100)}</span>%</label><br>
-                                    <input type="range" id="sfx-slider" min="0" max="100" value="${audio.sfxVolume*100}" style="width: 200px;">
-                                </div>
+                    <div class="settings-grid">
+                        <div class="settings-col">
+                            <h3>AUDIO</h3>
+                            <div style="width: 100%;">
+                                <label>Music Volume: <span id="music-val">${Math.round(audio.musicVolume*100)}</span>%</label>
+                                <input type="range" id="music-slider" min="0" max="100" value="${audio.musicVolume*100}">
+                            </div>
+                            <div style="width: 100%; margin-top: 15px;">
+                                <label>SFX Volume: <span id="sfx-val">${Math.round(audio.sfxVolume*100)}</span>%</label>
+                                <input type="range" id="sfx-slider" min="0" max="100" value="${audio.sfxVolume*100}">
                             </div>
                         </div>
-                        <div style="min-width: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                            <h3 style="text-align:center;">VISUALS</h3>
+                        
+                        <div class="settings-col">
+                            <h3>VISUALS</h3>
                             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px;">
                                 <input type="checkbox" id="hitbox-toggle" ${showHit} style="width: 20px; height: 20px;"> 
                                 Show Hitboxes
@@ -89,14 +108,15 @@ export class UIManager {
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P1</h3>${this.generateControlButtons('p1', schemes.p1)}</div>
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P2</h3>${this.generateControlButtons('p2', schemes.p2)}</div>
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P3</h3>${this.generateControlButtons('p3', schemes.p3)}</div>
-                        <div style="min-width: 220px;"><h3 style="text-align:center;">P4</h3>${this.generateControlButtons('p4', schemes.p4)}</div>
+                    <div class="controls-grid">
+                        <div class="control-box"><h3>P1</h3>${this.generateControlButtons('p1', schemes.p1)}</div>
+                        <div class="control-box"><h3>P2</h3>${this.generateControlButtons('p2', schemes.p2)}</div>
+                        <div class="control-box"><h3>P3</h3>${this.generateControlButtons('p3', schemes.p3)}</div>
+                        <div class="control-box"><h3>P4</h3>${this.generateControlButtons('p4', schemes.p4)}</div>
                     </div>
-                    <div style="display: flex; justify-content: center; margin-top: 30px;">
-                        <div class="btn" id="btn-settings-back" style="width: 200px;">BACK</div>
+                    
+                    <div style="margin-top: 30px;">
+                        ${this.btn('BACK', 'btn-settings-back')}
                     </div>
                 </div>
             `;
@@ -108,35 +128,39 @@ export class UIManager {
                     <div class="credit-name">Aakercum, Jelani(goons to x), Jeff and DJ</div>
                     <div class="credit-text">Based on "Outcome Memories"</div>
                     <br><br>
-                    <div class="btn" id="btn-credits-back">BACK</div>
+                    ${this.btn('BACK', 'btn-credits-back')}
                 </div>
             `;
         } else if (screenName === 'setup') {
             html = `
-                <div class="menu-screen" id="setup-menu" style="justify-content: flex-start; padding-top: 50px;">
-                    <h1 style="font-size: 40px; margin-bottom: 20px;">GAME SETUP</h1>
-                    <div style="display: flex; gap: 50px; width: 80%;">
-                        <div style="flex: 1;">
+                <div class="menu-screen" id="setup-menu" style="justify-content: center; padding-top: 30px;">
+                    <h1>GAME SETUP</h1>
+                    <div class="setup-grid">
+                        <div class="setup-item">
                             <h3>SURVIVORS</h3>
-                            <div class="btn" id="btn-cycle-surv">Change Count</div>
+                            ${this.btn('Change Count', 'btn-cycle-surv', true)}
                             <p>Selected: <span id="surv-count">${this.gameManager.gameSetup.survivorCount}</span></p>
                         </div>
-                        <div style="flex: 1;">
-                            <h3>KILLER</h3>
-                            <div class="btn" id="btn-cycle-killer">Change Killer Type</div>
-                            <p>Type: <span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
-                            
-                            <div class="btn" id="btn-cycle-killer-player" style="margin-top: 15px;">Change Killer Player</div>
-                            <p>Played by: <span id="killer-player">P${this.gameManager.gameSetup.killerPlayer}</span></p>
+                        <div class="setup-item">
+                            <h3>KILLER TYPE</h3>
+                            ${this.btn('Change Type', 'btn-cycle-killer', true)}
+                            <p><span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
                         </div>
-                        <div style="flex: 1;">
+                        <div class="setup-item">
+                            <h3>KILLER PLAYER</h3>
+                            ${this.btn('Change Player', 'btn-cycle-killer-player', true)}
+                            <p><span id="killer-player">P${this.gameManager.gameSetup.killerPlayer}</span></p>
+                        </div>
+                        <div class="setup-item">
                             <h3>MAP</h3>
-                            <div class="btn" id="btn-cycle-map">Change Map</div>
-                            <p>Selected: <span id="map-name">${this.gameManager.gameSetup.selectedMap}</span></p>
+                            ${this.btn('Change Map', 'btn-cycle-map', true)}
+                            <p><span id="map-name">${this.gameManager.gameSetup.selectedMap}</span></p>
                         </div>
                     </div>
-                    <div class="btn btn-primary" id="btn-start-game" style="margin-top: 50px;">START GAME</div>
-                    <div class="btn btn-danger" id="btn-setup-back" style="margin-top: 10px;">BACK</div>
+                    <div style="display: flex; gap: 15px; margin-top: 20px;">
+                        ${this.btn('START GAME', 'btn-start-game')}
+                        ${this.btn('BACK', 'btn-setup-back')}
+                    </div>
                 </div>
             `;
         }
@@ -147,14 +171,14 @@ export class UIManager {
     }
 
     generateControlButtons(playerId, scheme) {
-        const labels = ['Up', 'Down', 'Left', 'Right', 'Ability 1', 'Ability 2', 'M1 Attack'];
+        const labels = ['Up', 'Down', 'Left', 'Right', 'Ab1', 'Ab2', 'M1'];
         const keys = ['up', 'down', 'left', 'right', 'ability1', 'ability2', 'm1'];
         return labels.map((label, i) => {
             const key = keys[i];
             const val = scheme[key].toUpperCase();
-            return `<div style="display: flex; justify-content: space-between; margin: 5px 0; width: 100%; align-items: center; font-size: 14px;">
+            return `<div class="control-row">
                         <span>${label}:</span> 
-                        <button class="btn" style="width: 80px; padding: 2px; font-size: 12px;" data-player="${playerId}" data-key="${key}">${val}</button>
+                        <button class="cssbuttons-io-button btn-sm" data-player="${playerId}" data-key="${key}"><span>${val}</span><div class="icon">${this.btnIcon}</div></button>
                     </div>`;
         }).join('');
     }
@@ -166,6 +190,48 @@ export class UIManager {
             document.getElementById('btn-play').onclick = () => this.showScreen('setup');
             document.getElementById('btn-settings').onclick = () => this.showScreen('settings');
             document.getElementById('btn-credits').onclick = () => this.showScreen('credits');
+
+            // --- DRAG AND TELEPORT LOGIC ---
+            const windowEl = document.getElementById('draggable-window');
+            const dragHandle = document.getElementById('window-drag-handle');
+            const imgEl = document.getElementById('console-img');
+
+            let isDragging = false;
+            let offsetX = 0, offsetY = 0;
+
+            // 1. Click image to teleport randomly
+            if (imgEl) {
+                imgEl.addEventListener('click', () => {
+                    const x = Math.random() * (window.innerWidth - 320) + 10;
+                    const y = Math.random() * (window.innerHeight - 240) + 10;
+                    windowEl.style.left = `${x}px`;
+                    windowEl.style.top = `${y}px`;
+                });
+            }
+
+            // 2. Drag title bar to move smoothly
+            dragHandle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                const rect = windowEl.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    let x = e.clientX - offsetX;
+                    let y = e.clientY - offsetY;
+                    // Keep it on screen
+                    x = Math.max(0, Math.min(window.innerWidth - 300, x));
+                    y = Math.max(0, Math.min(window.innerHeight - 230, y));
+                    windowEl.style.left = `${x}px`;
+                    windowEl.style.top = `${y}px`;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
         } 
         else if (this.activeScreen === 'settings') {
             document.getElementById('btn-settings-back').onclick = () => this.showScreen('main');
@@ -174,7 +240,7 @@ export class UIManager {
             mSlider.oninput = () => {
                 this.gameManager.audio.musicVolume = mSlider.value / 100;
                 document.getElementById('music-val').innerText = mSlider.value;
-                this.gameManager.audio.applyVolume(); // Apply volume instantly!
+                this.gameManager.audio.applyVolume();
                 this.gameManager.audio.save();
             };
             const sSlider = document.getElementById('sfx-slider');
@@ -191,8 +257,9 @@ export class UIManager {
 
             document.querySelectorAll('button[data-player]').forEach(btn => {
                 btn.onclick = (e) => {
-                    this.waitingForKey = { player: e.target.dataset.player, key: e.target.dataset.key, button: e.target };
-                    e.target.innerText = "PRESS...";
+                    const spanEl = e.currentTarget.querySelector('span');
+                    this.waitingForKey = { player: e.currentTarget.dataset.player, key: e.currentTarget.dataset.key, button: spanEl };
+                    spanEl.innerText = "...";
                 };
             });
             document.onkeydown = (e) => {
@@ -215,7 +282,7 @@ export class UIManager {
 
             document.getElementById('btn-cycle-surv').onclick = () => {
                 let count = this.gameManager.gameSetup.survivorCount;
-                count = (count % 3) + 1; // Cycles 1 -> 2 -> 3 -> 1
+                count = (count % 3) + 1; 
                 this.gameManager.gameSetup.survivorCount = count;
                 document.getElementById('surv-count').innerText = count;
             };
@@ -228,10 +295,9 @@ export class UIManager {
                 document.getElementById('killer-name').innerText = killers[current];
             };
 
-            // NEW: Cycle which player is the killer
             document.getElementById('btn-cycle-killer-player').onclick = () => {
                 let p = this.gameManager.gameSetup.killerPlayer;
-                p = (p % 4) + 1; // Cycles 1 -> 2 -> 3 -> 4 -> 1
+                p = (p % 4) + 1; 
                 this.gameManager.gameSetup.killerPlayer = p;
                 document.getElementById('killer-player').innerText = `P${p}`;
             };

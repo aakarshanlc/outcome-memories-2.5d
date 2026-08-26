@@ -1,0 +1,283 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    box-sizing: border-box;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.menu-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at center, #2a2a2a 0%, #000000 100%);
+    pointer-events: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    color: #fff;
+    text-shadow: 4px 4px 0px #444;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+h2 {
+    color: #888;
+    font-size: clamp(14px, 2.5vw, 20px);
+    margin: 0 0 30px 0;
+    text-align: center;
+}
+
+h3 {
+    color: #ff4d4d; /* Changed to red */
+    text-transform: uppercase;
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-size: 18px;
+}
+
+/* === NEW UIVERSE BUTTONS === */
+.cssbuttons-io-button {
+  background: #ff3333; /* Changed to red */
+  color: white;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 500;
+  border-radius: 0.9em;
+  border: none;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 0 1.6em -0.6em #990000; /* Changed to dark red */
+  overflow: hidden;
+  position: relative;
+  height: 2.8em;
+  /* FIX: Made padding symmetric so text is perfectly centered */
+  padding: 0.35em 3.3em; 
+  cursor: pointer;
+  margin: 8px 0;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.cssbuttons-io-button .icon {
+  background: white;
+  margin-left: 1em;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.2em;
+  width: 2.2em;
+  border-radius: 0.7em;
+  box-shadow: 0.1em 0.1em 0.6em 0.2em #cc0000; /* Changed to red */
+  right: 0.3em;
+  transition: all 0.3s;
+}
+
+.cssbuttons-io-button:hover .icon {
+  width: calc(100% - 0.6em);
+}
+
+.cssbuttons-io-button .icon svg {
+  width: 1.1em;
+  transition: transform 0.3s;
+  color: #cc0000; /* Changed to red */
+}
+
+.cssbuttons-io-button:hover .icon svg {
+  transform: translateX(0.1em);
+}
+
+.cssbuttons-io-button:active .icon {
+  transform: scale(0.95);
+}
+
+/* Small variant for settings */
+.btn-sm {
+    min-width: 120px;
+    height: 2.4em;
+    font-size: 14px;
+    /* FIX: Symmetric padding for small buttons too */
+    padding: 0.35em 2.8em; 
+}
+.btn-sm .icon {
+    height: 1.8em;
+    width: 1.8em;
+}
+
+/* === CONSOLE WINDOW === */
+.window {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  height: 220px;
+  width: 300px;
+  background-color: #fff;
+  border: 2px solid #333;
+  border-radius: 5px;
+  overflow: hidden;
+  z-index: 20;
+  box-shadow: 5px 5px 0px rgba(0,0,0,0.5);
+}
+
+.window-title {
+  height: 30px;
+  background-color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+.window-title:active {
+  cursor: grabbing;
+}
+
+.window-title p {
+  color: #fff;
+  font-weight: bold;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.window-buttons {
+  display: flex;
+  align-items: center;
+}
+
+.window-button {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  margin: 5px;
+  transition: background-color 0.2s ease;
+}
+
+.window-button.close { background-color: #f00; cursor: pointer; }
+.window-button.close:hover { background-color: rgb(182, 2, 2); }
+.window-button.reduce { background-color: #ff0; cursor: pointer; }
+.window-button.reduce:hover { background-color: rgb(172, 172, 4); }
+.window-button.fullscreen { background-color: #0f0; cursor: pointer; }
+.window-button.fullscreen:hover { background-color: rgb(7, 159, 7); }
+
+.console {
+  width: 100%;
+  height: calc(100% - 30px);
+  background-color: #000;
+  overflow: hidden;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.console img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* === SETTINGS LAYOUT === */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    width: 100%;
+    max-width: 900px;
+    margin-bottom: 30px;
+}
+
+.settings-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+}
+
+.control-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.control-row {
+    display: flex;
+    justify-content: space-between;
+    width: 90%;
+    margin: 5px 0;
+    align-items: center;
+    font-size: 14px;
+}
+
+/* === SETUP LAYOUT === */
+.setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    width: 100%;
+    max-width: 800px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.setup-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+p { font-size: 14px; color: #aaa; margin: 5px 0; }
+.credit-text { font-size: 20px; margin: 10px 0; text-align: center; }
+.credit-name { color: #ff4d4d; font-size: 24px; text-align: center; } /* Changed to red */
+
+input[type="range"] {
+  width: 100%;
+  max-width: 300px;
+  accent-color: #ff3333; /* Changed to red */
+  cursor: pointer;
+}
+
+label { display: block; margin-bottom: 5px; font-size: 14px; }

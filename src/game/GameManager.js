@@ -42,8 +42,14 @@ export class GameManager {
             selectedMap: 'Open Field'
         };
 
-        // Play menu music on load
-        this.audio.playMusic('menu');
+        // FIX: Start menu music on first user interaction to bypass browser autoplay block
+        const startAudio = () => {
+            this.audio.playMusic('menu');
+            window.removeEventListener('click', startAudio);
+            window.removeEventListener('keydown', startAudio);
+        };
+        window.addEventListener('click', startAudio);
+        window.addEventListener('keydown', startAudio);
     }
 
     setupInput() {
