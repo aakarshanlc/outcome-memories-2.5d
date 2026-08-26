@@ -19,15 +19,17 @@ export class MapManager {
         floor.receiveShadow = true;
         this.scene.add(floor);
 
+        // Always add boundary walls to ALL maps
+        this.addWall(-100, -100, 200, 5); // North
+        this.addWall(-100, 95, 200, 5);  // South
+        this.addWall(-100, -100, 5, 200); // West
+        this.addWall(95, -100, 5, 200);  // East
+
+        // Add map-specific obstacles
         if (mapName === 'Box Arena') {
             this.addWall(0, 0, 20, 20);
             this.addWall(40, 40, 20, 20);
-        } else {
-            // Default Open Field with boundary walls
-            this.addWall(-100, -100, 200, 5); // North
-            this.addWall(-100, 95, 200, 5);  // South
-            this.addWall(-100, -100, 5, 200); // West
-            this.addWall(95, -100, 5, 200);  // East
+            this.addWall(-40, -40, 20, 20);
         }
     }
 
@@ -40,9 +42,6 @@ export class MapManager {
         mesh.receiveShadow = true;
         this.scene.add(mesh);
         
-        this.obstacles.push({
-            x: x, z: z, w: w, d: d, // Using Z instead of Y for 3D space
-            mesh: mesh
-        });
+        this.obstacles.push({ x: x, z: z, w: w, d: d, mesh: mesh });
     }
 }

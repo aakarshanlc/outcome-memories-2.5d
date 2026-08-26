@@ -5,7 +5,8 @@ import { Killer } from '../entities/Killer.js';
 import { UIManager } from '../ui/UIManager.js';
 import { Controls } from './Controls.js';
 import { Hitbox } from '../engine/Hitbox.js';
-import { checkCircleCircleCollision } from '../engine/Collision.js';
+import { Projectile } from '../entities/Projectile.js';
+import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
 
 export class GameManager {
     constructor() {
@@ -21,9 +22,10 @@ export class GameManager {
         this.players = [];
         this.killers = [];
         this.activeHitboxes = [];
+        this.projectiles = [];
 
         this.gameSetup = {
-            survivorCount: 1,
+            selectedCharacter: 'Sonic',
             selectedKillerType: 'Tripwire',
             selectedMap: 'Open Field'
         };
@@ -48,34 +50,55 @@ export class GameManager {
         this.gameLoop();
     }
 
+    // NEW: Safe spawn calculation to avoid walls and enforce distance
+    findSafeSpawn(obstacles, minZ, maxZ) {
+        let x, z, safe = false, attempts = 0;
+        while (!safe && attempts < 100) {
+            x = Math.random() * 120 - 60; // Keep within middle X of map
+            z = Math.random() * (maxZ - minZ) + minZ;
+            safe = true;
+            for (let obs of obstacles) {
+                // Check a radius of 6 around the spawn point
+                if (checkCircleBoxCollision(x, z, 6, obs.x, obs.z, obs.w, obs.d)) {
+                    safe = false;
+                    break;
+                }
+            }
+            attempts++;
+        }
+        return { x, z };
+    }
+
     startGame() {
         this.state = 'PLAYING';
         
         this.players.forEach(p => this.engine.scene.remove(p.mesh));
         this.killers.forEach(k => this.engine.scene.remove(k.mesh));
+        this.activeHitboxes.forEach(h => this.engine.scene.remove(h.mesh));
+        this.projectiles.forEach(p => this.engine.scene.remove(p.mesh));
         this.players = [];
         this.killers = [];
-        this.activeHitboxes.forEach(h => this.engine.scene.remove(h.mesh));
         this.activeHitboxes = [];
+        this.projectiles = [];
 
         this.mapManager.loadMap(this.gameSetup.selectedMap);
 
-        // Setup Player 1 using mapped controls
         const p1Scheme = this.controls.getScheme('p1');
-        this.p1Controls = { 
-            up: false, down: false, left: false, right: false, 
-            ability1: false, ability2: false, m1: false 
-        };
-        this.player1 = new Player(this.engine.scene, this.p1Controls, 0x0064ff, 'Sonic');
-        this.player1.mesh.position.set(-20, 6, 0);
+        this.p1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
+        
+        let pColor = 0x0064ff;
+        if (this.gameSetup.selectedCharacter === 'Knuckles') pColor = 0xcf2020;
+        else if (this.gameSetup.selectedCharacter === 'Tails') pColor = 0xffd700;
+
+        this.player1 = new Player(this.engine.scene, this.p1Controls, pColor, this.gameSetup.selectedCharacter);
+        
+        // Spawn Survivor in bottom half (Z: -90 to -50)
+        const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
+        this.player1.mesh.position.set(pSpawn.x, 6, pSpawn.z);
         this.players.push(this.player1);
 
-        // Setup Killer using mapped controls
         const k1Scheme = this.controls.getScheme('p2');
-        this.k1Controls = { 
-            up: false, down: false, left: false, right: false, 
-            ability1: false, ability2: false, m1: false 
-        };
+        this.k1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
         
         let killerColor = 0xff0000;
         if (this.gameSetup.selectedKillerType === 'Tripwire') killerColor = 0xfcba03;
@@ -83,25 +106,32 @@ export class GameManager {
         else if (this.gameSetup.selectedKillerType === 'Starved') killerColor = 0x8B0000;
 
         this.killer = new Killer(this.engine.scene, this.k1Controls, killerColor, this.gameSetup.selectedKillerType);
-        this.killer.mesh.position.set(20, 6, 0);
+        
+        // Spawn Killer in top half (Z: 50 to 90)
+        const kSpawn = this.findSafeSpawn(this.mapManager.obstacles, 50, 90);
+        this.killer.mesh.position.set(kSpawn.x, 6, kSpawn.z);
         this.killers.push(this.killer);
     }
 
-    spawnHitbox(x, z, radius, duration, owner, type, damage, data) {
-        this.activeHitboxes.push(new Hitbox(this.engine.scene, x, z, radius, duration, owner, type, damage, data));
+    spawnHitbox(x, z, radius, duration, owner, type, damage, data, shape = 'sphere', width = 0, depth = 0) {
+        this.activeHitboxes.push(new Hitbox(this.engine.scene, x, z, radius, duration, owner, type, damage, data, shape, width, depth));
+    }
+
+    spawnProjectile(x, z, dx, dz, owner, damage, stunDuration, speed) {
+        this.projectiles.push(new Projectile(this.engine.scene, x, z, dx, dz, owner, damage, stunDuration, speed));
     }
 
     gameLoop() {
         requestAnimationFrame(() => this.gameLoop());
 
         if (this.state === 'PLAYING') {
-            // Read keyboard into control schemes
             const p1S = this.controls.getScheme('p1');
             this.p1Controls.up = this.keys[p1S.up];
             this.p1Controls.down = this.keys[p1S.down];
             this.p1Controls.left = this.keys[p1S.left];
             this.p1Controls.right = this.keys[p1S.right];
             this.p1Controls.ability1 = this.keys[p1S.ability1];
+            this.p1Controls.ability2 = this.keys[p1S.ability2];
 
             const k1S = this.controls.getScheme('p2');
             this.k1Controls.up = this.keys[k1S.up];
@@ -110,34 +140,69 @@ export class GameManager {
             this.k1Controls.right = this.keys[k1S.right];
             this.k1Controls.m1 = this.keys[k1S.m1];
 
-            // Update Entities
-            this.players.forEach(p => p.update(this.mapManager.obstacles));
+            this.players.forEach(p => p.update(this.mapManager.obstacles, this.killers, this));
             this.killers.forEach(k => k.update(this.mapManager.obstacles, this.players, this));
 
-            // Update Hitboxes
+            for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                let p = this.projectiles[i];
+                p.update(this.killers);
+                if (!p.active) this.projectiles.splice(i, 1);
+            }
+
             for (let i = this.activeHitboxes.length - 1; i >= 0; i--) {
                 let h = this.activeHitboxes[i];
                 
-                // Check collisions
                 if (h.owner instanceof Killer) {
                     this.players.forEach(p => {
                         if (p.health > 0 && !h.hasHit.has(p)) {
-                            if (checkCircleCircleCollision(h.x, h.z, h.radius, p.mesh.position.x, p.mesh.position.z, p.size)) {
+                            let hit = false;
+                            if (h.shape === 'box') {
+                                hit = checkCircleBoxCollision(p.mesh.position.x, p.mesh.position.z, p.size, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
+                            } else {
+                                hit = checkCircleCircleCollision(h.x, h.z, h.radius, p.mesh.position.x, p.mesh.position.z, p.size);
+                            }
+
+                            if (hit) {
                                 p.takeDamage(h.damage, h.owner);
-                                if (h.data && h.data.applyBleed) p.bleedTimer = 180; // 3 seconds of bleed
+                                if (h.data && h.data.applyBleed) p.bleedTimer = 180;
                                 h.hasHit.add(p);
                             }
                         }
                     });
                 }
+                else if (h.owner instanceof Player && h.type === 'knuckles_punch') {
+                    this.killers.forEach(k => {
+                        if (!h.hasHit.has(k)) {
+                            let hit = false;
+                            if (h.shape === 'box') {
+                                hit = checkCircleBoxCollision(k.mesh.position.x, k.mesh.position.z, k.size, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
+                            } else {
+                                hit = checkCircleCircleCollision(h.x, h.z, h.radius, k.mesh.position.x, k.mesh.position.z, k.size);
+                            }
 
-                // Keep hitbox alive?
-                if (!h.update()) {
-                    this.activeHitboxes.splice(i, 1);
+                            if (hit) {
+                                k.stun(75);
+
+                                // GUARANTEED CRASH FIX
+                                const kbVec = new THREE.Vector3(k.mesh.position.x - h.x, 0, k.mesh.position.z - h.z);
+                                if (kbVec.lengthSq() === 0) {
+                                    kbVec.set(0, 0, 1); // Default fallback
+                                }
+                                kbVec.normalize();
+                                
+                                const knockbackForce = h.owner.config.abilities.punch.knockback || 15;
+                                k.mesh.position.x += kbVec.x * knockbackForce;
+                                k.mesh.position.z += kbVec.z * knockbackForce;
+                                
+                                h.hasHit.add(k);
+                            }
+                        }
+                    });
                 }
+
+                if (!h.update()) this.activeHitboxes.splice(i, 1);
             }
 
-            // Camera follows Player 1
             this.engine.camera.position.x = this.player1.mesh.position.x;
             this.engine.camera.position.z = this.player1.mesh.position.z + 50;
             this.engine.camera.lookAt(this.player1.mesh.position.x, 0, this.player1.mesh.position.z);

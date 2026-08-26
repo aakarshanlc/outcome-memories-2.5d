@@ -3,7 +3,7 @@ export class UIManager {
         this.gameManager = gameManager;
         this.root = document.getElementById('ui-layer');
         this.activeScreen = null;
-        this.waitingForKey = null; // To capture keybinds
+        this.waitingForKey = null;
     }
 
     showScreen(screenName) {
@@ -55,19 +55,19 @@ export class UIManager {
                     <h1 style="font-size: 40px; margin-bottom: 20px;">GAME SETUP</h1>
                     <div style="display: flex; gap: 50px; width: 80%;">
                         <div style="flex: 1;">
-                            <h3>SURVIVORS</h3>
-                            <div class="btn" id="btn-add-surv">Add Survivor (Max 4)</div>
-                            <p>Selected: <span id="surv-count">1</span></p>
+                            <h3>SURVIVOR</h3>
+                            <div class="btn" id="btn-cycle-char">Change Character</div>
+                            <p>Selected: <span id="char-name">${this.gameManager.gameSetup.selectedCharacter}</span></p>
                         </div>
                         <div style="flex: 1;">
                             <h3>KILLER</h3>
                             <div class="btn" id="btn-cycle-killer">Change Killer</div>
-                            <p>Selected: <span id="killer-name">Tripwire</span></p>
+                            <p>Selected: <span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
                         </div>
                         <div style="flex: 1;">
                             <h3>MAP</h3>
                             <div class="btn" id="btn-cycle-map">Change Map</div>
-                            <p>Selected: <span id="map-name">Open Field</span></p>
+                            <p>Selected: <span id="map-name">${this.gameManager.gameSetup.selectedMap}</span></p>
                         </div>
                     </div>
                     <div class="btn btn-primary" id="btn-start-game" style="margin-top: 50px;">START GAME</div>
@@ -84,7 +84,6 @@ export class UIManager {
     generateControlButtons(playerId, scheme) {
         const labels = ['Up', 'Down', 'Left', 'Right', 'Ability 1', 'Ability 2', 'M1 Attack'];
         const keys = ['up', 'down', 'left', 'right', 'ability1', 'ability2', 'm1'];
-        
         return labels.map((label, i) => {
             const key = keys[i];
             const val = scheme[key].toUpperCase();
@@ -105,16 +104,12 @@ export class UIManager {
         } 
         else if (this.activeScreen === 'settings') {
             document.getElementById('btn-settings-back').onclick = () => this.showScreen('main');
-            
-            // Control mapping buttons
             document.querySelectorAll('button[data-player]').forEach(btn => {
                 btn.onclick = (e) => {
                     this.waitingForKey = { player: e.target.dataset.player, key: e.target.dataset.key, button: e.target };
                     e.target.innerText = "PRESS...";
                 };
             });
-
-            // Listen for keypress to bind
             document.onkeydown = (e) => {
                 if (this.waitingForKey) {
                     let key = e.key.toLowerCase();
@@ -136,11 +131,12 @@ export class UIManager {
                 this.gameManager.startGame();
             };
 
-            document.getElementById('btn-add-surv').onclick = () => {
-                if (this.gameManager.gameSetup.survivorCount < 4) {
-                    this.gameManager.gameSetup.survivorCount++;
-                    document.getElementById('surv-count').innerText = this.gameManager.gameSetup.survivorCount;
-                }
+            document.getElementById('btn-cycle-char').onclick = () => {
+                const chars = ['Sonic', 'Tails', 'Knuckles'];
+                let current = chars.indexOf(this.gameManager.gameSetup.selectedCharacter);
+                current = (current + 1) % chars.length;
+                this.gameManager.gameSetup.selectedCharacter = chars[current];
+                document.getElementById('char-name').innerText = chars[current];
             };
 
             document.getElementById('btn-cycle-killer').onclick = () => {
