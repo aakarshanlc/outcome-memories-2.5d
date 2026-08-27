@@ -27,7 +27,7 @@ export const SurvivorVariables = {
                 cooldown: 540,
                 maxCharges: 3,
                 chargeCooldown: 30, // 0.5s delay between dashes
-                boost: 1.75, // Upward velocity applied per charge
+                boost: 1.5, // Upward velocity applied per charge
                 duration: 20, // How long the speed boost lasts
                 multiplier: 1.5 // How fast he moves while flying
             }
