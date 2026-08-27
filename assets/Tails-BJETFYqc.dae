@@ -1,0 +1,941 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 4.5.0 commit date:2025-07-14, commit time:17:45, hash:8cb6b388974a</authoring_tool>
+    </contributor>
+    <created>2025-08-12T21:12:24</created>
+    <modified>2025-08-12T21:12:24</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_effects>
+    <effect id="Texture-effect">
+      <profile_COMMON>
+        <newparam sid="PLAYER00_png-surface">
+          <surface type="2D">
+            <init_from>PLAYER00_png</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="PLAYER00_png-sampler">
+          <sampler2D>
+            <source>PLAYER00_png-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <texture texture="PLAYER00_png-sampler" texcoord="UVMap"/>
+            </diffuse>
+            <index_of_refraction>
+              <float sid="ior">1</float>
+            </index_of_refraction>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_images>
+    <image id="PLAYER00_png" name="PLAYER00_png">
+      <init_from>PLAYER00.png</init_from>
+    </image>
+  </library_images>
+  <library_materials>
+    <material id="Texture-material" name="Texture">
+      <instance_effect url="#Texture-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="Grp15-mesh" name="Grp15">
+      <mesh>
+        <source id="Grp15-mesh-positions">
+          <float_array id="Grp15-mesh-positions-array" count="36">0.15 0.21 0 -0.16 0.2 0 -0.15 -0.64 0 0.16 -0.64 0 -0.16 0.2 0 0 0.21 -0.16 0 -0.64 -0.16 -0.15 -0.64 0 0 0.21 -0.16 0.15 0.21 0 0.16 -0.64 0 0 -0.64 -0.16</float_array>
+          <technique_common>
+            <accessor source="#Grp15-mesh-positions-array" count="12" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp15-mesh-normals">
+          <float_array id="Grp15-mesh-normals-array" count="18">0 0 1 -0.7181674 -0.004249453 -0.6958575 -0.7181674 -0.004249453 -0.6958575 0.7182338 0.004224896 -0.6957891 0.7182338 0.004224896 -0.6957891 0.7182338 0.004224896 -0.695789</float_array>
+          <technique_common>
+            <accessor source="#Grp15-mesh-normals-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp15-mesh-map-0">
+          <float_array id="Grp15-mesh-map-0-array" count="24">0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp15-mesh-map-0-array" count="12" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp15-mesh-vertices">
+          <input semantic="POSITION" source="#Grp15-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="3">
+          <input semantic="VERTEX" source="#Grp15-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp15-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp15-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 </vcount>
+          <p>0 0 0 1 0 1 2 0 2 3 0 3 4 1 4 5 2 5 6 1 6 7 1 7 8 3 8 9 4 9 10 5 10 11 3 11</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp14-mesh" name="Grp14">
+      <mesh>
+        <source id="Grp14-mesh-positions">
+          <float_array id="Grp14-mesh-positions-array" count="30">0.14 0.32 0 -0.15 0.31 0 -0.14 -0.61 0 0.16 -0.61 0 -0.15 0.31 0 0 0.15 -0.15 0.00999999 -0.61 -0.15 -0.14 -0.61 0 0.14 0.32 0 0.16 -0.61 0</float_array>
+          <technique_common>
+            <accessor source="#Grp14-mesh-positions-array" count="10" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp14-mesh-normals">
+          <float_array id="Grp14-mesh-normals-array" count="21">0 0 1 -0.7093298 -0.008444368 -0.7048262 0.01047736 0.003122746 -0.9999403 0.01027607 0.003119766 -0.9999424 -0.7093299 -0.008444368 -0.7048262 0.7153251 0.01269805 -0.6986765 0.7153251 0.01269805 -0.6986765</float_array>
+          <technique_common>
+            <accessor source="#Grp14-mesh-normals-array" count="7" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp14-mesh-map-0">
+          <float_array id="Grp14-mesh-map-0-array" count="24">0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp14-mesh-map-0-array" count="12" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp14-mesh-vertices">
+          <input semantic="POSITION" source="#Grp14-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="3">
+          <input semantic="VERTEX" source="#Grp14-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp14-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp14-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 </vcount>
+          <p>0 0 0 1 0 1 2 0 2 3 0 3 4 1 4 5 2 5 6 3 6 7 4 7 5 2 8 8 5 9 9 6 10 6 3 11</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp13-mesh" name="Grp13">
+      <mesh>
+        <source id="Grp13-mesh-positions">
+          <float_array id="Grp13-mesh-positions-array" count="39">0.32 -7.25 0.06999999 -0.24 -5.97 0.22 -0.1299999 -5.97 -0.29 0.36 -5.95 -0.46 0.76 -5.93 -0.1 0.15 -5.95 0.58 0.65 -5.93 0.41 -0.5 -4.58 0.28 -0.34 -4.58 -0.45 0.37 -4.55 -0.69 0.93 -4.52 -0.18 0.06 -4.55 0.78 0.77 -4.52 0.55</float_array>
+          <technique_common>
+            <accessor source="#Grp13-mesh-positions-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp13-mesh-normals">
+          <float_array id="Grp13-mesh-normals-array" count="39">0.0461868 -0.9989046 0.007522821 -0.9096221 -0.2919773 0.2955284 -0.7119061 -0.2910515 -0.6391234 0.2007611 -0.2605287 -0.9443621 0.9285815 -0.2264248 -0.2940552 -0.1908348 -0.2594591 0.9467117 0.7281945 -0.2249803 0.6473923 -0.9338902 -0.1853044 0.3057963 -0.7293453 -0.185379 -0.6585515 0.2123342 -0.1600944 -0.9639939 0.9455192 -0.1312721 -0.2979285 -0.1936582 -0.1547811 0.9687825 0.7404375 -0.1271958 0.6599799</float_array>
+          <technique_common>
+            <accessor source="#Grp13-mesh-normals-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp13-mesh-map-0">
+          <float_array id="Grp13-mesh-map-0-array" count="84">0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063</float_array>
+          <technique_common>
+            <accessor source="#Grp13-mesh-map-0-array" count="42" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp13-mesh-vertices">
+          <input semantic="POSITION" source="#Grp13-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="12">
+          <input semantic="VERTEX" source="#Grp13-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp13-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp13-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 3 3 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 0 0 3 3 3 4 4 4 5 0 0 6 5 5 7 1 1 8 0 0 9 4 4 10 6 6 11 0 0 12 2 2 13 3 3 14 0 0 15 6 6 16 5 5 17 2 2 18 1 1 19 7 7 20 8 8 21 3 3 22 9 9 23 10 10 24 4 4 25 1 1 26 5 5 27 11 11 28 7 7 29 8 8 30 9 9 31 3 3 32 2 2 33 10 10 34 12 12 35 6 6 36 4 4 37 6 6 38 12 12 39 11 11 40 5 5 41</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp12-mesh" name="Grp12">
+      <mesh>
+        <source id="Grp12-mesh-positions">
+          <float_array id="Grp12-mesh-positions-array" count="54">0.32 -3.76 -0.74 -0.42 -3.79 -0.49 -0.38 -2.9 -0.42 0.24 -2.87 -0.63 0.92 -3.73 -0.21 0.93 -4.52 -0.18 0.37 -4.55 -0.69 -0.59 -3.79 0.28 0 -3.76 0.81 -0.01999998 -2.87 0.68 -0.52 -2.9 0.23 -0.5 -4.58 0.28 0.06 -4.55 0.78 0.75 -2.84 -0.18 -0.34 -4.58 -0.45 0.75 -3.73 0.56 0.61 -2.84 0.47 0.77 -4.52 0.55</float_array>
+          <technique_common>
+            <accessor source="#Grp12-mesh-positions-array" count="18" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp12-mesh-normals">
+          <float_array id="Grp12-mesh-normals-array" count="54">0.1951987 0.04077792 -0.9799157 -0.7450776 -0.01212561 -0.6668676 -0.7446055 0.08639198 -0.6618906 0.1850568 0.1368793 -0.9731486 0.9455437 0.0950275 -0.311315 0.9535214 0.005356192 -0.3012776 0.2122714 -0.05273407 -0.9757869 -0.9520201 -0.009969413 0.3058733 -0.2085476 0.04254549 0.9770864 -0.2083591 0.1368989 0.9684242 -0.9490449 0.09003698 0.3020052 -0.9442822 -0.1080561 0.310894 -0.1960464 -0.0487976 0.9793797 0.9319964 0.1876557 -0.3101102 -0.7372897 -0.1088321 -0.6667529 0.7385529 0.09402459 0.667607 0.7276837 0.1827417 0.6611217 0.7426488 0.007536172 0.6696387</float_array>
+          <technique_common>
+            <accessor source="#Grp12-mesh-normals-array" count="18" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp12-mesh-map-0">
+          <float_array id="Grp12-mesh-map-0-array" count="96">1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.2539063 1 0.34375 0.9101563 0.34375 0.9101563 0.2539063 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9101563 0.2539063 1 0.2539063 1 0.34375 0.9101563 0.34375 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9101563 0.2539063 1 0.2539063 1 0.34375 0.9101563 0.34375 1 0.2539063 1 0.34375 0.9101563 0.34375 0.9101563 0.2539063 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.2539063 1 0.34375 0.9101563 0.34375 0.9101563 0.2539063 0.9101563 0.2539063 1 0.2539063 1 0.34375 0.9101563 0.34375 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp12-mesh-map-0-array" count="48" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp12-mesh-vertices">
+          <input semantic="POSITION" source="#Grp12-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="12">
+          <input semantic="VERTEX" source="#Grp12-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp12-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp12-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 6 6 6 0 0 7 7 7 8 8 8 9 9 9 10 10 10 11 8 8 12 7 7 13 11 11 14 12 12 15 4 4 16 0 0 17 3 3 18 13 13 19 1 1 20 0 0 21 6 6 22 14 14 23 1 1 24 14 14 25 11 11 26 7 7 27 1 1 28 7 7 29 10 10 30 2 2 31 8 8 32 15 15 33 16 16 34 9 9 35 8 8 36 12 12 37 17 17 38 15 15 39 4 4 40 15 15 41 17 17 42 5 5 43 15 15 44 4 4 45 13 13 46 16 16 47</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp11-mesh" name="Grp11">
+      <mesh>
+        <source id="Grp11-mesh-positions">
+          <float_array id="Grp11-mesh-positions-array" count="39">-0.37 -1.7 0.15 -0.02999997 -1.69 0.46 0 0.01999998 0 0.4 -1.67 0.31 0.15 -1.69 -0.43 -0.28 -1.7 -0.29 0.49 -1.67 -0.1299999 -0.52 -2.9 0.23 -0.01999998 -2.87 0.68 -0.38 -2.9 -0.42 0.61 -2.84 0.47 0.24 -2.87 -0.63 0.75 -2.84 -0.18</float_array>
+          <technique_common>
+            <accessor source="#Grp11-mesh-positions-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp11-mesh-normals">
+          <float_array id="Grp11-mesh-normals-array" count="39">-0.9371677 0.1783205 0.2998645 -0.2072496 0.2157973 0.9541903 -0.03504067 0.9993582 -0.007440388 0.7227259 0.2506099 0.6440978 0.1867177 0.2128387 -0.9590809 -0.7369967 0.1790264 -0.6517557 0.9162474 0.2499568 -0.3130694 -0.9433817 0.1363131 0.3024068 -0.2094828 0.179708 0.9611566 -0.7415785 0.1361856 -0.656898 0.7246901 0.2189059 0.6533793 0.1847826 0.176029 -0.9668864 0.9251717 0.2175395 -0.311021</float_array>
+          <technique_common>
+            <accessor source="#Grp11-mesh-normals-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp11-mesh-map-0">
+          <float_array id="Grp11-mesh-map-0-array" count="84">1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp11-mesh-map-0-array" count="42" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp11-mesh-vertices">
+          <input semantic="POSITION" source="#Grp11-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="12">
+          <input semantic="VERTEX" source="#Grp11-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp11-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp11-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 3 3 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 2 2 3 1 1 4 3 3 5 2 2 6 4 4 7 5 5 8 5 5 9 0 0 10 2 2 11 3 3 12 6 6 13 2 2 14 6 6 15 4 4 16 2 2 17 7 7 18 8 8 19 1 1 20 0 0 21 9 9 22 7 7 23 0 0 24 5 5 25 8 8 26 10 10 27 3 3 28 1 1 29 11 11 30 9 9 31 5 5 32 4 4 33 12 12 34 11 11 35 4 4 36 6 6 37 10 10 38 12 12 39 6 6 40 3 3 41</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp10-mesh" name="Grp10">
+      <mesh>
+        <source id="Grp10-mesh-positions">
+          <float_array id="Grp10-mesh-positions-array" count="90">0.57 -2.04 -0.97 1.28 -2.04 -0.11 0.57 -2.04 0.7 0.57 -0.76 0.46 0.93 -0.91 -0.11 0.57 -0.76 -0.49 -0.47 -2.03 -0.97 -2.46 -2.03 -0.29 -1.22 -0.9 -0.62 -2.46 -2.03 0.04999995 -0.47 -2.03 0.7 -1.22 -0.9 0.52 0.15 0.54 0.06 -0.16 0.54 0.06 -0.15 0.1 0.06 0.15 0.1 0.06 -0.16 0.54 0.06 0 0.54 -0.1 0 0.1 -0.1 -0.15 0.1 0.06 0.15 0.54 0.06 0.15 0.1 0.06 0.49 0.11 0.06999999 0 0.1 -0.42 -0.49 0.1 0.06 0 0.1 0.42 -0.49 -0.74 0.06999999 0 -0.74 0.42 0 -0.74 -0.42 0.49 -0.73 0.07999998</float_array>
+          <technique_common>
+            <accessor source="#Grp10-mesh-positions-array" count="30" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp10-mesh-normals">
+          <float_array id="Grp10-mesh-normals-array" count="75">0.3486081 -0.5011461 -0.7920385 0.8747491 -0.484265 -0.01736056 0.3563903 -0.5566116 0.7504463 0.3455318 0.7040829 0.620383 0.8388081 0.5437666 -0.02681291 0.3284394 0.7633115 -0.5563122 -0.07286822 -0.5692676 -0.8189167 -0.8529527 -0.323091 -0.4099803 -0.3601274 0.7244458 -0.5877811 -0.8578239 -0.3300378 0.3939713 -0.07317692 -0.6320192 0.77149 -0.3727099 0.6763732 0.6353005 0 0 1 -0.7182163 -0.008161544 -0.6957721 0.008204817 -0.005915045 -0.9999489 -0.7182163 -0.008161544 -0.6957721 0.7295373 0 -0.6839412 0.8145801 0.5761256 0.0673694 0.002021133 0.5748534 -0.8182539 -0.8216814 0.5669952 0.05793356 -0.008471488 0.5950406 0.8036511 -0.9966074 4.89897e-4 0.08230251 -0.01062446 0.005951941 0.9999259 5.70228e-4 -0.005952239 -0.9999821 0.9954721 5.65789e-4 0.09505271</float_array>
+          <technique_common>
+            <accessor source="#Grp10-mesh-normals-array" count="25" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp10-mesh-map-0">
+          <float_array id="Grp10-mesh-map-0-array" count="152">0.78125 0.3164063 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.7539063 0.34375 0.7539063 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063</float_array>
+          <technique_common>
+            <accessor source="#Grp10-mesh-map-0-array" count="76" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp10-mesh-vertices">
+          <input semantic="POSITION" source="#Grp10-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="20">
+          <input semantic="VERTEX" source="#Grp10-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp10-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp10-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 6 6 6 7 7 7 8 8 8 9 9 9 10 10 10 11 11 11 12 12 12 13 12 13 14 12 14 15 12 15 16 13 16 17 14 17 18 14 18 19 15 19 17 14 20 20 16 21 21 16 22 18 14 23 22 17 24 23 18 25 24 19 26 25 20 27 25 20 28 24 19 29 26 21 30 27 22 31 24 19 32 23 18 33 28 23 34 26 21 35 23 18 36 22 17 37 29 24 38 28 23 39 22 17 40 25 20 41 27 22 42 29 24 43 7 7 44 9 9 45 11 11 46 8 8 47 10 10 48 2 2 49 3 3 50 11 11 51 1 1 52 0 0 53 5 5 54 4 4 55 0 0 56 6 6 57 8 8 58 5 5 59 6 6 60 10 10 61 9 9 62 7 7 63 4 4 64 3 3 65 2 2 66 1 1 67 5 5 68 8 8 69 11 11 70 3 3 71 2 2 72 10 10 73 6 6 74 0 0 75</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp09-mesh" name="Grp09">
+      <mesh>
+        <source id="Grp09-mesh-positions">
+          <float_array id="Grp09-mesh-positions-array" count="99">0.15 0.58 0 -0.14 0.58 0 -0.15 0 0 0.15 0 0 -0.14 0.58 0 0 0.58 -0.15 0 0 -0.15 -0.15 0 0 0.15 0.58 0 0.15 0 0 0.39 0 0 0 0 -0.39 -0.39 0 0 0 0 0.39 -0.39 0 0 -0.39 -0.58 0 0 -0.58 0.38 -0.39 0 0 0 -0.58 -0.39 0.39 -0.58 0 0.39 -0.58 0 0.44 -0.44 0.27 -0.45 -0.44 0.27 -0.61 -1.18 0.27 0.6 -1.18 0.27 -0.45 -0.44 -0.28 -0.61 -1.18 -0.29 0.44 -0.44 -0.28 0.6 -1.18 -0.29 0.35 -1.72 0.45 -0.35 -1.72 0.45 -0.35 -1.72 0.15 0.35 -1.72 0.15</float_array>
+          <technique_common>
+            <accessor source="#Grp09-mesh-positions-array" count="33" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp09-mesh-normals">
+          <float_array id="Grp09-mesh-normals-array" count="81">0 0 1 -0.7189746 0.006198048 -0.6950088 -0.00846374 0.00442028 -0.9999545 -0.7189745 0.006198048 -0.6950088 0.7071068 0 -0.7071068 0.8172827 0.576231 0.002628564 0 0.5773503 -0.8164966 0 1 0 0 0.5731708 0.819436 -0.702517 -0.006134808 0.7116406 -0.9999853 -0.004352033 0.003216207 0 -0.008620321 0.9999629 -0.7071068 0 -0.7071068 0 0 -1 0.702517 -0.006134808 0.7116406 0.5073 0.6287091 0.5893825 -0.5073 0.628709 0.5893825 -0.79593 -0.02844357 0.6047202 0.7956749 -0.02108925 0.6053567 -0.5076361 0.6327028 -0.5848014 -0.6959682 -0.2427759 -0.675787 0.5076362 0.6327028 -0.5848014 0.6953704 -0.2404235 -0.6772419 0.4356021 -0.5562011 0.7077367 -0.4307925 -0.5582783 0.7090439 -0.4418275 -0.8331839 -0.3325552 0.4482895 -0.829827 -0.3323007</float_array>
+          <technique_common>
+            <accessor source="#Grp09-mesh-normals-array" count="27" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp09-mesh-map-0">
+          <float_array id="Grp09-mesh-map-0-array" count="144">0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063</float_array>
+          <technique_common>
+            <accessor source="#Grp09-mesh-map-0-array" count="72" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp09-mesh-vertices">
+          <input semantic="POSITION" source="#Grp09-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="18">
+          <input semantic="VERTEX" source="#Grp09-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp09-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp09-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 0 1 2 0 2 3 0 3 4 1 4 5 2 5 6 2 6 7 3 7 5 2 8 8 4 9 9 4 10 6 2 11 10 5 12 11 6 13 12 7 14 13 8 15 13 8 16 14 9 17 15 10 18 16 11 19 17 12 20 11 6 21 18 13 22 15 10 23 11 6 24 10 5 25 19 4 26 18 13 27 10 5 28 13 8 29 16 11 30 20 14 31 21 15 32 22 16 33 23 17 34 24 18 35 22 16 36 25 19 37 26 20 38 23 17 39 25 19 40 27 21 41 28 22 42 26 20 43 27 21 44 21 15 45 24 18 46 28 22 47 29 23 48 30 24 49 31 25 50 32 26 51 27 21 52 25 19 53 22 16 54 21 15 55 30 24 56 29 23 57 24 18 58 23 17 59 31 25 60 30 24 61 23 17 62 26 20 63 32 26 64 31 25 65 26 20 66 28 22 67 29 23 68 32 26 69 28 22 70 24 18 71</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp08-mesh" name="Grp08">
+      <mesh>
+        <source id="Grp08-mesh-positions">
+          <float_array id="Grp08-mesh-positions-array" count="36">0.16 -0.64 0 -0.15 -0.64 0 -0.16 0.2 0 0.15 0.21 0 -0.15 -0.64 0 0 -0.64 0.16 0 0.21 0.16 -0.16 0.2 0 0 -0.64 0.16 0.16 -0.64 0 0.15 0.21 0 0 0.21 0.16</float_array>
+          <technique_common>
+            <accessor source="#Grp08-mesh-positions-array" count="12" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp08-mesh-normals">
+          <float_array id="Grp08-mesh-normals-array" count="18">0 0 -1 -0.7181674 -0.004249453 0.6958575 -0.7181674 -0.004249453 0.6958575 0.7182338 0.004224896 0.6957891 0.7182338 0.004224896 0.695789 0.7182338 0.004224896 0.6957891</float_array>
+          <technique_common>
+            <accessor source="#Grp08-mesh-normals-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp08-mesh-map-0">
+          <float_array id="Grp08-mesh-map-0-array" count="24">0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp08-mesh-map-0-array" count="12" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp08-mesh-vertices">
+          <input semantic="POSITION" source="#Grp08-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="3">
+          <input semantic="VERTEX" source="#Grp08-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp08-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp08-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 </vcount>
+          <p>0 0 0 1 0 1 2 0 2 3 0 3 4 1 4 5 1 5 6 2 6 7 1 7 8 3 8 9 4 9 10 5 10 11 3 11</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp07-mesh" name="Grp07">
+      <mesh>
+        <source id="Grp07-mesh-positions">
+          <float_array id="Grp07-mesh-positions-array" count="30">0.16 -0.61 0 -0.14 -0.61 0 -0.15 0.31 0 0.14 0.32 0 -0.14 -0.61 0 0.00999999 -0.61 0.15 0 0.15 0.15 -0.15 0.31 0 0.16 -0.61 0 0.14 0.32 0</float_array>
+          <technique_common>
+            <accessor source="#Grp07-mesh-positions-array" count="10" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp07-mesh-normals">
+          <float_array id="Grp07-mesh-normals-array" count="21">0 0 -1 -0.7093299 -0.008444368 0.7048262 0.01027601 0.003119766 0.9999424 0.0104773 0.003122746 0.9999403 -0.7093298 -0.008444368 0.7048262 0.715325 0.01269805 0.6986765 0.7153251 0.01269805 0.6986765</float_array>
+          <technique_common>
+            <accessor source="#Grp07-mesh-normals-array" count="7" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp07-mesh-map-0">
+          <float_array id="Grp07-mesh-map-0-array" count="24">0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp07-mesh-map-0-array" count="12" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp07-mesh-vertices">
+          <input semantic="POSITION" source="#Grp07-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="3">
+          <input semantic="VERTEX" source="#Grp07-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp07-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp07-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 </vcount>
+          <p>0 0 0 1 0 1 2 0 2 3 0 3 4 1 4 5 2 5 6 3 6 7 4 7 5 2 8 8 5 9 9 6 10 6 3 11</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp06-mesh" name="Grp06">
+      <mesh>
+        <source id="Grp06-mesh-positions">
+          <float_array id="Grp06-mesh-positions-array" count="39">0.48 -5.74 0.55 0.1 -5.78 0.18 0.77 -7.13 0.03999996 1.12 -5.68 -0.1 0.99 -5.69 0.4 0.23 -5.77 -0.33 0.74 -5.72 -0.47 0.28 -4.57 0.76 -0.25 -4.62 0.24 1.19 -4.48 -0.17 1.01 -4.49 0.55 -0.06999999 -4.61 -0.49 0.65 -4.54 -0.7</float_array>
+          <technique_common>
+            <accessor source="#Grp06-mesh-positions-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp06-mesh-normals">
+          <float_array id="Grp06-mesh-normals-array" count="39">-0.2029173 -0.2842738 0.9370235 -0.8924596 -0.366313 0.2633073 0.1127309 -0.9936242 0.001636922 0.9533414 -0.1553502 -0.2588564 0.7171218 -0.1775089 0.6739636 -0.6573212 -0.3429998 -0.6710291 0.2662201 -0.2369544 -0.9343338 -0.2245275 -0.2090333 0.9517838 -0.917699 -0.2930211 0.2682675 0.9608873 -0.07359927 -0.2669807 0.7191153 -0.09601277 0.6882259 -0.6839461 -0.2712883 -0.6772152 0.2528522 -0.1635202 -0.9535864</float_array>
+          <technique_common>
+            <accessor source="#Grp06-mesh-normals-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp06-mesh-map-0">
+          <float_array id="Grp06-mesh-map-0-array" count="84">0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063</float_array>
+          <technique_common>
+            <accessor source="#Grp06-mesh-map-0-array" count="42" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp06-mesh-vertices">
+          <input semantic="POSITION" source="#Grp06-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="12">
+          <input semantic="VERTEX" source="#Grp06-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp06-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp06-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 3 3 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 2 2 5 1 1 6 5 5 7 2 2 8 6 6 9 3 3 10 2 2 11 4 4 12 0 0 13 2 2 14 5 5 15 6 6 16 2 2 17 7 7 18 8 8 19 1 1 20 0 0 21 3 3 22 9 9 23 10 10 24 4 4 25 8 8 26 11 11 27 5 5 28 1 1 29 0 0 30 4 4 31 10 10 32 7 7 33 3 3 34 6 6 35 12 12 36 9 9 37 5 5 38 11 11 39 12 12 40 6 6 41</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp05-mesh" name="Grp05">
+      <mesh>
+        <source id="Grp05-mesh-positions">
+          <float_array id="Grp05-mesh-positions-array" count="54">0.78 -2.78 0.48 0.14 -2.85 0.67 0.1899999 -3.76 0.79 0.95 -3.68 0.57 1.01 -4.49 0.55 1.19 -4.48 -0.17 1.15 -3.66 -0.1899999 -0.33 -2.9 0.2 -0.17 -2.89 -0.45 -0.18 -3.8 -0.52 -0.37 -3.82 0.24 -0.25 -4.62 0.24 -0.06999999 -4.61 -0.49 0.95 -2.77 -0.16 0.28 -4.57 0.76 0.46 -2.82 -0.63 0.57 -3.73 -0.74 0.65 -4.54 -0.7</float_array>
+          <technique_common>
+            <accessor source="#Grp05-mesh-positions-array" count="18" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp05-mesh-normals">
+          <float_array id="Grp05-mesh-normals-array" count="54">0.6952335 0.198933 0.6907069 -0.2497795 0.1164999 0.961269 -0.2501865 0.02542901 0.9678637 0.7066023 0.1146913 0.6982544 0.7166859 0.03189426 0.6966664 0.9606513 0.04847919 -0.2734939 0.9522786 0.1329755 -0.2747416 -0.9618487 0.05075752 0.2688322 -0.7180266 0.06324124 -0.6931366 -0.7221964 -0.0318129 -0.6909561 -0.9617167 -0.04718005 0.2699538 -0.9507777 -0.1411439 0.2758626 -0.709971 -0.1239264 -0.6932414 0.9378228 0.2179736 -0.2701411 -0.2396656 -0.06217509 0.9688626 0.2257392 0.1443602 -0.9634324 0.2296914 0.05629295 -0.9716343 0.2441743 -0.02809929 -0.9693242</float_array>
+          <technique_common>
+            <accessor source="#Grp05-mesh-normals-array" count="18" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp05-mesh-map-0">
+          <float_array id="Grp05-mesh-map-0-array" count="96">1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.34375 0.9101563 0.34375 0.9101563 0.2539063 1 0.2539063 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9101563 0.34375 0.9101563 0.2539063 1 0.2539063 1 0.34375 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9101563 0.34375 0.9101563 0.2539063 1 0.2539063 1 0.34375 1 0.34375 0.9101563 0.34375 0.9101563 0.2539063 1 0.2539063 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.34375 0.9101563 0.34375 0.9101563 0.2539063 1 0.2539063 0.9101563 0.34375 0.9101563 0.2539063 1 0.2539063 1 0.34375 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp05-mesh-map-0-array" count="48" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp05-mesh-vertices">
+          <input semantic="POSITION" source="#Grp05-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="12">
+          <input semantic="VERTEX" source="#Grp05-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp05-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp05-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 6 6 6 3 3 7 7 7 8 8 8 9 9 9 10 10 10 11 11 11 12 10 10 13 9 9 14 12 12 15 13 13 16 0 0 17 3 3 18 6 6 19 4 4 20 3 3 21 2 2 22 14 14 23 11 11 24 14 14 25 2 2 26 10 10 27 1 1 28 7 7 29 10 10 30 2 2 31 8 8 32 15 15 33 16 16 34 9 9 35 17 17 36 12 12 37 9 9 38 16 16 39 17 17 40 16 16 41 6 6 42 5 5 43 15 15 44 13 13 45 6 6 46 16 16 47</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp04-mesh" name="Grp04">
+      <mesh>
+        <source id="Grp04-mesh-positions">
+          <float_array id="Grp04-mesh-positions-array" count="39">0 0.01999998 0 -0.14 -1.69 -0.3 -0.25 -1.7 0.1299999 0.29 -1.65 -0.43 0.06999999 -1.66 0.45 0.51 -1.62 0.32 0.62 -1.61 -0.11 -0.17 -2.89 -0.45 -0.33 -2.9 0.2 0.14 -2.85 0.67 0.46 -2.82 -0.63 0.78 -2.78 0.48 0.95 -2.77 -0.16</float_array>
+          <technique_common>
+            <accessor source="#Grp04-mesh-positions-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp04-mesh-normals">
+          <float_array id="Grp04-mesh-normals-array" count="39">-0.1089479 0.9940263 -0.006481707 -0.7222672 0.1364505 -0.6780202 -0.9590206 0.1164246 0.2583114 0.2088115 0.2339993 -0.9495484 -0.260826 0.1980077 0.9448612 0.6762385 0.2928325 0.6759812 0.9113115 0.3132534 -0.2671772 -0.7224646 0.1007998 -0.6840208 -0.9612641 0.08041727 0.263637 -0.2601476 0.16113 0.9520297 0.2137293 0.1966512 -0.9568951 0.6826213 0.2540297 0.6851986 0.9237829 0.2731168 -0.2683885</float_array>
+          <technique_common>
+            <accessor source="#Grp04-mesh-normals-array" count="13" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp04-mesh-map-0">
+          <float_array id="Grp04-mesh-map-0-array" count="84">1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 0.9726563 0.5 0.9726563 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563 1 0.5 0.9726563 0.5 0.9726563 0.4726563 1 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp04-mesh-map-0-array" count="42" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp04-mesh-vertices">
+          <input semantic="POSITION" source="#Grp04-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="12">
+          <input semantic="VERTEX" source="#Grp04-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp04-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp04-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 3 3 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 1 1 4 0 0 5 4 4 6 5 5 7 0 0 8 0 0 9 2 2 10 4 4 11 0 0 12 6 6 13 3 3 14 0 0 15 5 5 16 6 6 17 2 2 18 1 1 19 7 7 20 8 8 21 4 4 22 2 2 23 8 8 24 9 9 25 1 1 26 3 3 27 10 10 28 7 7 29 5 5 30 4 4 31 9 9 32 11 11 33 6 6 34 5 5 35 11 11 36 12 12 37 3 3 38 6 6 39 12 12 40 10 10 41</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp03-mesh" name="Grp03">
+      <mesh>
+        <source id="Grp03-mesh-positions">
+          <float_array id="Grp03-mesh-positions-array" count="90">0.56 -0.76 0.49 0.93 -0.91 0.11 0.56 -0.76 -0.46 -1.22 -0.9 0.62 -2.46 -2.03 0.29 -0.47 -2.03 0.97 -1.22 -0.9 -0.52 -0.47 -2.03 -0.7 -2.46 -2.03 -0.04999995 0.57 -2.04 -0.7 1.28 -2.04 0.11 0.57 -2.04 0.97 0.15 0.1 -0.06 -0.15 0.1 -0.06 -0.15 0.54 -0.06 0.15 0.54 -0.06 -0.15 0.1 -0.06 0 0.1 0.1 0 0.54 0.1 -0.15 0.54 -0.06 0.15 0.1 -0.06 0.15 0.54 -0.06 0 0.1 -0.42 -0.49 0.1 -0.06 0 0.1 0.42 0.49 0.11 -0.06999999 0 -0.74 -0.42 -0.49 -0.74 -0.06999999 0 -0.74 0.42 0.49 -0.74 -0.07999998</float_array>
+          <technique_common>
+            <accessor source="#Grp03-mesh-positions-array" count="30" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp03-mesh-normals">
+          <float_array id="Grp03-mesh-normals-array" count="72">0.3244138 0.7652383 0.556027 0.8366191 0.5471335 0.02671313 0.3417453 0.7059404 -0.6203695 -0.3602186 0.724352 0.5878409 -0.8529527 -0.323091 0.4099803 -0.07281845 -0.5692311 0.8189465 -0.3728236 0.6762719 -0.6353417 -0.07315599 -0.6320024 -0.7715059 -0.8578239 -0.3300377 -0.3939713 0.3565837 -0.5557567 -0.7509878 0.8754315 -0.483032 0.01731455 0.3486009 -0.5004484 0.7924827 0 0 -1 -0.7295373 0 0.6839412 0 0 1 0.7295373 0 0.6839412 -0.008455038 0.595037 -0.8036538 -0.8216814 0.5669952 -0.05793356 0.002008795 0.5748572 0.8182514 0.8145791 0.576124 -0.06739646 -0.006776869 0.005934417 -0.9999595 -0.9966074 4.89897e-4 -0.08230251 0.005117058 -0.005934655 0.9999693 0.9955642 5.5671e-4 -0.09408408</float_array>
+          <technique_common>
+            <accessor source="#Grp03-mesh-normals-array" count="24" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp03-mesh-map-0">
+          <float_array id="Grp03-mesh-map-0-array" count="152">0.78125 0.3164063 0.7539063 0.34375 0.7539063 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9101563 0.34375 0.9101563 0.3164063 0.78125 0.3164063 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.03125 0.5 0.00390625 0.5 0.00390625 0.4726563 0.03125 0.4726563 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063 0.78125 0.34375 0.7539063 0.34375 0.7539063 0.3164063 0.78125 0.3164063</float_array>
+          <technique_common>
+            <accessor source="#Grp03-mesh-map-0-array" count="76" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp03-mesh-vertices">
+          <input semantic="POSITION" source="#Grp03-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="20">
+          <input semantic="VERTEX" source="#Grp03-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp03-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp03-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 6 6 6 7 7 7 8 8 8 9 9 9 10 10 10 11 11 11 12 12 12 13 12 13 14 12 14 15 12 15 16 13 16 17 14 17 18 14 18 19 13 19 17 14 20 20 15 21 21 15 22 18 14 23 22 16 24 23 17 25 24 18 26 25 19 27 26 20 28 27 21 29 23 17 30 22 16 31 27 21 32 28 22 33 24 18 34 23 17 35 28 22 36 29 23 37 25 19 38 24 18 39 29 23 40 26 20 41 22 16 42 25 19 43 8 8 44 4 4 45 3 3 46 6 6 47 6 6 48 2 2 49 9 9 50 7 7 51 1 1 52 0 0 53 11 11 54 10 10 55 0 0 56 3 3 57 5 5 58 11 11 59 11 11 60 5 5 61 7 7 62 9 9 63 4 4 64 8 8 65 7 7 66 5 5 67 10 10 68 9 9 69 2 2 70 1 1 71 2 2 72 6 6 73 3 3 74 0 0 75</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp02-mesh" name="Grp02">
+      <mesh>
+        <source id="Grp02-mesh-positions">
+          <float_array id="Grp02-mesh-positions-array" count="99">0.15 0 0 -0.15 0 0 -0.14 0.58 0 0.15 0.58 0 -0.15 0 0 0 0 0.15 0 0.58 0.15 -0.14 0.58 0 0.15 0 0 0.15 0.58 0 0 0 -0.39 -0.39 0 0 0 0 0.39 0.39 0 0 0 -0.58 -0.38 -0.39 -0.58 0 -0.39 0 0 0 -0.58 0.39 -0.39 0 0 0.39 -0.58 0 0.39 -0.58 0 0.6 -1.18 -0.27 -0.61 -1.18 -0.27 -0.45 -0.44 -0.27 0.44 -0.44 -0.27 -0.61 -1.18 0.29 -0.45 -0.44 0.28 0.6 -1.18 0.29 0.44 -0.44 0.28 0.35 -1.72 -0.15 -0.35 -1.72 -0.15 -0.35 -1.72 -0.45 0.35 -1.72 -0.45</float_array>
+          <technique_common>
+            <accessor source="#Grp02-mesh-positions-array" count="33" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp02-mesh-normals">
+          <float_array id="Grp02-mesh-normals-array" count="81">0 0 -1 -0.7189745 0.006198048 0.6950088 -0.00846374 0.00442028 0.9999545 -0.7189746 0.006198048 0.6950088 0.7071068 0 0.7071068 0 0.5731708 -0.819436 0 1 0 0 0.5773503 0.8164966 0.8172827 0.576231 -0.002628564 0 -0.008620321 -0.9999629 -0.9999853 -0.004352033 -0.003216207 -0.702517 -0.006134808 -0.7116406 0 0 1 -0.7071068 0 0.7071068 0.702517 -0.006134808 -0.7116406 0.7956749 -0.02108925 -0.6053567 -0.79593 -0.02844357 -0.6047202 -0.5073 0.628709 -0.5893825 0.5073 0.6287091 -0.5893825 -0.6959683 -0.2427759 0.6757871 -0.5076362 0.6327028 0.5848014 0.6953704 -0.2404234 0.6772419 0.5076362 0.6327028 0.5848014 0.4482895 -0.829827 0.3323007 -0.4418275 -0.8331839 0.3325552 -0.4307925 -0.5582783 -0.7090439 0.4356021 -0.5562011 -0.7077367</float_array>
+          <technique_common>
+            <accessor source="#Grp02-mesh-normals-array" count="27" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp02-mesh-map-0">
+          <float_array id="Grp02-mesh-map-0-array" count="144">0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063 0.9375 0.34375 0.9101563 0.34375 0.9101563 0.3164063 0.9375 0.3164063</float_array>
+          <technique_common>
+            <accessor source="#Grp02-mesh-map-0-array" count="72" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp02-mesh-vertices">
+          <input semantic="POSITION" source="#Grp02-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="18">
+          <input semantic="VERTEX" source="#Grp02-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp02-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp02-mesh-map-0" offset="2" set="0"/>
+          <vcount>4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 0 1 2 0 2 3 0 3 4 1 4 5 2 5 6 2 6 7 3 7 5 2 8 8 4 9 9 4 10 6 2 11 10 5 12 11 6 13 12 7 14 13 8 15 14 9 16 15 10 17 16 11 18 10 5 19 15 10 20 17 12 21 12 7 22 18 13 23 17 12 24 19 4 25 13 8 26 12 7 27 20 14 28 14 9 29 10 5 30 13 8 31 21 15 32 22 16 33 23 17 34 24 18 35 22 16 36 25 19 37 26 20 38 23 17 39 25 19 40 27 21 41 28 22 42 26 20 43 27 21 44 21 15 45 24 18 46 28 22 47 29 23 48 30 24 49 31 25 50 32 26 51 24 18 52 23 17 53 26 20 54 28 22 55 22 16 56 21 15 57 32 26 58 31 25 59 25 19 60 22 16 61 31 25 62 30 24 63 27 21 64 25 19 65 30 24 66 29 23 67 21 15 68 27 21 69 29 23 70 32 26 71</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp01-mesh" name="Grp01">
+      <mesh>
+        <source id="Grp01-mesh-positions">
+          <float_array id="Grp01-mesh-positions-array" count="261">1.22 -2.27 1.38 0.52 -2.27 1.72 0.52 -2.54 0 0.52 0.2 2.01 1.81 0.2 1.42 1.41 1.21 0.88 1.78 -2.27 0 1.22 -2.27 -1.38 0.52 -2.27 -1.72 1.41 1.21 -0.88 1.81 0.2 -1.42 0.52 0.2 -2.01 -0.5 -2.27 -1.31 -0.36 1.21 -0.88 0.52 1.6 -0.44 -0.34 2.54 -2.09 -1.12 -2.39 0 -1.65 -1.66 -0.79 -0.86 -1.57 -1.21 -1.82 -1.92 -0.63 -1.97 -1.56 -0.14 -2.31 -1.42 0 -1.94 -1.42 0 -0.5 -2.27 1.31 -0.36 1.21 0.88 -0.91 0.2 1.42 0.52 1.6 0.41 -0.36 2.53 2.11 -0.91 0.2 -1.42 -1.97 -1.56 0.14 -1.82 -1.92 0.63 -0.86 -1.57 1.21 -2.07 -1.76 0.25 -2.15 -1.87 0 -2.07 -1.76 -0.25 -1.65 -1.66 0.79 -1.5 1.53 -0.29 -1.44 1.67 -0.29 -2.41 1.3 -0.77 -1.48 1.17 -0.29 -1.47 1.32 -0.29 -2.26 0.79 -0.77 -1.23 1.88 -0.29 -1.12 2 -0.29 -2.23 1.97 -0.77 1.16 -2.43 2.56 0.52 -1.98 1.71 0.52 -2.27 1.71 1.39 -1.81 2.56 0.52 -1.63 1.71 0.52 -1.98 1.71 1.3 -1.06 2.56 0.52 -1.21 1.71 0.52 -1.63 1.71 0.52 -2.27 -1.71 0.52 -1.98 -1.71 1.16 -2.43 -2.56 0.52 -1.98 -1.71 0.52 -1.63 -1.71 1.39 -1.81 -2.56 0.52 -1.63 -1.71 0.52 -1.21 -1.71 1.3 -1.06 -2.56 -1.44 -1.34 0 1.58 -1.57 1.21 0.52 -1.21 1.71 1.78 1.21 0 0.52 1.6 0 2.16 -1.57 0 2.41 0.2 0 1.58 -1.57 -1.21 0.52 -1.21 -1.71 -0.73 1.21 0 -1.5 0.2 0 -2.07 -2.01 0 -0.82 1.08 0 -0.72 1.21 0 -1.44 1.67 -0.29 -1.5 1.53 -0.29 -0.92 0.95 0 -0.82 1.08 0 -1.47 1.32 -0.29 -1.48 1.17 -0.29 -0.72 1.21 0 -0.53 1.27 0 -1.12 2 -0.29 -1.23 1.88 -0.29</float_array>
+          <technique_common>
+            <accessor source="#Grp01-mesh-positions-array" count="87" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp01-mesh-normals">
+          <float_array id="Grp01-mesh-normals-array" count="210">0.493833 -0.6374601 0.5914167 0.03353673 -0.5786437 0.8148906 0.04526305 -0.9989751 0 0.04126358 0.07209116 0.9965441 0.6920983 0.1887663 0.6966831 0.6227595 0.6887098 0.3712808 0.6783815 -0.7347099 0 0.493833 -0.6374599 -0.5914167 0.03353673 -0.5786437 -0.8148908 0.623324 0.6884514 -0.3708125 0.6920983 0.1887663 -0.696683 0.04047453 0.07362616 -0.9964643 -0.3325635 -0.6593886 -0.6742465 -0.7734019 0.6027907 -0.1961965 0.04496228 0.9923745 0.1147664 -0.3860527 0.7620184 -0.5198955 -0.273319 -0.9619235 0 -0.5372112 0.4461195 -0.7158083 -0.5653644 0.00959438 -0.8247855 -0.7044219 -0.3773793 -0.6011446 -0.2761696 0.6983768 -0.6603031 -0.7781623 0.6280634 0 -0.09017312 0.9959262 0 -0.3325635 -0.6593886 0.6742465 -0.778085 0.598101 0.1919869 -0.6672584 0.24388 0.7037675 0.04295259 0.9938338 -0.1022228 -0.3932438 0.7526696 0.5280606 -0.6672585 0.24388 -0.7037675 -0.2761697 0.6983767 0.6603032 -0.7044218 -0.3773794 0.6011446 -0.5653644 0.00959438 0.8247855 -0.8174655 -0.009618341 0.5758974 -0.918981 -0.3943022 0 -0.8174655 -0.009618222 -0.5758973 -0.5372112 0.4461193 0.7158085 -0.4974342 0.2131853 0.8408991 -0.4974343 0.2131853 0.8408991 -0.4974342 0.2131853 0.8408991 -0.5363395 0.03575563 0.8432447 -0.5363395 0.03575563 0.8432446 -0.3799716 0.3483077 0.8569151 -0.3799716 0.3483077 0.8569151 -0.7988707 0 0.6015028 -0.6988373 0 0.7152807 -0.7367939 0 0.6761174 -0.7367939 0 0.6761175 -0.7988708 0 -0.6015028 -0.6988372 0 -0.7152808 -0.6988372 0 -0.7152808 -0.7367939 0 -0.6761174 -0.7367939 0 -0.6761175 -0.7832452 0.6217131 0 0.7247765 -0.2142332 0.6548306 0.03500324 -0.1078038 0.9935558 0.6686348 0.7435909 3.69868e-4 -0.001343429 0.9999988 8.92453e-4 0.9580787 -0.2865052 0 0.9831954 0.1825566 0 0.7247765 -0.2142332 -0.6548307 0.03500324 -0.1078038 -0.9935558 -0.628793 0.7775726 3.60872e-4 -0.9626117 0.2708852 0 -0.7112443 -0.7029449 0 -0.2824983 0.1674063 0.9445474 -0.2824984 0.1674063 0.9445475 -0.2824984 0.1674063 0.9445475 -0.3805914 0.1495179 0.9125758 -0.1605016 0.2675029 0.9500956 -0.1605016 0.2675029 0.9500955</float_array>
+          <technique_common>
+            <accessor source="#Grp01-mesh-normals-array" count="70" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp01-mesh-map-0">
+          <float_array id="Grp01-mesh-map-0-array" count="510">1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 1 0.46875 0.96875 0.5 0.96875 0.46875 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.84375 0.84375 0.8125 0.875 0.8125 0.84375 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 0.84375 0.84375 0.8125 0.875 0.8125 0.84375 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.84375 0.84375 0.8125 0.875 0.8125 0.84375 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.84375 0.84375 0.8125 0.875 0.8125 0.84375 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 0.84375 0.84375 0.8125 0.875 0.8125 0.84375 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.84375 0.84375 0.8125 0.875 0.8125 0.84375 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 1 0.46875 0.96875 0.5 0.96875 0.46875 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.90625 0.34375 0.90625 0.3125 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 0.375 0.5 0.5 0.5 0.5 0.375 0.375 0.375 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.5 0.25 0.5 0.375 0.375 0.375 0.375 0.25 0.5 0.375 0.5 0.5 0.375 0.5 0.375 0.375 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 0.375 0.25 0.375 0.375 0.5 0.375 0.5 0.25 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 1 0.5 0.96875 0.5 0.96875 0.46875 1 0.46875 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125 0.9375 0.34375 0.90625 0.34375 0.90625 0.3125 0.9375 0.3125</float_array>
+          <technique_common>
+            <accessor source="#Grp01-mesh-map-0-array" count="255" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp01-mesh-vertices">
+          <input semantic="POSITION" source="#Grp01-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="74">
+          <input semantic="VERTEX" source="#Grp01-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp01-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp01-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 6 6 6 0 0 7 2 2 8 7 7 9 6 6 10 2 2 11 8 8 12 7 7 13 2 2 14 9 9 15 10 10 16 11 11 17 12 12 18 8 8 19 2 2 20 13 13 21 14 14 22 15 15 23 16 16 24 12 12 25 2 2 26 17 17 27 18 18 28 19 19 29 20 20 30 21 21 31 22 22 32 23 23 33 16 16 34 2 2 35 1 1 36 23 23 37 2 2 38 24 24 39 25 25 40 3 3 41 5 5 42 26 26 43 27 27 44 27 27 45 26 26 46 24 24 47 11 11 48 28 28 49 13 13 50 22 22 51 21 21 52 29 29 53 30 30 54 23 23 55 31 31 56 29 29 57 21 21 58 32 32 59 12 12 60 19 19 61 18 18 62 33 33 63 21 21 64 34 34 65 15 15 66 14 14 67 9 9 68 3 3 69 27 27 70 24 24 71 5 5 72 27 27 73 3 3 74 13 13 75 15 15 76 11 11 77 11 11 78 15 15 79 9 9 80 32 32 81 21 21 82 33 33 83 30 30 84 31 31 85 35 35 86 34 34 87 21 21 88 20 20 89 36 36 90 37 37 91 38 38 92 39 39 93 40 39 94 41 40 95 42 41 96 43 42 97 44 41 98 45 43 99 46 43 100 47 43 101 48 44 102 49 44 103 50 44 104 51 45 105 52 46 106 53 45 107 54 47 108 55 47 109 56 47 110 57 48 111 58 48 112 59 49 113 60 50 114 61 51 115 62 50 116 20 20 117 22 22 118 63 52 119 63 52 120 22 22 121 29 29 122 1 1 123 0 0 124 64 53 125 65 54 126 65 54 127 64 53 128 4 4 129 3 3 130 5 5 131 66 55 132 67 56 133 26 26 134 0 0 135 6 6 136 68 57 137 64 53 138 64 53 139 68 57 140 69 58 141 4 4 142 4 4 143 69 58 144 66 55 145 5 5 146 6 6 147 7 7 148 70 59 149 68 57 150 68 57 151 70 59 152 10 10 153 69 58 154 69 58 155 10 10 156 9 9 157 66 55 158 9 9 159 14 14 160 67 56 161 66 55 162 70 59 163 7 7 164 8 8 165 71 60 166 70 59 167 71 60 168 11 11 169 10 10 170 12 12 171 18 18 172 71 60 173 8 8 174 71 60 175 18 18 176 28 28 177 11 11 178 13 13 179 72 61 180 67 56 181 14 14 182 72 61 183 13 13 184 28 28 185 73 62 186 33 33 187 74 63 188 30 30 189 32 32 190 31 31 191 25 25 192 73 62 193 63 52 194 25 25 195 24 24 196 72 61 197 73 62 198 26 26 199 67 56 200 72 61 201 24 24 202 65 54 203 31 31 204 23 23 205 1 1 206 31 31 207 65 54 208 3 3 209 25 25 210 63 52 211 73 62 212 28 28 213 18 18 214 19 19 215 12 12 216 16 16 217 74 63 218 16 16 219 23 23 220 30 30 221 74 63 222 34 34 223 19 19 224 74 63 225 33 33 226 29 29 227 35 35 228 31 31 229 63 52 230 63 52 231 18 18 232 17 17 233 20 20 234 75 64 235 76 65 236 77 66 237 78 64 238 79 67 239 80 67 240 81 67 241 82 67 242 83 68 243 84 69 244 85 69 245 86 69 246 35 35 247 29 29 248 32 32 249 30 30 250 19 19 251 34 34 252 20 20 253 17 17 254</p>
+        </polylist>
+      </mesh>
+    </geometry>
+    <geometry id="Grp00-mesh" name="Grp00">
+      <mesh>
+        <source id="Grp00-mesh-positions">
+          <float_array id="Grp00-mesh-positions-array" count="51">0.21 0.73 -0.65 -0.56 0.73 -0.42 0 0.96 0 -0.85 -0.95 0.53 -0.85 -0.95 -0.53 0 -1.33 0 -0.56 0.73 0.42 0.21 0.73 0.65 0.69 0.73 0 0.92 -0.95 0 0.28 -0.95 0.86 0.28 -0.95 -0.86 0.34 -0.14 1.04 1.11 -0.14 0 0.34 -0.14 -1.04 -1.04 -0.14 -0.54 -1.04 -0.14 0.54</float_array>
+          <technique_common>
+            <accessor source="#Grp00-mesh-positions-array" count="17" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp00-mesh-normals">
+          <float_array id="Grp00-mesh-normals-array" count="51">0.2197035 0.6742986 -0.705019 -0.5487995 0.6974583 -0.4608375 0.002810657 0.9999961 0 -0.643047 -0.575946 0.5047543 -0.643047 -0.575946 -0.5047543 0.02128517 -0.9997735 0 -0.5487995 0.6974583 0.4608375 0.2197035 0.6742987 0.705019 0.7313578 0.681994 0 0.8193768 -0.5732555 0 0.2505848 -0.5607925 0.7891256 0.2505848 -0.5607925 -0.7891256 0.2987228 0.1015532 0.9489213 0.995329 0.0965417 0 0.2987228 0.1015532 -0.9489213 -0.8326579 0.1246202 -0.5395837 -0.8326579 0.1246202 0.5395838</float_array>
+          <technique_common>
+            <accessor source="#Grp00-mesh-normals-array" count="17" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Grp00-mesh-map-0">
+          <float_array id="Grp00-mesh-map-0-array" count="140">0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 1 0.4375 0.8164063 0.4375 0.8164063 0.3476563 1 0.3476563 0.8164063 0.3476563 1 0.3476563 1 0.4375 0.8164063 0.4375 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563 0.78125 0.5 0.7539063 0.5 0.7539063 0.4726563 0.78125 0.4726563</float_array>
+          <technique_common>
+            <accessor source="#Grp00-mesh-map-0-array" count="70" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Grp00-mesh-vertices">
+          <input semantic="POSITION" source="#Grp00-mesh-positions"/>
+        </vertices>
+        <polylist material="Texture-material" count="20">
+          <input semantic="VERTEX" source="#Grp00-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Grp00-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Grp00-mesh-map-0" offset="2" set="0"/>
+          <vcount>3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>0 0 0 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 1 1 6 6 6 7 2 2 8 7 7 9 8 8 10 2 2 11 5 5 12 9 9 13 10 10 14 5 5 15 4 4 16 11 11 17 2 2 18 6 6 19 7 7 20 2 2 21 8 8 22 0 0 23 11 11 24 9 9 25 5 5 26 10 10 27 3 3 28 5 5 29 12 12 30 13 13 31 8 8 32 7 7 33 9 9 34 11 11 35 14 14 36 13 13 37 13 13 38 14 14 39 0 0 40 8 8 41 11 11 42 4 4 43 15 15 44 14 14 45 14 14 46 15 15 47 1 1 48 0 0 49 4 4 50 3 3 51 16 16 52 15 15 53 15 15 54 16 16 55 6 6 56 1 1 57 10 10 58 9 9 59 13 13 60 12 12 61 3 3 62 10 10 63 12 12 64 16 16 65 16 16 66 12 12 67 7 7 68 6 6 69</p>
+        </polylist>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="Grp00" name="Grp00" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 -4.37114e-8 -1 0 0 1 -4.37114e-8 0.09 0 0 0 1</matrix>
+        <instance_geometry url="#Grp00-mesh" name="Grp00">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Texture-material" target="#Texture-material">
+                <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+              </instance_material>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+        <node id="Grp01" name="Grp01" type="NODE">
+          <matrix sid="transform">1 0 0 -0.5 0 1 0 3.3 0 0 1 0 0 0 0 1</matrix>
+          <instance_geometry url="#Grp01-mesh" name="Grp01">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+        </node>
+        <node id="Grp04" name="Grp04" type="NODE">
+          <matrix sid="transform">1 0 0 0.92 0 1 0 -0.6 0 0 1 0.08 0 0 0 1</matrix>
+          <instance_geometry url="#Grp04-mesh" name="Grp04">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+          <node id="Grp05" name="Grp05" type="NODE">
+            <matrix sid="transform">1 0 0 0 0 1 0 3.49691e-9 0 0 1 0 0 0 0 1</matrix>
+            <instance_geometry url="#Grp05-mesh" name="Grp05">
+              <bind_material>
+                <technique_common>
+                  <instance_material symbol="Texture-material" target="#Texture-material">
+                    <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                  </instance_material>
+                </technique_common>
+              </bind_material>
+            </instance_geometry>
+            <node id="Grp06" name="Grp06" type="NODE">
+              <matrix sid="transform">1 0 0 0 0 1 0 3.49691e-9 0 0 1 -1.49012e-8 0 0 0 1</matrix>
+              <instance_geometry url="#Grp06-mesh" name="Grp06">
+                <bind_material>
+                  <technique_common>
+                    <instance_material symbol="Texture-material" target="#Texture-material">
+                      <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                    </instance_material>
+                  </technique_common>
+                </bind_material>
+              </instance_geometry>
+            </node>
+          </node>
+        </node>
+        <node id="Grp07" name="Grp07" type="NODE">
+          <matrix sid="transform">1 0 0 0.07 0 1 0 0.37 0 0 1 1.21 0 0 0 1</matrix>
+          <instance_geometry url="#Grp07-mesh" name="Grp07">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+          <node id="Grp02" name="Grp02" type="NODE">
+            <matrix sid="transform">1 0 0 0 0 1 0 -1.16 0 0 1 0 0 0 0 1</matrix>
+            <instance_geometry url="#Grp02-mesh" name="Grp02">
+              <bind_material>
+                <technique_common>
+                  <instance_material symbol="Texture-material" target="#Texture-material">
+                    <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                  </instance_material>
+                </technique_common>
+              </bind_material>
+            </instance_geometry>
+          </node>
+        </node>
+        <node id="Grp08" name="Grp08" type="NODE">
+          <matrix sid="transform">1 0 0 -0.01 0 1 0 -1.38 0 0 1 0.38 0 0 0 1</matrix>
+          <instance_geometry url="#Grp08-mesh" name="Grp08">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+          <node id="Grp03" name="Grp03" type="NODE">
+            <matrix sid="transform">1 0 0 0.00275884 0 1 0 -1.15 0 0 1 0.06334037 0 0 0 1</matrix>
+            <instance_geometry url="#Grp03-mesh" name="Grp03">
+              <bind_material>
+                <technique_common>
+                  <instance_material symbol="Texture-material" target="#Texture-material">
+                    <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                  </instance_material>
+                </technique_common>
+              </bind_material>
+            </instance_geometry>
+          </node>
+        </node>
+        <node id="Grp11" name="Grp11" type="NODE">
+          <matrix sid="transform">1 0 0 0.92 0 1 0 -0.57 0 0 1 0.01 0 0 0 1</matrix>
+          <instance_geometry url="#Grp11-mesh" name="Grp11">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+          <node id="Grp12" name="Grp12" type="NODE">
+            <matrix sid="transform">1 0 0 0 0 1 0 4.37113e-10 0 0 1 0 0 0 0 1</matrix>
+            <instance_geometry url="#Grp12-mesh" name="Grp12">
+              <bind_material>
+                <technique_common>
+                  <instance_material symbol="Texture-material" target="#Texture-material">
+                    <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                  </instance_material>
+                </technique_common>
+              </bind_material>
+            </instance_geometry>
+            <node id="Grp13" name="Grp13" type="NODE">
+              <matrix sid="transform">1 0 0 0 0 1 0 4.37113e-10 0 0 1 0 0 0 0 1</matrix>
+              <instance_geometry url="#Grp13-mesh" name="Grp13">
+                <bind_material>
+                  <technique_common>
+                    <instance_material symbol="Texture-material" target="#Texture-material">
+                      <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                    </instance_material>
+                  </technique_common>
+                </bind_material>
+              </instance_geometry>
+            </node>
+          </node>
+        </node>
+        <node id="Grp14" name="Grp14" type="NODE">
+          <matrix sid="transform">1 0 0 0.07 0 1 0 0.36 0 0 1 -1.22 0 0 0 1</matrix>
+          <instance_geometry url="#Grp14-mesh" name="Grp14">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+          <node id="Grp09" name="Grp09" type="NODE">
+            <matrix sid="transform">1 0 0 0 0 1 0 -1.15 0 0 1 0 0 0 0 1</matrix>
+            <instance_geometry url="#Grp09-mesh" name="Grp09">
+              <bind_material>
+                <technique_common>
+                  <instance_material symbol="Texture-material" target="#Texture-material">
+                    <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                  </instance_material>
+                </technique_common>
+              </bind_material>
+            </instance_geometry>
+          </node>
+        </node>
+        <node id="Grp15" name="Grp15" type="NODE">
+          <matrix sid="transform">1 0 0 -0.02 0 1 0 -1.39 0 0 1 -0.43 0 0 0 1</matrix>
+          <instance_geometry url="#Grp15-mesh" name="Grp15">
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Texture-material" target="#Texture-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_geometry>
+          <node id="Grp10" name="Grp10" type="NODE">
+            <matrix sid="transform">1 0 0 0.007649723 0 1 0 -1.14 0 0 1 -0.05991977 0 0 0 1</matrix>
+            <instance_geometry url="#Grp10-mesh" name="Grp10">
+              <bind_material>
+                <technique_common>
+                  <instance_material symbol="Texture-material" target="#Texture-material">
+                    <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                  </instance_material>
+                </technique_common>
+              </bind_material>
+            </instance_geometry>
+          </node>
+        </node>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>
