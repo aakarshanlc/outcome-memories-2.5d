@@ -147,7 +147,12 @@ export class Player {
                 if(dir.lengthSq() === 0) dir.set(0,0,1); else dir.normalize();
                 const hx = this.mesh.position.x + dir.x * 8;
                 const hz = this.mesh.position.z + dir.z * 8;
-                gameManager.spawnHitbox(hx, hz, 0, 5, this, 'knuckles_punch', 0, null, 'box', this.config.abilities.punch.hitboxWidth, this.config.abilities.punch.hitboxDepth);
+                
+                // FIX: Safe fallbacks for width and depth
+                const hw = this.config.abilities.punch.hitboxWidth || 15;
+                const hd = this.config.abilities.punch.hitboxDepth || 15;
+                gameManager.spawnHitbox(hx, hz, 0, 5, this, 'knuckles_punch', 0, null, 'box', hw, hd);
+                
                 this.punchTimer--;
                 if(this.punchTimer <= 0) this.punchState = 'idle';
             }

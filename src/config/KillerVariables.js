@@ -4,12 +4,32 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 60,
-            windup: 30, // 0.5s delay
+            windup: 15,
             duration: 10,
-            damage: 5,
+            damage: 10,
             hitboxWidth: 20,
             hitboxDepth: 20,
             hitboxType: 'killer_m1'
+        },
+        abilities: {
+            grapple: {
+                cooldown: 360, // 6s
+                range: 120,
+                damage: 10,
+                dragDuration: 30, // 0.5s
+                dragSpeed: 10
+            },
+            bomb: {
+                cooldown: 180, // 3s
+                windup: 30, // 0.5s
+                explodeRadius: 20,
+                proximityDamage: 20,
+                impactDamage: 15,
+                aoeDamage: 10,
+                lockonRange: 90,
+                trackingSpeed: 3,
+                lifetime: 900 // 15s before it disappears if nothing happens
+            }
         },
         ai: {
             attackRange: 14,
@@ -21,7 +41,7 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 30,
-            windup: 30, // 0.5s delay
+            windup: 30,
             attackDuration: 12,
             hitCount: 6,
             damage: 5,
@@ -40,7 +60,7 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 60,
-            windup: 30, // 0.5s delay
+            windup: 30,
             duration: 10,
             damage: 5,
             hitboxWidth: 20,

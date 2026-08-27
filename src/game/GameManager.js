@@ -44,7 +44,6 @@ export class GameManager {
             selectedMap: 'Open Field'
         };
 
-        // FIX: Set interacted flag and refresh UI to unmute video / play music
         const startAudio = () => {
             this.audio.hasInteracted = true;
             this.ui.showScreen(this.ui.activeScreen); 
@@ -95,7 +94,7 @@ export class GameManager {
         this.phase = 'ROUND';
         
         this.players.forEach(p => this.engine.scene.remove(p.mesh));
-        this.killers.forEach(k => this.engine.scene.remove(k.mesh));
+        this.killers.forEach(k => k.destroy());
         if (this.ring) this.ring.destroy();
         if (this.arrow) this.arrow.destroy();
         this.activeHitboxes.forEach(h => this.engine.scene.remove(h.mesh));
@@ -184,7 +183,7 @@ export class GameManager {
         this.ring = null;
         this.arrow = null;
         this.audio.stopMusic();
-        this.ui.showScreen('main'); // UIManager will handle playing menu/video audio
+        this.ui.showScreen('main');
     }
 
     endGame(title, subtitle) {
@@ -228,6 +227,8 @@ export class GameManager {
                     k.controls.left = this.keys[scheme.left];
                     k.controls.right = this.keys[scheme.right];
                     k.controls.m1 = this.keys[scheme.m1];
+                    k.controls.ability1 = this.keys[scheme.ability1];
+                    k.controls.ability2 = this.keys[scheme.ability2];
                 }
                 k.update(this.mapManager.obstacles, this.players, this);
             });
