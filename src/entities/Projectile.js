@@ -9,7 +9,7 @@ export class Projectile {
         this.owner = owner;
         this.damage = damage;
         this.stunDuration = stunDuration;
-        this.speed = speed; // Use passed speed
+        this.speed = speed;
         this.active = true;
 
         const geo = new THREE.SphereGeometry(1.5, 8, 8);
@@ -31,11 +31,13 @@ export class Projectile {
         }
 
         for (let k of killers) {
-            if (checkCircleCircleCollision(this.x, this.z, 1.5, k.mesh.position.x, k.mesh.position.z, k.size)) {
-                k.takeDamage(this.damage, this.owner);
-                k.stun(this.stunDuration);
-                this.destroy();
-                break;
+            if (k.health > 0 || k.stunned > 0) { // Check if killer is alive or stunned
+                if (checkCircleCircleCollision(this.x, this.z, 1.5, k.mesh.position.x, k.mesh.position.z, k.size)) {
+                    k.takeDamage(this.damage, this.owner);
+                    k.stun(this.stunDuration); // Apply stun!
+                    this.destroy();
+                    break;
+                }
             }
         }
     }

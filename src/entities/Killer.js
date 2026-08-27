@@ -4,11 +4,8 @@ import { KillerVariables } from '../config/KillerVariables.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// Import Tripwire model and texture
 import tripwireModelUrl from '../assets/models/Tripwire/tdoll.obj';
 import tripwireTextureUrl from '../assets/models/Tripwire/player01.png';
-
-// Import 2011X and Starved models
 import x2011ModelUrl from '../assets/models/2011X/2011x.glb';
 import starvedModelUrl from '../assets/models/Starved/starved_eggman.glb';
 
@@ -19,7 +16,6 @@ export class Killer {
         this.type = type;
         this.config = KillerVariables[type] || KillerVariables['Tripwire'];
         
-        // 1. Create a temporary placeholder cone
         const geo = new THREE.ConeGeometry(4, 12, 6);
         const mat = new THREE.MeshStandardMaterial({ color: color, emissive: 0x550000 });
         this.mesh = new THREE.Mesh(geo, mat);
@@ -27,7 +23,6 @@ export class Killer {
         this.mesh.castShadow = true;
         scene.add(this.mesh);
 
-        // 2. Load 3D Models based on Killer Type
         if (type === 'Tripwire') {
             const loader = new OBJLoader();
             const textureLoader = new THREE.TextureLoader();
@@ -105,7 +100,6 @@ export class Killer {
         this.rushTimer = 0;
     }
 
-    // Helper to swap placeholder with loaded model
     swapMesh(finalMesh) {
         const spawnX = this.mesh.position.x;
         const spawnZ = this.mesh.position.z;
@@ -122,13 +116,11 @@ export class Killer {
         const yawGroup = new THREE.Group();
         const modelGroup = new THREE.Group();
 
-        // Applied identically to Tripwire, 2011X, and Starved
         modelGroup.rotation.y = Math.PI / 2; 
 
         modelGroup.add(model);
         yawGroup.add(modelGroup);
 
-        // Auto-scale to target height
         const box = new THREE.Box3().setFromObject(yawGroup);
         if (box.isEmpty()) return yawGroup;
 
@@ -137,7 +129,6 @@ export class Killer {
         const scale = size.y > 0 ? targetHeight / size.y : 1;
         yawGroup.scale.setScalar(scale);
 
-        // Re-center to origin
         const finalBox = new THREE.Box3().setFromObject(yawGroup);
         const center = finalBox.getCenter(new THREE.Vector3());
         yawGroup.position.sub(center);
@@ -187,21 +178,25 @@ export class Killer {
 
     resolveWallStuck(obstacles) {
         for (let obs of obstacles) {
-            if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
-                let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
-                let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
-                
-                let dx = this.mesh.position.x - closestX;
-                let dz = this.mesh.position.z - closestZ;
-                let dist = Math.hypot(dx, dz);
-                
-                if (dist > 0) {
-                    this.mesh.position.x = closestX + (dx / dist) * (this.size + 0.1);
-                    this.mesh.position.z = closestZ + (dz / dist) * (this.size + 0.1);
-                } else {
-                    this.mesh.position.z = obs.z - this.size - 0.1;
+            const wallTopY = obs.mesh.position.y + 5;
+            const killerBaseY = this.mesh.position.y - 6;
+            if (killerBaseY < wallTopY - 0.2) {
+                if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
+                    let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
+                    let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
+                    
+                    let dx = this.mesh.position.x - closestX;
+                    let dz = this.mesh.position.z - closestZ;
+                    let dist = Math.hypot(dx, dz);
+                    
+                    if (dist > 0) {
+                        this.mesh.position.x = closestX + (dx / dist) * (this.size + 0.1);
+                        this.mesh.position.z = closestZ + (dz / dist) * (this.size + 0.1);
+                    } else {
+                        this.mesh.position.z = obs.z - this.size - 0.1;
+                    }
+                    this.velocity.set(0, 0, 0);
                 }
-                this.velocity.set(0, 0, 0);
             }
         }
     }
@@ -290,8 +285,11 @@ export class Killer {
 
         let collideX = false, collideZ = false;
         for (let obs of obstacles) {
-            if (checkCircleBoxCollision(nextX, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) collideX = true;
-            if (checkCircleBoxCollision(this.mesh.position.x, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) collideZ = true;
+            const wallTopY = obs.mesh.position.y + 5;
+            if (this.mesh.position.y - 6 < wallTopY - 0.2) {
+                if (checkCircleBoxCollision(nextX, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) collideX = true;
+                if (checkCircleBoxCollision(this.mesh.position.x, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) collideZ = true;
+            }
         }
 
         if (!collideX) this.mesh.position.x = nextX; else this.velocity.x = 0;
@@ -314,6 +312,27 @@ export class Killer {
                 this.updateTeleport(players, gameManager);
                 this.updateTrickery(players, gameManager);
             }
+        }
+
+        // --- ABILITY WINDUP FLASHING LOGIC ---
+        let isWindingUp = false; // Removed M1 windup from this check
+        if (this.type === 'Tripwire') {
+            if (this.grappleState === 'shooting') isWindingUp = true;
+            if (this.activeBomb && this.activeBomb.state === 'flying') isWindingUp = true;
+        }
+        if (this.type === '2011X') {
+            if (this.teleportState === 'windup') isWindingUp = true;
+            if (this.trickeryState === 'active') isWindingUp = true;
+        }
+
+        if (isWindingUp) {
+            if (Math.floor(Date.now() / 100) % 2 === 0) {
+                this.setEmissive(0xffffff);
+            } else {
+                this.setEmissive(0x550000);
+            }
+        } else {
+            this.setEmissive(0x550000); 
         }
 
         this.resolveWallStuck(obstacles);
@@ -421,20 +440,18 @@ export class Killer {
         const cfg = this.config.abilities.grapple;
         if (!cfg) return;
 
-        // 1. Initiate Grapple (Always fires if button is pressed)
         if (this.controls.ability1 && this.ability1Cooldown <= 0 && this.grappleState === 'idle') {
             let target = null;
             let minDist = Infinity;
             players.forEach(p => {
                 if (p.health > 0) {
                     let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
-                    if (d < minDist) { // No range check, just find nearest
+                    if (d < minDist) { 
                         minDist = d; target = p;
                     }
                 }
             });
 
-            // Only fire if there is at least one player alive
             if (target) {
                 this.grappleState = 'shooting';
                 this.grappleTarget = target;
@@ -449,7 +466,6 @@ export class Killer {
             }
         }
 
-        // 2. Projectile Traveling
         if (this.grappleState === 'shooting') {
             let dx = this.grappleTarget.mesh.position.x - this.grappleProjectile.x;
             let dz = this.grappleTarget.mesh.position.z - this.grappleProjectile.z;
@@ -463,17 +479,18 @@ export class Killer {
             const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
             this.grappleLine.geometry.setFromPoints(points);
 
-            // Check collision with target
             if (Math.hypot(this.grappleTarget.mesh.position.x - this.grappleProjectile.x, this.grappleTarget.mesh.position.z - this.grappleProjectile.z) < 5 + this.grappleTarget.size) {
                 this.grappleTarget.takeDamage(cfg.damage, this);
                 this.grappleState = 'dragging';
                 this.grappleTimer = cfg.dragDuration;
             } else {
-                // Check wall collision or out of range
                 let hitWall = false;
                 for (let obs of obstacles) {
-                    if (checkCircleBoxCollision(this.grappleProjectile.x, this.grappleProjectile.z, 2, obs.x, obs.z, obs.w, obs.d)) {
-                        hitWall = true; break;
+                    const wallTopY = obs.mesh.position.y + 5;
+                    if (0 < wallTopY - 0.2) {
+                        if (checkCircleBoxCollision(this.grappleProjectile.x, this.grappleProjectile.z, 2, obs.x, obs.z, obs.w, obs.d)) {
+                            hitWall = true; break;
+                        }
                     }
                 }
                 let distFromKiller = Math.hypot(this.grappleProjectile.x - this.mesh.position.x, this.grappleProjectile.z - this.mesh.position.z);
@@ -483,7 +500,6 @@ export class Killer {
                 }
             }
         } 
-        // 3. Dragging Target
         else if (this.grappleState === 'dragging') {
             if (this.grappleTarget && this.grappleTarget.health > 0) {
                 let dx = this.mesh.position.x - this.grappleTarget.mesh.position.x;
@@ -526,14 +542,13 @@ export class Killer {
         const cfg = this.config.abilities.bomb;
         if (!cfg) return;
 
-        // 1. Throw Bomb (Always fires if button is pressed)
         if (this.controls.ability2 && this.ability2Cooldown <= 0 && !this.activeBomb) {
             let target = null;
             let minDist = Infinity;
             players.forEach(p => {
                 if (p.health > 0) {
                     let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
-                    if (d < minDist) { // No range check, just find nearest
+                    if (d < minDist) { 
                         minDist = d; target = p;
                     }
                 }
@@ -543,9 +558,8 @@ export class Killer {
             if (target) {
                 dx = target.mesh.position.x - this.mesh.position.x;
                 dz = target.mesh.position.z - this.mesh.position.z;
-                dist = Math.hypot(dx, dz);
+                dist = Math.hypot(dx, dz) || 1; 
             } else {
-                // Fallback: Throw forward if no target exists
                 dx = Math.sin(this.mesh.rotation.y);
                 dz = Math.cos(this.mesh.rotation.y);
                 dist = 1;
@@ -568,7 +582,6 @@ export class Killer {
             this.ability2Cooldown = cfg.cooldown;
         }
 
-        // 2. Update Bomb
         if (this.activeBomb) {
             let bomb = this.activeBomb;
             bomb.lifetime--;
@@ -579,8 +592,11 @@ export class Killer {
 
                 let hitWall = false;
                 for (let obs of obstacles) {
-                    if (checkCircleBoxCollision(bomb.mesh.position.x, bomb.mesh.position.z, 3, obs.x, obs.z, obs.w, obs.d)) {
-                        hitWall = true; break;
+                    const wallTopY = obs.mesh.position.y + 5;
+                    if (bomb.mesh.position.y < wallTopY) {
+                        if (checkCircleBoxCollision(bomb.mesh.position.x, bomb.mesh.position.z, 3, obs.x, obs.z, obs.w, obs.d)) {
+                            hitWall = true; break;
+                        }
                     }
                 }
 
@@ -594,7 +610,6 @@ export class Killer {
                 });
 
                 if (hitPlayer) {
-                    // Direct Impact Explosion
                     hitPlayer.takeDamage(cfg.impactDamage, this);
                     players.forEach(p => {
                         if (p.health > 0 && p !== hitPlayer) {
@@ -605,7 +620,6 @@ export class Killer {
                     });
                     this.removeBomb();
                 } else if (hitWall) {
-                    // Missed! Becomes a proximity mine
                     bomb.state = 'proximity';
                 }
             } else if (bomb.state === 'proximity') {
@@ -619,7 +633,6 @@ export class Killer {
                 });
 
                 if (triggered) {
-                    // Proximity Explosion
                     players.forEach(p => {
                         if (p.health > 0) {
                             if (Math.hypot(p.mesh.position.x - bomb.mesh.position.x, p.mesh.position.z - bomb.mesh.position.z) < cfg.explodeRadius) {

@@ -24,26 +24,20 @@ export class UIManager {
 
     updateHUD(phase, timeLeft, isRush = false) {
         if (!this.hudElement) return;
-        let phaseText = "";
+        let phaseText = phase;
         let timerText = Math.max(0, Math.ceil(timeLeft));
-        if (phase === 'ROUND') phaseText = "SURVIVE";
-        else if (phase === 'LMS') phaseText = "LAST MAN STANDING";
-        else if (phase === 'RING') phaseText = "ESCAPE!";
-
-        const phaseEl = this.root.querySelector('#phase-text');
-        const timerEl = this.root.querySelector('#timer-text');
-
+        
         if (isRush) {
             phaseText = "RUSH";
-            phaseEl.style.color = '#ff0000';
-            timerEl.style.color = '#ff0000';
+            this.root.querySelector('#phase-text').style.color = '#ff0000';
+            this.root.querySelector('#timer-text').style.color = '#ff0000';
         } else {
-            phaseEl.style.color = '#ff4444';
-            timerEl.style.color = '#ffffff';
+            this.root.querySelector('#phase-text').style.color = '#ff4444';
+            this.root.querySelector('#timer-text').style.color = '#ffffff';
         }
 
-        phaseEl.innerText = phaseText;
-        timerEl.innerText = `${timerText}s`;
+        this.root.querySelector('#phase-text').innerText = phaseText;
+        this.root.querySelector('#timer-text').innerText = `${timerText}s`;
     }
 
     showLoadingScreen() {
@@ -147,20 +141,27 @@ export class UIManager {
             `;
         } else if (screenName === 'setup') {
             const aiChecked = this.gameManager.gameSetup.killerIsAI;
-            const isSolo = this.gameManager.gameSetup.survivorCount === 1;
+            const survCount = this.gameManager.gameSetup.survivorCount;
+            
+            let survHtml = '';
+            for(let i=0; i<survCount; i++) {
+                survHtml += `
+                    <div class="setup-item">
+                        <h3>SURVIVOR ${i+1}</h3>
+                        ${this.btn(`Change (${this.gameManager.gameSetup.selectedSurvivors[i]})`, `btn-cycle-surv-${i}`, true)}
+                    </div>
+                `;
+            }
+
             html = `
                 <div class="menu-screen" id="setup-menu" style="justify-content: center; padding-top: 30px;">
                     <h1>GAME SETUP</h1>
                     <div class="setup-grid">
                         <div class="setup-item">
-                            <h3>SURVIVORS</h3>
-                            ${this.btn('Change Count', 'btn-cycle-surv', true)}
-                            <p>Count: <span id="surv-count">${this.gameManager.gameSetup.survivorCount}</span></p>
-                            ${isSolo ? `
-                                <div style="margin-top: 15px;">${this.btn('Change Type', 'btn-cycle-surv-type', true)}</div>
-                                <p>Type: <span id="surv-type">${this.gameManager.gameSetup.selectedSurvivorType}</span></p>
-                            ` : ''}
+                            <h3>SURVIVOR COUNT</h3>
+                            ${this.btn(`Change (${survCount})`, 'btn-cycle-surv-count', true)}
                         </div>
+                        ${survHtml}
                         <div class="setup-item">
                             <h3>KILLER TYPE</h3>
                             <div style="display: flex; gap: 10px; align-items: center;">
@@ -194,17 +195,25 @@ export class UIManager {
 
         // --- AUDIO ROUTING LOGIC ---
         const videoEl = document.getElementById('menu-video');
-        if (videoEl) {
+        
+        if (this.activeScreen === 'main') {
             // We are on the Main Menu
-            videoEl.volume = this.gameManager.audio.musicVolume;
-            if (this.gameManager.audio.hasInteracted) {
-                videoEl.muted = false; // Unmute video audio
+            if (videoEl) {
+                videoEl.volume = this.gameManager.audio.musicVolume;
+                if (this.gameManager.audio.hasInteracted) {
+                    videoEl.muted = false; // Unmute video audio
+                    videoEl.play().catch(() => {}); // Ensure it plays
+                }
             }
-            this.gameManager.audio.stopMusic(); // Stop menu1.mp3 if it was playing
+            // Stop the menu1.mp3 track so it doesn't play over the video
+            this.gameManager.audio.stopMusic(); 
         } else {
             // We are on Settings, Setup, Credits, etc.
+            if (videoEl) videoEl.muted = true; // Mute the video
+            
+            // Play menu1.mp3
             if (this.gameManager.audio.hasInteracted) {
-                this.gameManager.audio.playMusic('menu'); // Play menu1.mp3
+                this.gameManager.audio.playMusic('menu');
             }
         }
     }
@@ -237,7 +246,7 @@ export class UIManager {
             mSlider.oninput = () => {
                 this.gameManager.audio.musicVolume = mSlider.value / 100;
                 document.getElementById('music-val').innerText = mSlider.value;
-                this.gameManager.audio.applyVolume(); // Applies to both music and video
+                this.gameManager.audio.applyVolume();
                 this.gameManager.audio.save();
             };
             const sSlider = document.getElementById('sfx-slider');
@@ -279,22 +288,42 @@ export class UIManager {
             document.getElementById('btn-setup-back').onclick = () => this.showScreen('main');
             document.getElementById('btn-start-game').onclick = () => { this.gameManager.startGame(); };
 
-            document.getElementById('btn-cycle-surv').onclick = () => {
+            document.getElementById('btn-cycle-surv-count').onclick = () => {
                 let count = this.gameManager.gameSetup.survivorCount;
-                count = (count % 3) + 1; 
+                count = (count % 3) + 1; // 1 -> 2 -> 3 -> 1
                 this.gameManager.gameSetup.survivorCount = count;
-                this.showScreen('setup'); // Refresh screen
+                
+                // Reset survivors to default order when count changes
+                this.gameManager.gameSetup.selectedSurvivors = ['Sonic', 'Tails', 'Knuckles'].slice(0, count);
+                this.showScreen('setup'); // Refresh UI
             };
 
-            const survTypeBtn = document.getElementById('btn-cycle-surv-type');
-            if (survTypeBtn) {
-                survTypeBtn.onclick = () => {
-                    const types = ['Sonic', 'Tails', 'Knuckles'];
-                    let current = types.indexOf(this.gameManager.gameSetup.selectedSurvivorType);
-                    current = (current + 1) % types.length;
-                    this.gameManager.gameSetup.selectedSurvivorType = types[current];
-                    document.getElementById('surv-type').innerText = types[current];
-                };
+            // Add event listeners for each survivor change button
+            for(let i=0; i<this.gameManager.gameSetup.survivorCount; i++) {
+                const btn = document.getElementById(`btn-cycle-surv-${i}`);
+                if(btn) {
+                    btn.onclick = () => {
+                        const allChars = ['Sonic', 'Tails', 'Knuckles'];
+                        const currentChars = this.gameManager.gameSetup.selectedSurvivors;
+                        let currentChar = currentChars[i];
+                        let nextChar = currentChar;
+                        
+                        // Find the next character that isn't already selected
+                        let idx = allChars.indexOf(currentChar);
+                        do {
+                            idx = (idx + 1) % allChars.length;
+                            nextChar = allChars[idx];
+                        } while (currentChars.includes(nextChar) && nextChar !== currentChar);
+                        
+                        // If we looped back to the same one (unlikely with 3 chars), just pick the first available
+                        if(nextChar === currentChar) {
+                            nextChar = allChars.find(c => !currentChars.includes(c)) || currentChar;
+                        }
+
+                        currentChars[i] = nextChar;
+                        this.showScreen('setup'); // Refresh UI to show new name
+                    };
+                }
             }
 
             document.getElementById('btn-cycle-killer').onclick = () => {
@@ -327,7 +356,7 @@ export class UIManager {
             };
 
             document.getElementById('btn-cycle-map').onclick = () => {
-                const maps = ['Open Field', 'Box Arena'];
+                const maps = ['Open Field', 'Box Arena', 'Maze Mania'];
                 let current = maps.indexOf(this.gameManager.gameSetup.selectedMap);
                 current = (current + 1) % maps.length;
                 this.gameManager.gameSetup.selectedMap = maps[current];

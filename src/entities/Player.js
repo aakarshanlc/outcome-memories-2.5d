@@ -3,7 +3,6 @@ import { checkCircleBoxCollision } from '../engine/Collision.js';
 import { SurvivorVariables } from '../config/SurvivorVariables.js';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 
-// Import all models and textures directly so Vite resolves the paths
 import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
 import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
 import knucklesModelUrl from '../assets/models/Knuckles/Knuckles.dae';
@@ -19,7 +18,6 @@ export class Player {
         
         this.config = SurvivorVariables[charName] || SurvivorVariables['Sonic'];
 
-        // 1. Create a temporary placeholder capsule
         const geo = new THREE.CapsuleGeometry(3, 6, 4, 8);
         const mat = new THREE.MeshStandardMaterial({ color: color });
         this.mesh = new THREE.Mesh(geo, mat);
@@ -27,7 +25,6 @@ export class Player {
         this.mesh.castShadow = true;
         scene.add(this.mesh);
 
-        // 2. Load 3D Models for Sonic, Tails, and Knuckles
         if (charName === 'Sonic' || charName === 'Tails' || charName === 'Knuckles') {
             let modelUrl, textureUrl;
             if (charName === 'Sonic') { modelUrl = sonicModelUrl; textureUrl = sonicTextureUrl; }
@@ -51,7 +48,6 @@ export class Player {
                     });
 
                     const finalMesh = this.setupModel(model);
-                    
                     const spawnX = this.mesh.position.x;
                     const spawnZ = this.mesh.position.z;
                     const spawnRot = this.mesh.rotation.y;
@@ -83,6 +79,7 @@ export class Player {
         this.ability1Cooldown = 0;
         this.ability2Cooldown = 0;
         this.dashActive = 0;
+        this.hitSpeedBoost = 0;
         
         this.vertVel = 0;
         this.padCooldown = 0;
@@ -106,34 +103,27 @@ export class Player {
             const ringGeo = new THREE.TorusGeometry(this.size + 4, 0.5, 8, 24);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 });
             this.blockMesh = new THREE.Mesh(ringGeo, ringMat);
-            this.blockMesh.rotation.x = -Math.PI / 2; 
+            this.blockMesh.rotation.x = Math.PI / 2; 
             this.blockMesh.visible = false;
             this.mesh.add(this.blockMesh); 
         }
     }
 
-    // MATCHED KILLER.JS ROTATION LOGIC
     setupModel(model) {
         const yawGroup = new THREE.Group();
         const modelGroup = new THREE.Group();
-
-        // Removed rotation.x because the models are already standing upright (Y-UP)
-        // Changed to 90 degrees to match the killer's rotation exactly
         modelGroup.rotation.y = Math.PI / 2; 
-
         modelGroup.add(model);
         yawGroup.add(modelGroup);
 
-        // Auto-scale to target height
         const box = new THREE.Box3().setFromObject(yawGroup);
         if (box.isEmpty()) return yawGroup;
 
         const size = box.getSize(new THREE.Vector3());
-        const targetHeight = 10; // Matched killer scale
+        const targetHeight = 8; 
         const scale = size.y > 0 ? targetHeight / size.y : 1;
         yawGroup.scale.setScalar(scale);
 
-        // Re-center to origin
         const finalBox = new THREE.Box3().setFromObject(yawGroup);
         const center = finalBox.getCenter(new THREE.Vector3());
         yawGroup.position.sub(center);
@@ -157,7 +147,6 @@ export class Player {
         if (killer) killer.stun(this.config.abilities.parry.stunDuration);
     }
 
-    // FIXED: Safe emissive check to prevent crashes
     setEmissive(colorHex) {
         const applyEmissive = (node) => {
             if (node.isMesh && node.material) {
@@ -177,7 +166,7 @@ export class Player {
 
     resolveWallStuck(obstacles) {
         for (let obs of obstacles) {
-            const wallTopY = 10;
+            const wallTopY = obs.mesh.position.y + 5;
             const playerBaseY = this.mesh.position.y - 6;
             if (playerBaseY < wallTopY - 0.2) {
                 if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
@@ -237,6 +226,7 @@ export class Player {
 
         let currentSpeed = this.speed;
         if (this.dashActive > 0) { currentSpeed *= 2.0; this.dashActive--; }
+        if (this.hitSpeedBoost > 0) { currentSpeed *= 1.3; this.hitSpeedBoost--; }
 
         if (this.ability1Cooldown > 0) this.ability1Cooldown--;
         if (this.ability2Cooldown > 0) this.ability2Cooldown--;
@@ -391,7 +381,7 @@ export class Player {
         let groundHeight = 6;
 
         for (let obs of obstacles) {
-            const wallTopY = 10;
+            const wallTopY = obs.mesh.position.y + 5;
             const playerBaseY = this.mesh.position.y - 6; 
             
             if (checkCircleBoxCollision(nextX, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) {
@@ -399,7 +389,7 @@ export class Player {
                     if (this.vertVel <= 0) {
                         groundHeight = wallTopY + 6;
                     }
-                } else if (this.mesh.position.y <= 6.2) {
+                } else if (this.mesh.position.y < wallTopY + 6) {
                     if (checkCircleBoxCollision(nextX, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) collideX = true;
                     if (checkCircleBoxCollision(this.mesh.position.x, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) collideZ = true;
                 }
@@ -422,7 +412,6 @@ export class Player {
 
         this.resolveWallStuck(obstacles);
 
-        // Movement rotation cleanly applied to the outer Yaw group
         if (this.velocity.lengthSq() > 0.1) {
             this.mesh.rotation.y = Math.atan2(this.velocity.x, this.velocity.z);
         }

@@ -15,19 +15,20 @@ export const KillerVariables = {
             grapple: {
                 cooldown: 360,
                 range: 60,
+                projectileSpeed: 2.0,
                 damage: 10,
                 dragDuration: 30,
-                dragSpeed: 5
+                dragSpeed: 0.5
             },
             bomb: {
                 cooldown: 300,
-                windup: 30,
+                throwRange: 60,
+                throwSpeed: 1.5,
                 explodeRadius: 15,
-                proximityDamage: 20,
-                impactDamage: 15,
+                impactDamage: 20,
                 aoeDamage: 10,
-                lockonRange: 80,
-                trackingSpeed: 1.5,
+                proximityDamage: 15,
+                proximityRadius: 10,
                 lifetime: 900
             }
         },
@@ -49,28 +50,28 @@ export const KillerVariables = {
             hitboxDepth: 20,
             hitboxType: 'killer_m1_2011x',
             applyBleed: true,
-            bleedDuration: 180 // 3s
+            bleedDuration: 180
         },
         abilities: {
             teleport: {
-                cooldown: 720, // 11s
-                windup: 120, // 2s
+                cooldown: 720,
+                windup: 120,
                 arriveRadius: 15,
-                bleedDuration: 120 // 2s
+                bleedDuration: 120
             },
             gods_trickery: {
-                cooldown: 960, // 16s
-                duration: 60, // 1s
+                cooldown: 960,
+                duration: 60,
                 hitboxCount: 5,
                 hitboxSpacing: 5,
                 hitboxWidth: 10,
                 hitboxDepth: 10,
-                invertDuration: 300 // 5s
+                invertDuration: 240
             }
         },
         rush: {
-            stunThreshold: 6,
-            duration: 540, // 9s
+            stunThreshold: 5,
+            duration: 540,
             speedMultiplier: 1.5
         },
         ai: {

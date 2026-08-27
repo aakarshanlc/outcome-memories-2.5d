@@ -12,6 +12,18 @@ import { Ring } from '../entities/Ring.js';
 import { PointerArrow } from '../entities/PointerArrow.js';
 import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
 
+// Import all models and textures so Vite resolves their paths for preloading
+import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
+import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
+import knucklesModelUrl from '../assets/models/Knuckles/Knuckles.dae';
+import knucklesTextureUrl from '../assets/models/Knuckles/PLAYER00.png';
+import tailsModelUrl from '../assets/models/Tails/Tails.dae';
+import tailsTextureUrl from '../assets/models/Tails/PLAYER00.png';
+import tripwireModelUrl from '../assets/models/Tripwire/tdoll.obj';
+import tripwireTextureUrl from '../assets/models/Tripwire/player01.png';
+import x2011ModelUrl from '../assets/models/2011X/2011x.glb';
+import starvedModelUrl from '../assets/models/Starved/starved_eggman.glb';
+
 export class GameManager {
     constructor() {
         this.engine = new Engine();
@@ -38,16 +50,17 @@ export class GameManager {
 
         this.gameSetup = {
             survivorCount: 1,
-            selectedSurvivorType: 'Sonic',
+            selectedSurvivors: ['Sonic', 'Tails', 'Knuckles'], // Track selected survivors
             selectedKillerType: 'Tripwire',
             killerPlayer: 2,
             killerIsAI: false,
             selectedMap: 'Open Field'
         };
 
+        // FIX: Start menu music on first user interaction to bypass browser autoplay block
         const startAudio = () => {
             this.audio.hasInteracted = true;
-            this.ui.showScreen(this.ui.activeScreen); 
+            this.ui.showScreen(this.ui.activeScreen); // Re-trigger UI to apply audio rules
             window.removeEventListener('click', startAudio);
             window.removeEventListener('keydown', startAudio);
         };
@@ -90,13 +103,31 @@ export class GameManager {
         return { x, z };
     }
 
-    // NEW: Shows loading screen, waits 2s, then initializes game
-    startGame() {
+    // NEW: Preloads assets via fetch before initializing the game
+    async startGame() {
         this.state = 'LOADING';
         this.ui.showLoadingScreen();
-        setTimeout(() => {
-            this.initializeGame();
-        }, 2000);
+        
+        const urlsToLoad = [];
+        const survivors = this.gameSetup.selectedSurvivors.slice(0, this.gameSetup.survivorCount);
+        
+        if (survivors.includes('Sonic')) { urlsToLoad.push(sonicModelUrl, sonicTextureUrl); }
+        if (survivors.includes('Tails')) { urlsToLoad.push(tailsModelUrl, tailsTextureUrl); }
+        if (survivors.includes('Knuckles')) { urlsToLoad.push(knucklesModelUrl, knucklesTextureUrl); }
+        
+        const k = this.gameSetup.selectedKillerType;
+        if (k === 'Tripwire') { urlsToLoad.push(tripwireModelUrl, tripwireTextureUrl); }
+        if (k === '2011X') urlsToLoad.push(x2011ModelUrl);
+        if (k === 'Starved') urlsToLoad.push(starvedModelUrl);
+
+        try {
+            // Fetch all files to force browser to cache them
+            await Promise.all(urlsToLoad.map(url => fetch(url)));
+        } catch (e) {
+            console.error("Failed to preload assets", e);
+        }
+        
+        this.initializeGame();
     }
 
     initializeGame() {
@@ -127,17 +158,12 @@ export class GameManager {
             'Tails': 0xffd700,
             'Knuckles': 0xcf2020
         };
-        const defaultSurvivorTypes = ['Sonic', 'Tails', 'Knuckles', 'Sonic'];
 
         for (let i = 0; i < this.gameSetup.survivorCount; i++) {
             const sId = survivorIds[i];
             const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
             
-            let charName = defaultSurvivorTypes[i];
-            if (this.gameSetup.survivorCount === 1) {
-                charName = this.gameSetup.selectedSurvivorType;
-            }
-            
+            const charName = this.gameSetup.selectedSurvivors[i];
             const pColor = survivorTypeColors[charName] || 0x0064ff;
             
             const player = new Player(this.engine.scene, controlsObj, pColor, charName);
@@ -176,7 +202,9 @@ export class GameManager {
 
         this.ui.initHUD();
         this.totalSurvivors = this.players.length;
-        this.gameTimer = 180 * 60; 
+        
+        // Timer scaling: 1 surv = 60s, 2 surv = 90s, 3 surv = 120s
+        this.gameTimer = (this.totalSurvivors * 30 + 30) * 60; 
         this.lmsTimer = 60 * 60;   
         this.ringTimer = 15 * 60;  
         
@@ -203,7 +231,7 @@ export class GameManager {
         this.ring = null;
         this.arrow = null;
         this.audio.stopMusic();
-        this.ui.showScreen('main');
+        this.ui.showScreen('main'); // UI will handle audio routing (muting video/unmuting or playing menu track)
     }
 
     endGame(title, subtitle) {
@@ -227,6 +255,9 @@ export class GameManager {
         requestAnimationFrame(() => this.gameLoop());
 
         if (this.state === 'PLAYING') {
+            // ADD THIS LINE: Update map block states
+            this.mapManager.update(this.players, this.killers);
+
             this.players.forEach(p => {
                 const scheme = this.controls.getScheme(p.controlId);
                 p.controls.up = this.keys[scheme.up];
@@ -273,6 +304,11 @@ export class GameManager {
                                 p.takeDamage(h.damage, h.owner);
                                 if (h.data && h.data.applyBleed) p.bleedTimer = h.data.bleedDuration || 180;
                                 if (h.type === 'gods_trickery') p.invertedControlsTimer = h.data.invertDuration || 300;
+                                
+                                // NEW: M1 Hit Speed Boost
+                                if (h.type.includes('killer_m1')) {
+                                    p.hitSpeedBoost = 30; // 0.5s at 60fps
+                                }
                                 h.hasHit.add(p);
                             }
                         }
