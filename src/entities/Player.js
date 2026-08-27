@@ -28,26 +28,24 @@ export class Player {
         this.health = this.maxHealth;
         this.bleedTimer = 0;
         this.highlightTimer = 0;
+        this.invertedControlsTimer = 0;
 
         this.ability1Cooldown = 0;
         this.ability2Cooldown = 0;
         this.dashActive = 0;
         
-        // 3D Physics
         this.vertVel = 0;
         this.padCooldown = 0;
         
-        // Knuckles
         this.isBlocking = false;
         this.blockTimer = 0;
         this.punchState = 'idle';
         this.punchTimer = 0;
         this.blockMesh = null;
         
-        // Tails
         this.flyCharges = this.config.abilities.fly ? this.config.abilities.fly.maxCharges : 0;
         this.flyCooldown = 0;
-        this.flyChargeCooldown = 0; // NEW: Prevents spamming all 3 charges instantly
+        this.flyChargeCooldown = 0;
         this.flyBoostTimer = 0;
         this.carryTarget = null;
         this.gunCharging = false;
@@ -80,6 +78,32 @@ export class Player {
         if (killer) killer.stun(this.config.abilities.parry.stunDuration);
     }
 
+    // NEW: Anti-Wall-Stuck Logic
+    resolveWallStuck(obstacles) {
+        for (let obs of obstacles) {
+            const wallTopY = 10;
+            const playerBaseY = this.mesh.position.y - 6;
+            if (playerBaseY < wallTopY - 0.2) { // Only resolve if hitting the side
+                if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
+                    let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
+                    let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
+                    
+                    let dx = this.mesh.position.x - closestX;
+                    let dz = this.mesh.position.z - closestZ;
+                    let dist = Math.hypot(dx, dz);
+                    
+                    if (dist > 0) {
+                        this.mesh.position.x = closestX + (dx / dist) * (this.size + 0.1);
+                        this.mesh.position.z = closestZ + (dz / dist) * (this.size + 0.1);
+                    } else {
+                        this.mesh.position.z = obs.z - this.size - 0.1;
+                    }
+                    this.velocity.set(0, 0, 0);
+                }
+            }
+        }
+    }
+
     update(obstacles, killers, gameManager, players) {
         if (this.health <= 0) return;
 
@@ -94,11 +118,25 @@ export class Player {
             this.mesh.material.emissive.setHex(0x000000);
         }
 
+        let up = this.controls.up;
+        let down = this.controls.down;
+        let left = this.controls.left;
+        let right = this.controls.right;
+
+        if (this.invertedControlsTimer > 0) {
+            this.invertedControlsTimer--;
+            up = this.controls.down;
+            down = this.controls.up;
+            left = this.controls.right;
+            right = this.controls.left;
+            this.mesh.material.emissive.setHex(0xff00ff); 
+        }
+
         let dx = 0, dz = 0;
-        if (this.controls.up) dz -= 1;
-        if (this.controls.down) dz += 1;
-        if (this.controls.left) dx -= 1;
-        if (this.controls.right) dx += 1;
+        if (up) dz -= 1;
+        if (down) dz += 1;
+        if (left) dx -= 1;
+        if (right) dx += 1;
         if (dx !== 0 && dz !== 0) { dx *= 0.707; dz *= 0.707; }
 
         let currentSpeed = this.speed;
@@ -108,9 +146,8 @@ export class Player {
         if (this.ability2Cooldown > 0) this.ability2Cooldown--;
         if (this.padCooldown > 0) this.padCooldown--;
         if (this.flyBoostTimer > 0) this.flyBoostTimer--;
-        if (this.flyChargeCooldown > 0) this.flyChargeCooldown--; // Decrement charge cooldown
+        if (this.flyChargeCooldown > 0) this.flyChargeCooldown--;
 
-        // --- CHARACTER SPECIFIC ABILITIES ---
         if (this.characterName === 'Sonic') {
             if (this.controls.ability1 && this.ability1Cooldown <= 0) {
                 this.dashActive = this.config.abilities.dash.duration;
@@ -148,7 +185,6 @@ export class Player {
                 const hx = this.mesh.position.x + dir.x * 8;
                 const hz = this.mesh.position.z + dir.z * 8;
                 
-                // FIX: Safe fallbacks for width and depth
                 const hw = this.config.abilities.punch.hitboxWidth || 15;
                 const hd = this.config.abilities.punch.hitboxDepth || 15;
                 gameManager.spawnHitbox(hx, hz, 0, 5, this, 'knuckles_punch', 0, null, 'box', hw, hd);
@@ -158,7 +194,6 @@ export class Player {
             }
         }
         else if (this.characterName === 'Tails') {
-            // Passive: Mechanical Mind (Regen when standing still for 3s)
             if (this.velocity.lengthSq() < 0.1 && this.mesh.position.y <= 6.1) {
                 this.stillTimer++;
                 if (this.stillTimer > 180) {
@@ -168,7 +203,6 @@ export class Player {
                 this.stillTimer = 0;
             }
 
-            // Ab1: Ray Gun (Charge Mechanic)
             if (this.controls.ability1 && this.ability1Cooldown <= 0) {
                 if (!this.gunCharging) {
                     this.gunCharging = true;
@@ -186,19 +220,16 @@ export class Player {
                 this.gunCharging = false;
             }
 
-            // Ab2: Fly (3 Charges, Velocity-based burst)
-            // Can only activate if we have charges, main cooldown is over, and charge cooldown is over
             if (this.controls.ability2 && this.flyCharges > 0 && this.flyCooldown <= 0 && this.flyChargeCooldown <= 0) {
                 this.flyCharges--;
-                this.flyChargeCooldown = this.config.abilities.fly.chargeCooldown; // Start 0.5s delay between dashes
-                this.vertVel = this.config.abilities.fly.boost; // Apply upward velocity
+                this.flyChargeCooldown = this.config.abilities.fly.chargeCooldown;
+                this.vertVel = this.config.abilities.fly.boost; 
                 this.flyBoostTimer = this.config.abilities.fly.duration;
                 
                 if (this.flyCharges === 0) {
-                    this.flyCooldown = this.config.abilities.fly.cooldown; // Start main cooldown when out of charges
+                    this.flyCooldown = this.config.abilities.fly.cooldown;
                 }
                 
-                // Check for carry target (only grab if they are on the ground)
                 if (players) {
                     for (let p of players) {
                         if (p !== this && p.health > 0 && p.mesh.position.y <= 6.1) {
@@ -214,22 +245,20 @@ export class Player {
 
             if (this.flyCooldown > 0) {
                 this.flyCooldown--;
-                if (this.flyCooldown === 0) this.flyCharges = this.config.abilities.fly.maxCharges; // Reset charges
+                if (this.flyCooldown === 0) this.flyCharges = this.config.abilities.fly.maxCharges;
             }
 
             if (this.flyBoostTimer > 0) {
                 currentSpeed *= this.config.abilities.fly.multiplier;
             }
 
-            // Sync carry target position
             if (this.carryTarget && this.carryTarget.health > 0) {
                 this.carryTarget.mesh.position.x = this.mesh.position.x;
                 this.carryTarget.mesh.position.z = this.mesh.position.z;
                 this.carryTarget.mesh.position.y = this.mesh.position.y; 
                 this.carryTarget.velocity.copy(this.velocity);
-                this.carryTarget.vertVel = this.vertVel; // Sync vertical movement!
+                this.carryTarget.vertVel = this.vertVel; 
                 
-                // Drop target if we land
                 if (this.mesh.position.y <= 6.1 && this.vertVel <= 0) {
                     this.carryTarget = null;
                 }
@@ -238,7 +267,6 @@ export class Player {
             }
         }
 
-        // --- JUMP PAD CHECK ---
         if (gameManager.mapManager && gameManager.mapManager.jumpPads) {
             for (let pad of gameManager.mapManager.jumpPads) {
                 let dist = Math.hypot(this.mesh.position.x - pad.x, this.mesh.position.z - pad.z);
@@ -251,7 +279,6 @@ export class Player {
             }
         }
 
-        // --- SMOOTH MOVEMENT PHYSICS ---
         let targetVx = dx * currentSpeed;
         let targetVz = dz * currentSpeed;
 
@@ -265,22 +292,18 @@ export class Player {
         let nextZ = this.mesh.position.z + this.velocity.z;
 
         let collideX = false, collideZ = false;
-        let groundHeight = 6; // Default floor height
+        let groundHeight = 6;
 
-        // Calculate which wall we are standing on or hitting
         for (let obs of obstacles) {
             const wallTopY = 10;
-            const playerBaseY = this.mesh.position.y - 6; // Bottom of player capsule
+            const playerBaseY = this.mesh.position.y - 6; 
             
-            // Are we horizontally intersecting this obstacle's footprint?
             if (checkCircleBoxCollision(nextX, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) {
                 if (playerBaseY >= wallTopY - 0.2) {
-                    // We are high enough to land on top
                     if (this.vertVel <= 0) {
-                        groundHeight = wallTopY + 6; // Snap to top (10 + 6)
+                        groundHeight = wallTopY + 6;
                     }
-                } else if (this.mesh.position.y <= 6.2) { // Ignore side collisions if in the air
-                    // We are hitting the side of the wall
+                } else if (this.mesh.position.y <= 6.2) {
                     if (checkCircleBoxCollision(nextX, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) collideX = true;
                     if (checkCircleBoxCollision(this.mesh.position.x, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) collideZ = true;
                 }
@@ -293,14 +316,16 @@ export class Player {
         if (!collideZ) this.mesh.position.z = nextZ;
         else this.velocity.z = 0;
 
-        // Apply Gravity & Ground Snap
-        this.vertVel -= 0.15; // Gravity
+        this.vertVel -= 0.15; 
         this.mesh.position.y += this.vertVel;
 
         if (this.mesh.position.y <= groundHeight) {
             this.mesh.position.y = groundHeight;
             this.vertVel = 0;
         }
+
+        // APPLY ANTI-WALL-STUCK
+        this.resolveWallStuck(obstacles);
 
         if (this.velocity.lengthSq() > 0.1) {
             this.mesh.rotation.y = Math.atan2(this.velocity.x, this.velocity.z);

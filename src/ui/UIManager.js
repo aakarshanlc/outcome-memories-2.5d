@@ -22,15 +22,28 @@ export class UIManager {
         this.hudElement = this.root.querySelector('#hud');
     }
 
-    updateHUD(phase, timeLeft) {
+    updateHUD(phase, timeLeft, isRush = false) {
         if (!this.hudElement) return;
         let phaseText = "";
         let timerText = Math.max(0, Math.ceil(timeLeft));
         if (phase === 'ROUND') phaseText = "SURVIVE";
         else if (phase === 'LMS') phaseText = "LAST MAN STANDING";
         else if (phase === 'RING') phaseText = "ESCAPE!";
-        this.root.querySelector('#phase-text').innerText = phaseText;
-        this.root.querySelector('#timer-text').innerText = `${timerText}s`;
+
+        const phaseEl = this.root.querySelector('#phase-text');
+        const timerEl = this.root.querySelector('#timer-text');
+
+        if (isRush) {
+            phaseText = "RUSH";
+            phaseEl.style.color = '#ff0000';
+            timerEl.style.color = '#ff0000';
+        } else {
+            phaseEl.style.color = '#ff4444';
+            timerEl.style.color = '#ffffff';
+        }
+
+        phaseEl.innerText = phaseText;
+        timerEl.innerText = `${timerText}s`;
     }
 
     showGameOver(title, subtitle) {

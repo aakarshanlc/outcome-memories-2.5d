@@ -4,31 +4,31 @@ export const KillerVariables = {
         size: 4,
         m1: {
             cooldown: 60,
-            windup: 15,
+            windup: 30,
             duration: 10,
-            damage: 10,
+            damage: 5,
             hitboxWidth: 20,
             hitboxDepth: 20,
             hitboxType: 'killer_m1'
         },
         abilities: {
             grapple: {
-                cooldown: 360, // 6s
-                range: 120,
+                cooldown: 360,
+                range: 60,
                 damage: 10,
-                dragDuration: 30, // 0.5s
-                dragSpeed: 10
+                dragDuration: 30,
+                dragSpeed: 5
             },
             bomb: {
-                cooldown: 180, // 3s
-                windup: 30, // 0.5s
-                explodeRadius: 20,
+                cooldown: 300,
+                windup: 30,
+                explodeRadius: 15,
                 proximityDamage: 20,
                 impactDamage: 15,
                 aoeDamage: 10,
-                lockonRange: 90,
-                trackingSpeed: 3,
-                lifetime: 900 // 15s before it disappears if nothing happens
+                lockonRange: 80,
+                trackingSpeed: 1.5,
+                lifetime: 900
             }
         },
         ai: {
@@ -48,7 +48,30 @@ export const KillerVariables = {
             hitboxWidth: 20,
             hitboxDepth: 20,
             hitboxType: 'killer_m1_2011x',
-            applyBleed: true
+            applyBleed: true,
+            bleedDuration: 180 // 3s
+        },
+        abilities: {
+            teleport: {
+                cooldown: 900, // 15s
+                windup: 120, // 2s
+                arriveRadius: 15,
+                bleedDuration: 120 // 2s
+            },
+            gods_trickery: {
+                cooldown: 1080, // 18s
+                duration: 60, // 1s
+                hitboxCount: 5,
+                hitboxSpacing: 5,
+                hitboxWidth: 10,
+                hitboxDepth: 10,
+                invertDuration: 300 // 5s
+            }
+        },
+        rush: {
+            stunThreshold: 6,
+            duration: 540, // 9s
+            speedMultiplier: 1.5
         },
         ai: {
             attackRange: 14,

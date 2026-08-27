@@ -1,3 +1,4 @@
+import * as THREE from 'three'; // FIX: Added missing import
 import { Engine } from '../engine/Engine.js';
 import { MapManager } from '../maps/MapManager.js';
 import { Player } from '../entities/Player.js';
@@ -251,7 +252,8 @@ export class GameManager {
 
                             if (hit) {
                                 p.takeDamage(h.damage, h.owner);
-                                if (h.data && h.data.applyBleed) p.bleedTimer = 180;
+                                if (h.data && h.data.applyBleed) p.bleedTimer = h.data.bleedDuration || 180;
+                                if (h.type === 'gods_trickery') p.invertedControlsTimer = h.data.invertDuration || 300;
                                 h.hasHit.add(p);
                             }
                         }
@@ -281,22 +283,23 @@ export class GameManager {
             }
 
             let alivePlayers = this.players.filter(p => p.health > 0);
+            let isRushing = this.killer ? this.killer.isRushing : false;
 
             if (this.phase === 'ROUND') {
                 if (alivePlayers.length === 1 && this.totalSurvivors > 1) {
                     this.phase = 'LMS';
                     this.playLmsMusic(alivePlayers[0]);
                 }
-                this.gameTimer--;
-                this.ui.updateHUD('ROUND', this.gameTimer / 60);
+                if (!isRushing) this.gameTimer--;
+                this.ui.updateHUD('ROUND', this.gameTimer / 60, isRushing);
                 if (this.gameTimer <= 0) {
                     this.phase = 'LMS';
                     this.playLmsMusic(alivePlayers[0]);
                 }
             } 
             else if (this.phase === 'LMS') {
-                this.lmsTimer--;
-                this.ui.updateHUD('LAST MAN STANDING', this.lmsTimer / 60);
+                if (!isRushing) this.lmsTimer--;
+                this.ui.updateHUD('LAST MAN STANDING', this.lmsTimer / 60, isRushing);
                 if (this.lmsTimer <= 0) {
                     this.phase = 'RING';
                     const rSpawn = this.findSafeSpawn(this.mapManager.obstacles, -80, 80);
@@ -307,7 +310,7 @@ export class GameManager {
             else if (this.phase === 'RING') {
                 this.ringTimer--;
                 this.ring.update();
-                this.ui.updateHUD('ESCAPE!', this.ringTimer / 60);
+                this.ui.updateHUD('ESCAPE!', this.ringTimer / 60, false);
                 
                 if (this.ring && this.arrow && alivePlayers.length > 0) {
                     this.arrow.update(alivePlayers[0].mesh.position, this.ring.mesh.position);

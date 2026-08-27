@@ -40,8 +40,17 @@ export class Killer {
         this.grappleTarget = null;
         this.grappleTimer = 0;
         this.grappleLine = null;
-        
         this.activeBomb = null;
+        
+        this.teleportState = 'idle';
+        this.teleportTimer = 0;
+        this.trickeryState = 'idle';
+        this.trickeryTimer = 0;
+        this.trickeryAngle = 0;
+        
+        this.stunCount = 0;
+        this.isRushing = false;
+        this.rushTimer = 0;
     }
 
     destroy() {
@@ -60,16 +69,63 @@ export class Killer {
         this.scene.remove(this.mesh);
     }
 
-    stun(duration) { this.stunned = duration; this.mesh.material.emissive.setHex(0xffffff); this.velocity.set(0,0,0); this.currentSpeed = 1.0; }
-    takeDamage(amount, attacker) {}
+    stun(duration) {
+        this.stunned = duration;
+        this.mesh.material.emissive.setHex(0xffffff);
+        this.velocity.set(0,0,0);
+        this.currentSpeed = 1.0;
+        
+        if (this.type === '2011X' && this.config.rush && !this.isRushing) {
+            this.stunCount++;
+            if (this.stunCount >= this.config.rush.stunThreshold) {
+                this.isRushing = true;
+                this.rushTimer = this.config.rush.duration;
+                this.stunCount = 0;
+                this.mesh.material.emissive.setHex(0xff0000); 
+            }
+        }
+    }
+
+    // NEW: Anti-Wall-Stuck Logic
+    resolveWallStuck(obstacles) {
+        for (let obs of obstacles) {
+            if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
+                let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
+                let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
+                
+                let dx = this.mesh.position.x - closestX;
+                let dz = this.mesh.position.z - closestZ;
+                let dist = Math.hypot(dx, dz);
+                
+                if (dist > 0) {
+                    this.mesh.position.x = closestX + (dx / dist) * (this.size + 0.1);
+                    this.mesh.position.z = closestZ + (dz / dist) * (this.size + 0.1);
+                } else {
+                    this.mesh.position.z = obs.z - this.size - 0.1;
+                }
+                this.velocity.set(0, 0, 0);
+            }
+        }
+    }
 
     update(obstacles, players, gameManager) {
+        if (this.isRushing) {
+            this.rushTimer--;
+            if (this.rushTimer <= 0) {
+                this.isRushing = false;
+                this.mesh.material.emissive.setHex(0x550000);
+            }
+        }
+
         if (this.stunned > 0) {
             this.stunned--;
-            if (this.stunned === 0) this.mesh.material.emissive.setHex(0x550000);
+            if (this.stunned === 0 && !this.isRushing) this.mesh.material.emissive.setHex(0x550000);
             this.velocity.x *= this.damping; this.velocity.z *= this.damping;
             this.mesh.position.x += this.velocity.x;
             this.mesh.position.z += this.velocity.z;
+            
+            // APPLY ANTI-WALL-STUCK even when stunned
+            this.resolveWallStuck(obstacles);
             return;
         }
 
@@ -97,9 +153,13 @@ export class Killer {
                 }
                 this.controls.m1 = dist <= attackRange;
                 
-                if (this.type === 'Tripwire' && this.config.abilities) {
+                if (this.type === 'Tripwire' && this.config.abilities && !this.isRushing) {
                     this.controls.ability1 = (dist <= (this.config.abilities.grapple?.range || 60) && this.ability1Cooldown <= 0);
                     this.controls.ability2 = (dist <= (this.config.abilities.bomb?.lockonRange || 80) && this.ability2Cooldown <= 0);
+                }
+                if (this.type === '2011X' && this.config.abilities && !this.isRushing) {
+                    this.controls.ability1 = (dist <= 60 && this.ability1Cooldown <= 0);
+                    this.controls.ability2 = (dist <= 50 && this.ability2Cooldown <= 0);
                 }
             } else {
                 this.controls.m1 = false;
@@ -119,8 +179,11 @@ export class Killer {
         if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02; 
         else this.currentSpeed += (1.0 - this.currentSpeed) * 0.05;
 
-        let targetVx = dx * this.currentSpeed;
-        let targetVz = dz * this.currentSpeed;
+        let currentSpeed = this.currentSpeed;
+        if (this.isRushing) currentSpeed *= this.config.rush.speedMultiplier;
+
+        let targetVx = dx * currentSpeed;
+        let targetVz = dz * currentSpeed;
         this.velocity.x += (targetVx - this.velocity.x) * this.acceleration;
         this.velocity.z += (targetVz - this.velocity.z) * this.acceleration;
         if (dx === 0) this.velocity.x *= this.damping;
@@ -146,10 +209,19 @@ export class Killer {
 
         this.updateM1(players, gameManager, dx, dz);
         
-        if (this.type === 'Tripwire' && this.config.abilities) {
-            this.updateGrapple(players);
-            this.updateBomb(players);
+        if (!this.isRushing) {
+            if (this.type === 'Tripwire' && this.config.abilities) {
+                this.updateGrapple(players);
+                this.updateBomb(players);
+            }
+            if (this.type === '2011X' && this.config.abilities) {
+                this.updateTeleport(players, gameManager);
+                this.updateTrickery(players, gameManager);
+            }
         }
+
+        // APPLY ANTI-WALL-STUCK
+        this.resolveWallStuck(obstacles);
     }
 
     updateM1(players, gameManager, dx, dz) {
@@ -173,9 +245,8 @@ export class Killer {
                 const hx = this.mesh.position.x + this.m1AttackAngle.x * 10;
                 const hz = this.mesh.position.z + this.m1AttackAngle.z * 10;
                 let type = this.config.m1.hitboxType;
-                let data = this.config.m1.applyBleed ? { applyBleed: true } : null;
+                let data = this.config.m1.applyBleed ? { applyBleed: true, bleedDuration: this.config.m1.bleedDuration || 180 } : null;
                 
-                // FIX: Safe fallbacks for width and depth to prevent crashes
                 const hw = this.config.m1.hitboxWidth || 20;
                 const hd = this.config.m1.hitboxDepth || 20;
                 gameManager.spawnHitbox(hx, hz, 0, 10, this, type, this.config.m1.damage, data, 'box', hw, hd);
@@ -183,6 +254,71 @@ export class Killer {
             }
             this.m1Timer--;
             if (this.m1Timer <= 0 || this.m1HitboxCount >= maxHits) { this.m1State = 'idle'; this.m1Cooldown = this.config.m1.cooldown || 60; }
+        }
+    }
+
+    updateTeleport(players, gameManager) {
+        const tpCfg = this.config.abilities.teleport;
+        if (this.controls.ability1 && this.ability1Cooldown <= 0 && this.teleportState === 'idle') {
+            this.teleportState = 'windup';
+            this.teleportTimer = tpCfg.windup;
+            this.ability1Cooldown = tpCfg.cooldown;
+        }
+
+        if (this.teleportState === 'windup') {
+            this.teleportTimer--;
+            if (this.teleportTimer <= 0) {
+                let target = players[Math.floor(Math.random() * players.length)];
+                if (target && target.health > 0) {
+                    let angle = Math.random() * Math.PI * 2;
+                    this.mesh.position.x = target.mesh.position.x + Math.cos(angle) * 20;
+                    this.mesh.position.z = target.mesh.position.z + Math.sin(angle) * 20;
+                    
+                    this.mesh.position.x = Math.max(-90, Math.min(90, this.mesh.position.x));
+                    this.mesh.position.z = Math.max(-90, Math.min(90, this.mesh.position.z));
+                    
+                    gameManager.spawnHitbox(this.mesh.position.x, this.mesh.position.z, tpCfg.arriveRadius, 10, this, 'teleport_arrive', 0, { applyBleed: true, bleedDuration: tpCfg.bleedDuration }, 'sphere');
+                }
+                this.teleportState = 'idle';
+            }
+        }
+    }
+
+    updateTrickery(players, gameManager) {
+        const trickCfg = this.config.abilities.gods_trickery;
+        if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.trickeryState === 'idle') {
+            this.trickeryState = 'active';
+            this.trickeryTimer = trickCfg.duration;
+            this.ability2Cooldown = trickCfg.cooldown;
+            
+            let target = null;
+            let minDist = Infinity;
+            players.forEach(p => {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            });
+            if (target) {
+                this.trickeryAngle = Math.atan2(target.mesh.position.z - this.mesh.position.z, target.mesh.position.x - this.mesh.position.x);
+            } else {
+                this.trickeryAngle = this.mesh.rotation.y;
+            }
+        }
+
+        if (this.trickeryState === 'active') {
+            this.trickeryTimer--;
+            
+            if (this.trickeryTimer % 10 === 0) {
+                const offset = (1 - this.trickeryTimer / trickCfg.duration) * trickCfg.hitboxSpacing * trickCfg.hitboxCount;
+                const hx = this.mesh.position.x + Math.cos(this.trickeryAngle) * (offset + 10);
+                const hz = this.mesh.position.z + Math.sin(this.trickeryAngle) * (offset + 10);
+                gameManager.spawnHitbox(hx, hz, 0, 10, this, 'gods_trickery', 0, { invertDuration: trickCfg.invertDuration }, 'box', trickCfg.hitboxWidth, trickCfg.hitboxDepth);
+            }
+            
+            if (this.trickeryTimer <= 0) {
+                this.trickeryState = 'idle';
+            }
         }
     }
 
