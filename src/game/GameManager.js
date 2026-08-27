@@ -37,15 +37,17 @@ export class GameManager {
 
         this.gameSetup = {
             survivorCount: 1,
-            selectedSurvivorType: 'Sonic', // NEW: Track solo survivor type
+            selectedSurvivorType: 'Sonic',
             selectedKillerType: 'Tripwire',
             killerPlayer: 2,
             killerIsAI: false,
             selectedMap: 'Open Field'
         };
 
+        // FIX: Set interacted flag and refresh UI to unmute video / play music
         const startAudio = () => {
-            this.audio.playMusic('menu');
+            this.audio.hasInteracted = true;
+            this.ui.showScreen(this.ui.activeScreen); 
             window.removeEventListener('click', startAudio);
             window.removeEventListener('keydown', startAudio);
         };
@@ -88,7 +90,7 @@ export class GameManager {
         return { x, z };
     }
 
-        startGame() {
+    startGame() {
         this.state = 'PLAYING';
         this.phase = 'ROUND';
         
@@ -111,7 +113,6 @@ export class GameManager {
         const killerId = this.gameSetup.killerIsAI ? null : `p${this.gameSetup.killerPlayer}`;
         const survivorIds = allPlayers.filter(id => id !== killerId);
 
-        // Map character types to their correct colors
         const survivorTypeColors = {
             'Sonic': 0x0064ff,
             'Tails': 0xffd700,
@@ -123,13 +124,11 @@ export class GameManager {
             const sId = survivorIds[i];
             const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
             
-            // If solo, use the selected type. Otherwise, use default cycle.
             let charName = defaultSurvivorTypes[i];
             if (this.gameSetup.survivorCount === 1) {
                 charName = this.gameSetup.selectedSurvivorType;
             }
             
-            // Get the correct color for the character type
             const pColor = survivorTypeColors[charName] || 0x0064ff;
             
             const player = new Player(this.engine.scene, controlsObj, pColor, charName);
@@ -185,7 +184,7 @@ export class GameManager {
         this.ring = null;
         this.arrow = null;
         this.audio.stopMusic();
-        this.audio.playMusic('menu');
+        this.ui.showScreen('main'); // UIManager will handle playing menu/video audio
     }
 
     endGame(title, subtitle) {
@@ -218,7 +217,7 @@ export class GameManager {
                 p.controls.ability1 = this.keys[scheme.ability1];
                 p.controls.ability2 = this.keys[scheme.ability2];
                 p.controls.m1 = this.keys[scheme.m1];
-                p.update(this.mapManager.obstacles, this.killers, this);
+                p.update(this.mapManager.obstacles, this.killers, this, this.players);
             });
 
             this.killers.forEach(k => {
@@ -265,7 +264,7 @@ export class GameManager {
                             else hit = checkCircleCircleCollision(h.x, h.z, h.radius, k.mesh.position.x, k.mesh.position.z, k.size);
 
                             if (hit) {
-                                k.stun(75);
+                                k.stun(h.owner.config.abilities.punch.stunDuration);
                                 const kbVec = new THREE.Vector3(k.mesh.position.x - h.x, 0, k.mesh.position.z - h.z);
                                 if (kbVec.lengthSq() === 0) kbVec.set(0, 0, 1);
                                 kbVec.normalize();

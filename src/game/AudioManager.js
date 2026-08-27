@@ -13,6 +13,7 @@ export class AudioManager {
         this.currentTrack = null;
         this.audioElement = new Audio();
         this.audioElement.loop = true;
+        this.hasInteracted = false; // Tracks if the user has clicked the page
         
         this.tracks = {
             menu: menuTrack,
@@ -41,6 +42,9 @@ export class AudioManager {
 
     applyVolume() {
         this.audioElement.volume = this.musicVolume;
+        // Also apply volume to the video element if it exists
+        const vid = document.getElementById('menu-video');
+        if (vid) vid.volume = this.musicVolume;
     }
 
     playMusic(trackName) {

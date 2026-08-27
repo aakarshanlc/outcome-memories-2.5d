@@ -44,7 +44,6 @@ export class UIManager {
         `;
         document.getElementById('btn-game-over').onclick = () => {
             this.gameManager.stopGame();
-            this.showScreen('main');
         };
     }
 
@@ -54,7 +53,7 @@ export class UIManager {
 
         if (screenName === 'main') {
             html = `
-                <video autoplay loop muted playsinline class="menu-bg-video">
+                <video id="menu-video" autoplay loop muted playsinline class="menu-bg-video">
                     <source src="./backgrounds/menu-animation.mp4" type="video/mp4">
                 </video>
                 
@@ -169,6 +168,22 @@ export class UIManager {
         this.root.innerHTML = html;
         this.activeScreen = screenName;
         this.setupEventListeners();
+
+        // --- AUDIO ROUTING LOGIC ---
+        const videoEl = document.getElementById('menu-video');
+        if (videoEl) {
+            // We are on the Main Menu
+            videoEl.volume = this.gameManager.audio.musicVolume;
+            if (this.gameManager.audio.hasInteracted) {
+                videoEl.muted = false; // Unmute video audio
+            }
+            this.gameManager.audio.stopMusic(); // Stop menu1.mp3 if it was playing
+        } else {
+            // We are on Settings, Setup, Credits, etc.
+            if (this.gameManager.audio.hasInteracted) {
+                this.gameManager.audio.playMusic('menu'); // Play menu1.mp3
+            }
+        }
     }
 
     generateControlButtons(playerId, scheme) {
@@ -199,7 +214,7 @@ export class UIManager {
             mSlider.oninput = () => {
                 this.gameManager.audio.musicVolume = mSlider.value / 100;
                 document.getElementById('music-val').innerText = mSlider.value;
-                this.gameManager.audio.applyVolume();
+                this.gameManager.audio.applyVolume(); // Applies to both music and video
                 this.gameManager.audio.save();
             };
             const sSlider = document.getElementById('sfx-slider');
@@ -245,10 +260,9 @@ export class UIManager {
                 let count = this.gameManager.gameSetup.survivorCount;
                 count = (count % 3) + 1; 
                 this.gameManager.gameSetup.survivorCount = count;
-                this.showScreen('setup'); // Refresh screen to show/hide solo type button
+                this.showScreen('setup'); // Refresh screen
             };
 
-            // NEW: Cycle Survivor Type
             const survTypeBtn = document.getElementById('btn-cycle-surv-type');
             if (survTypeBtn) {
                 survTypeBtn.onclick = () => {
