@@ -115,9 +115,7 @@ export class Killer {
     setupModel(model) {
         const yawGroup = new THREE.Group();
         const modelGroup = new THREE.Group();
-
         modelGroup.rotation.y = Math.PI / 2; 
-
         modelGroup.add(model);
         yawGroup.add(modelGroup);
 
@@ -305,8 +303,8 @@ export class Killer {
         
         if (!this.isRushing) {
             if (this.type === 'Tripwire' && this.config.abilities) {
-                this.updateGrapple(players, obstacles);
-                this.updateBomb(players, obstacles);
+                this.updateGrapple(players, obstacles, gameManager);
+                this.updateBomb(players, obstacles, gameManager);
             }
             if (this.type === '2011X' && this.config.abilities) {
                 this.updateTeleport(players, gameManager);
@@ -315,7 +313,7 @@ export class Killer {
         }
 
         // --- ABILITY WINDUP FLASHING LOGIC ---
-        let isWindingUp = false; // Removed M1 windup from this check
+        let isWindingUp = false; 
         if (this.type === 'Tripwire') {
             if (this.grappleState === 'shooting') isWindingUp = true;
             if (this.activeBomb && this.activeBomb.state === 'flying') isWindingUp = true;
@@ -345,6 +343,9 @@ export class Killer {
             this.m1HitboxCount = 0;
             if (dx !== 0 || dz !== 0) { this.m1AttackAngle.set(dx, 0, dz).normalize(); } 
             else { this.m1AttackAngle.set(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y)).normalize(); }
+            
+            // SFX on M1 start
+            gameManager.audio.playSfx(this.config.m1.sfx);
         }
 
         if (this.m1State === 'windup') {
@@ -377,6 +378,7 @@ export class Killer {
             this.teleportState = 'windup';
             this.teleportTimer = tpCfg.windup;
             this.ability1Cooldown = tpCfg.cooldown;
+            gameManager.audio.playSfx(tpCfg.sfx); // SFX
         }
 
         if (this.teleportState === 'windup') {
@@ -404,6 +406,7 @@ export class Killer {
             this.trickeryState = 'active';
             this.trickeryTimer = trickCfg.duration;
             this.ability2Cooldown = trickCfg.cooldown;
+            gameManager.audio.playSfx(trickCfg.sfx); // SFX
             
             let target = null;
             let minDist = Infinity;
@@ -436,7 +439,7 @@ export class Killer {
         }
     }
 
-    updateGrapple(players, obstacles) {
+    updateGrapple(players, obstacles, gameManager) {
         const cfg = this.config.abilities.grapple;
         if (!cfg) return;
 
@@ -457,6 +460,7 @@ export class Killer {
                 this.grappleTarget = target;
                 this.grappleProjectile = { x: this.mesh.position.x, z: this.mesh.position.z };
                 this.ability1Cooldown = cfg.cooldown;
+                gameManager.audio.playSfx(cfg.sfx); // SFX
                 
                 const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
                 const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
@@ -538,7 +542,7 @@ export class Killer {
         }
     }
 
-    updateBomb(players, obstacles) {
+    updateBomb(players, obstacles, gameManager) {
         const cfg = this.config.abilities.bomb;
         if (!cfg) return;
 
@@ -580,6 +584,7 @@ export class Killer {
                 lifetime: cfg.lifetime
             };
             this.ability2Cooldown = cfg.cooldown;
+            gameManager.audio.playSfx(cfg.sfx); // SFX
         }
 
         if (this.activeBomb) {

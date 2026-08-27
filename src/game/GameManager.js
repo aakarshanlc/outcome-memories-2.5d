@@ -39,6 +39,7 @@ export class GameManager {
         
         this.state = 'MENU';
         this.keys = {};
+        this.gamepadStates = {}; // NEW: Gamepad states
         this.setupInput();
         
         this.players = [];
@@ -50,7 +51,7 @@ export class GameManager {
 
         this.gameSetup = {
             survivorCount: 1,
-            selectedSurvivors: ['Sonic', 'Tails', 'Knuckles'], // Track selected survivors
+            selectedSurvivors: ['Sonic', 'Tails', 'Knuckles'], 
             selectedKillerType: 'Tripwire',
             killerPlayer: 2,
             killerIsAI: false,
@@ -60,12 +61,15 @@ export class GameManager {
         // FIX: Start menu music on first user interaction to bypass browser autoplay block
         const startAudio = () => {
             this.audio.hasInteracted = true;
-            this.ui.showScreen(this.ui.activeScreen); // Re-trigger UI to apply audio rules
+            this.ui.showScreen(this.ui.activeScreen); 
             window.removeEventListener('click', startAudio);
             window.removeEventListener('keydown', startAudio);
         };
         window.addEventListener('click', startAudio);
         window.addEventListener('keydown', startAudio);
+        
+        // Start polling gamepads
+        this.startGamepadPolling();
     }
 
     setupInput() {
@@ -82,6 +86,30 @@ export class GameManager {
             }
         });
         window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
+    }
+
+    // NEW: Gamepad Polling Logic
+    startGamepadPolling() {
+        const poll = () => {
+            const pads = navigator.getGamepads();
+            this.gamepadStates = {};
+            for (let i = 0; i < pads.length; i++) {
+                const pad = pads[i];
+                if (!pad) continue;
+                
+                this.gamepadStates[`p${i+1}`] = {
+                    up: pad.buttons[12]?.pressed || pad.axes[1] < -0.5,
+                    down: pad.buttons[13]?.pressed || pad.axes[1] > 0.5,
+                    left: pad.buttons[14]?.pressed || pad.axes[0] < -0.5,
+                    right: pad.buttons[15]?.pressed || pad.axes[0] > 0.5,
+                    m1: pad.buttons[0]?.pressed, // A / Cross
+                    ability1: pad.buttons[1]?.pressed, // B / Circle
+                    ability2: pad.buttons[2]?.pressed // X / Square
+                };
+            }
+            requestAnimationFrame(poll);
+        };
+        requestAnimationFrame(poll);
     }
 
     start() {
@@ -103,7 +131,6 @@ export class GameManager {
         return { x, z };
     }
 
-    // NEW: Preloads assets via fetch before initializing the game
     async startGame() {
         this.state = 'LOADING';
         this.ui.showLoadingScreen();
@@ -121,11 +148,13 @@ export class GameManager {
         if (k === 'Starved') urlsToLoad.push(starvedModelUrl);
 
         try {
-            // Fetch all files to force browser to cache them
             await Promise.all(urlsToLoad.map(url => fetch(url)));
         } catch (e) {
             console.error("Failed to preload assets", e);
         }
+        
+        // NEW: Force the loading screen to stay visible for at least 2 seconds
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         this.initializeGame();
     }
@@ -190,7 +219,6 @@ export class GameManager {
         }
         this.killers.push(this.killer);
 
-        // Apply 2s cooldown to ALL abilities
         this.players.forEach(p => {
             p.ability1Cooldown = 120;
             p.ability2Cooldown = 120;
@@ -231,7 +259,7 @@ export class GameManager {
         this.ring = null;
         this.arrow = null;
         this.audio.stopMusic();
-        this.ui.showScreen('main'); // UI will handle audio routing (muting video/unmuting or playing menu track)
+        this.ui.showScreen('main'); 
     }
 
     endGame(title, subtitle) {
@@ -255,31 +283,35 @@ export class GameManager {
         requestAnimationFrame(() => this.gameLoop());
 
         if (this.state === 'PLAYING') {
-            // ADD THIS LINE: Update map block states
             this.mapManager.update(this.players, this.killers);
 
             this.players.forEach(p => {
                 const scheme = this.controls.getScheme(p.controlId);
-                p.controls.up = this.keys[scheme.up];
-                p.controls.down = this.keys[scheme.down];
-                p.controls.left = this.keys[scheme.left];
-                p.controls.right = this.keys[scheme.right];
-                p.controls.ability1 = this.keys[scheme.ability1];
-                p.controls.ability2 = this.keys[scheme.ability2];
-                p.controls.m1 = this.keys[scheme.m1];
+                const gp = this.gamepadStates[p.controlId];
+                
+                p.controls.up = this.keys[scheme.up] || (gp ? gp.up : false);
+                p.controls.down = this.keys[scheme.down] || (gp ? gp.down : false);
+                p.controls.left = this.keys[scheme.left] || (gp ? gp.left : false);
+                p.controls.right = this.keys[scheme.right] || (gp ? gp.right : false);
+                p.controls.ability1 = this.keys[scheme.ability1] || (gp ? gp.ability1 : false);
+                p.controls.ability2 = this.keys[scheme.ability2] || (gp ? gp.ability2 : false);
+                p.controls.m1 = this.keys[scheme.m1] || (gp ? gp.m1 : false);
+                
                 p.update(this.mapManager.obstacles, this.killers, this, this.players);
             });
 
             this.killers.forEach(k => {
+                const scheme = this.controls.getScheme(k.controlId);
+                const gp = this.gamepadStates[k.controlId];
+                
                 if (!k.isAI) {
-                    const scheme = this.controls.getScheme(k.controlId);
-                    k.controls.up = this.keys[scheme.up];
-                    k.controls.down = this.keys[scheme.down];
-                    k.controls.left = this.keys[scheme.left];
-                    k.controls.right = this.keys[scheme.right];
-                    k.controls.m1 = this.keys[scheme.m1];
-                    k.controls.ability1 = this.keys[scheme.ability1];
-                    k.controls.ability2 = this.keys[scheme.ability2];
+                    k.controls.up = this.keys[scheme.up] || (gp ? gp.up : false);
+                    k.controls.down = this.keys[scheme.down] || (gp ? gp.down : false);
+                    k.controls.left = this.keys[scheme.left] || (gp ? gp.left : false);
+                    k.controls.right = this.keys[scheme.right] || (gp ? gp.right : false);
+                    k.controls.m1 = this.keys[scheme.m1] || (gp ? gp.m1 : false);
+                    k.controls.ability1 = this.keys[scheme.ability1] || (gp ? gp.ability1 : false);
+                    k.controls.ability2 = this.keys[scheme.ability2] || (gp ? gp.ability2 : false);
                 }
                 k.update(this.mapManager.obstacles, this.players, this);
             });
@@ -305,9 +337,9 @@ export class GameManager {
                                 if (h.data && h.data.applyBleed) p.bleedTimer = h.data.bleedDuration || 180;
                                 if (h.type === 'gods_trickery') p.invertedControlsTimer = h.data.invertDuration || 300;
                                 
-                                // NEW: M1 Hit Speed Boost
                                 if (h.type.includes('killer_m1')) {
-                                    p.hitSpeedBoost = 30; // 0.5s at 60fps
+                                    p.hitSpeedBoost = 30; 
+                                    this.audio.playSfx('killer_m1_hit'); // SFX on hit
                                 }
                                 h.hasHit.add(p);
                             }

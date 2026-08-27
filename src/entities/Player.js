@@ -238,6 +238,7 @@ export class Player {
             if (this.controls.ability1 && this.ability1Cooldown <= 0) {
                 this.dashActive = this.config.abilities.dash.duration;
                 this.ability1Cooldown = this.config.abilities.dash.cooldown;
+                gameManager.audio.playSfx(this.config.abilities.dash.sfx); // SFX
             }
         }
         else if (this.characterName === 'Knuckles') {
@@ -250,11 +251,13 @@ export class Player {
                 this.blockTimer = this.config.abilities.parry.duration;
                 this.ability1Cooldown = this.config.abilities.parry.cooldown;
                 if (this.blockMesh) this.blockMesh.visible = true;
+                gameManager.audio.playSfx(this.config.abilities.parry.sfx); // SFX
             }
             if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.punchState === 'idle') {
                 this.punchState = 'windup';
                 this.punchTimer = this.config.abilities.punch.windupDuration;
                 this.ability2Cooldown = this.config.abilities.punch.cooldown;
+                gameManager.audio.playSfx(this.config.abilities.punch.sfx); // SFX
             }
             if (this.punchState === 'windup') {
                 currentSpeed *= 0.5; 
@@ -304,6 +307,7 @@ export class Player {
                 gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, dir.x, dir.z, this, this.config.abilities.gun.damage, finalStun, this.config.abilities.gun.projectileSpeed);
                 this.ability1Cooldown = this.config.abilities.gun.cooldown;
                 this.gunCharging = false;
+                gameManager.audio.playSfx(this.config.abilities.gun.sfx); // SFX
             }
 
             if (this.controls.ability2 && this.flyCharges > 0 && this.flyCooldown <= 0 && this.flyChargeCooldown <= 0) {
@@ -327,6 +331,7 @@ export class Player {
                         }
                     }
                 }
+                gameManager.audio.playSfx(this.config.abilities.fly.sfx); // SFX
             }
 
             if (this.flyCooldown > 0) {
@@ -360,6 +365,7 @@ export class Player {
                     if (this.padCooldown <= 0 && this.mesh.position.y <= 6.1) { 
                         this.vertVel = gameManager.mapManager.config.padBoost;
                         this.padCooldown = gameManager.mapManager.config.padCooldown;
+                        gameManager.audio.playSfx('jump_pad'); // SFX
                     }
                 }
             }
