@@ -39,7 +39,7 @@ export const SurvivorVariables = {
         size: 3,
         abilities: {
             parry: {
-                cooldown: 840,
+                cooldown: 10,
                 duration: 60,
                 stunDuration: 90,
                 speedBoostDuration: 120

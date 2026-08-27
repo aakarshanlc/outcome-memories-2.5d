@@ -1,6 +1,15 @@
 import * as THREE from 'three';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
 import { SurvivorVariables } from '../config/SurvivorVariables.js';
+import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+
+// Import all models and textures directly so Vite resolves the paths
+import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
+import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
+import knucklesModelUrl from '../assets/models/Knuckles/Knuckles.dae';
+import knucklesTextureUrl from '../assets/models/Knuckles/PLAYER00.png';
+import tailsModelUrl from '../assets/models/Tails/Tails.dae';
+import tailsTextureUrl from '../assets/models/Tails/PLAYER00.png';
 
 export class Player {
     constructor(scene, controls, color, charName = 'Sonic') {
@@ -10,12 +19,53 @@ export class Player {
         
         this.config = SurvivorVariables[charName] || SurvivorVariables['Sonic'];
 
+        // 1. Create a temporary placeholder capsule
         const geo = new THREE.CapsuleGeometry(3, 6, 4, 8);
         const mat = new THREE.MeshStandardMaterial({ color: color });
         this.mesh = new THREE.Mesh(geo, mat);
         this.mesh.position.y = 6;
         this.mesh.castShadow = true;
         scene.add(this.mesh);
+
+        // 2. Load 3D Models for Sonic, Tails, and Knuckles
+        if (charName === 'Sonic' || charName === 'Tails' || charName === 'Knuckles') {
+            let modelUrl, textureUrl;
+            if (charName === 'Sonic') { modelUrl = sonicModelUrl; textureUrl = sonicTextureUrl; }
+            else if (charName === 'Tails') { modelUrl = tailsModelUrl; textureUrl = tailsTextureUrl; }
+            else { modelUrl = knucklesModelUrl; textureUrl = knucklesTextureUrl; }
+
+            const loader = new ColladaLoader();
+            const textureLoader = new THREE.TextureLoader();
+            
+            textureLoader.load(textureUrl, (texture) => {
+                texture.flipY = false; 
+                texture.colorSpace = THREE.SRGBColorSpace; 
+                
+                loader.load(modelUrl, (collada) => {
+                    const model = collada.scene;
+                    model.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
+                            node.castShadow = true;
+                        }
+                    });
+
+                    const finalMesh = this.setupModel(model);
+                    
+                    const spawnX = this.mesh.position.x;
+                    const spawnZ = this.mesh.position.z;
+                    const spawnRot = this.mesh.rotation.y;
+
+                    scene.remove(this.mesh);
+                    this.mesh = finalMesh;
+                    this.mesh.position.set(spawnX, 6, spawnZ);
+                    this.mesh.rotation.y = spawnRot;
+                    scene.add(this.mesh);
+
+                    if (this.blockMesh) this.mesh.add(this.blockMesh);
+                });
+            });
+        }
 
         this.speed = this.config.speed;
         this.size = this.config.size; 
@@ -56,10 +106,39 @@ export class Player {
             const ringGeo = new THREE.TorusGeometry(this.size + 4, 0.5, 8, 24);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 });
             this.blockMesh = new THREE.Mesh(ringGeo, ringMat);
-            this.blockMesh.rotation.x = Math.PI / 2; 
+            this.blockMesh.rotation.x = -Math.PI / 2; 
             this.blockMesh.visible = false;
             this.mesh.add(this.blockMesh); 
         }
+    }
+
+    // MATCHED KILLER.JS ROTATION LOGIC
+    setupModel(model) {
+        const yawGroup = new THREE.Group();
+        const modelGroup = new THREE.Group();
+
+        // Removed rotation.x because the models are already standing upright (Y-UP)
+        // Changed to 90 degrees to match the killer's rotation exactly
+        modelGroup.rotation.y = Math.PI / 2; 
+
+        modelGroup.add(model);
+        yawGroup.add(modelGroup);
+
+        // Auto-scale to target height
+        const box = new THREE.Box3().setFromObject(yawGroup);
+        if (box.isEmpty()) return yawGroup;
+
+        const size = box.getSize(new THREE.Vector3());
+        const targetHeight = 10; // Matched killer scale
+        const scale = size.y > 0 ? targetHeight / size.y : 1;
+        yawGroup.scale.setScalar(scale);
+
+        // Re-center to origin
+        const finalBox = new THREE.Box3().setFromObject(yawGroup);
+        const center = finalBox.getCenter(new THREE.Vector3());
+        yawGroup.position.sub(center);
+
+        return yawGroup;
     }
 
     takeDamage(amount, attacker) {
@@ -78,12 +157,29 @@ export class Player {
         if (killer) killer.stun(this.config.abilities.parry.stunDuration);
     }
 
-    // NEW: Anti-Wall-Stuck Logic
+    // FIXED: Safe emissive check to prevent crashes
+    setEmissive(colorHex) {
+        const applyEmissive = (node) => {
+            if (node.isMesh && node.material) {
+                if (Array.isArray(node.material)) {
+                    node.material.forEach(m => { if (m.emissive) m.emissive.setHex(colorHex); });
+                } else {
+                    if (node.material.emissive) node.material.emissive.setHex(colorHex);
+                }
+            }
+        };
+        if (this.mesh.isMesh) {
+            applyEmissive(this.mesh);
+        } else {
+            this.mesh.traverse(applyEmissive);
+        }
+    }
+
     resolveWallStuck(obstacles) {
         for (let obs of obstacles) {
             const wallTopY = 10;
             const playerBaseY = this.mesh.position.y - 6;
-            if (playerBaseY < wallTopY - 0.2) { // Only resolve if hitting the side
+            if (playerBaseY < wallTopY - 0.2) {
                 if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
                     let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
                     let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
@@ -112,10 +208,10 @@ export class Player {
             if (this.bleedTimer % 60 === 0) this.takeDamage(2, null);
         }
         if (this.highlightTimer > 0) {
-            this.mesh.material.emissive.setHex(0xff0000);
+            this.setEmissive(0xff0000); 
             this.highlightTimer--;
         } else {
-            this.mesh.material.emissive.setHex(0x000000);
+            this.setEmissive(0x000000); 
         }
 
         let up = this.controls.up;
@@ -129,7 +225,7 @@ export class Player {
             down = this.controls.up;
             left = this.controls.right;
             right = this.controls.left;
-            this.mesh.material.emissive.setHex(0xff00ff); 
+            this.setEmissive(0xff00ff); 
         }
 
         let dx = 0, dz = 0;
@@ -324,9 +420,9 @@ export class Player {
             this.vertVel = 0;
         }
 
-        // APPLY ANTI-WALL-STUCK
         this.resolveWallStuck(obstacles);
 
+        // Movement rotation cleanly applied to the outer Yaw group
         if (this.velocity.lengthSq() > 0.1) {
             this.mesh.rotation.y = Math.atan2(this.velocity.x, this.velocity.z);
         }

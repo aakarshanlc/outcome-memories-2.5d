@@ -46,6 +46,16 @@ export class UIManager {
         timerEl.innerText = `${timerText}s`;
     }
 
+    showLoadingScreen() {
+        this.hideAll();
+        this.root.innerHTML = `
+            <div class="menu-screen" style="background: #000; justify-content: center; align-items: center;">
+                <h1 style="font-size: 40px; color: #ff3333; animation: pulse 1s infinite;">LOADING ASSETS...</h1>
+                <style>@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }</style>
+            </div>
+        `;
+    }
+
     showGameOver(title, subtitle) {
         this.hideAll();
         this.root.innerHTML = `

@@ -1,4 +1,4 @@
-import * as THREE from 'three'; // FIX: Added missing import
+import * as THREE from 'three';
 import { Engine } from '../engine/Engine.js';
 import { MapManager } from '../maps/MapManager.js';
 import { Player } from '../entities/Player.js';
@@ -90,7 +90,16 @@ export class GameManager {
         return { x, z };
     }
 
+    // NEW: Shows loading screen, waits 2s, then initializes game
     startGame() {
+        this.state = 'LOADING';
+        this.ui.showLoadingScreen();
+        setTimeout(() => {
+            this.initializeGame();
+        }, 2000);
+    }
+
+    initializeGame() {
         this.state = 'PLAYING';
         this.phase = 'ROUND';
         
@@ -154,6 +163,16 @@ export class GameManager {
             this.killer.controlId = killerId;
         }
         this.killers.push(this.killer);
+
+        // Apply 2s cooldown to ALL abilities
+        this.players.forEach(p => {
+            p.ability1Cooldown = 120;
+            p.ability2Cooldown = 120;
+        });
+        this.killers.forEach(k => {
+            k.ability1Cooldown = 120;
+            k.ability2Cooldown = 120;
+        });
 
         this.ui.initHUD();
         this.totalSurvivors = this.players.length;

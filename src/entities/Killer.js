@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
 import { KillerVariables } from '../config/KillerVariables.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+// Import Tripwire model and texture
+import tripwireModelUrl from '../assets/models/Tripwire/tdoll.obj';
+import tripwireTextureUrl from '../assets/models/Tripwire/player01.png';
 
 export class Killer {
     constructor(scene, controls, color, type = 'Tripwire') {
@@ -9,12 +14,45 @@ export class Killer {
         this.type = type;
         this.config = KillerVariables[type] || KillerVariables['Tripwire'];
         
+        // 1. Create a temporary placeholder cone
         const geo = new THREE.ConeGeometry(4, 12, 6);
         const mat = new THREE.MeshStandardMaterial({ color: color, emissive: 0x550000 });
         this.mesh = new THREE.Mesh(geo, mat);
         this.mesh.position.y = 6;
         this.mesh.castShadow = true;
         scene.add(this.mesh);
+
+        // 2. If the killer is Tripwire, load the 3D Model
+        if (type === 'Tripwire') {
+            const loader = new OBJLoader();
+            const textureLoader = new THREE.TextureLoader();
+            
+            textureLoader.load(tripwireTextureUrl, (texture) => {
+                texture.flipY = false; 
+                texture.colorSpace = THREE.SRGBColorSpace; 
+                
+                loader.load(tripwireModelUrl, (obj) => {
+                    obj.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
+                            node.castShadow = true;
+                        }
+                    });
+
+                    const finalMesh = this.setupModel(obj);
+                    
+                    const spawnX = this.mesh.position.x;
+                    const spawnZ = this.mesh.position.z;
+                    const spawnRot = this.mesh.rotation.y;
+
+                    scene.remove(this.mesh);
+                    this.mesh = finalMesh;
+                    this.mesh.position.set(spawnX, 6, spawnZ);
+                    this.mesh.rotation.y = spawnRot;
+                    scene.add(this.mesh);
+                });
+            });
+        }
 
         this.maxSpeed = this.config.speed;
         this.currentSpeed = 1.0;
@@ -53,6 +91,52 @@ export class Killer {
         this.rushTimer = 0;
     }
 
+    setupModel(model) {
+        const yawGroup = new THREE.Group();
+        const modelGroup = new THREE.Group();
+
+        // FIX: Removed rotation.x because the OBJ model is already standing upright (Y-UP)!
+        // If they face backwards when moving forward, change this to 0.
+        modelGroup.rotation.y = Math.PI / 2; 
+
+        modelGroup.add(model);
+        yawGroup.add(modelGroup);
+
+        // Auto-scale to target height
+        const box = new THREE.Box3().setFromObject(yawGroup);
+        if (box.isEmpty()) return yawGroup;
+
+        const size = box.getSize(new THREE.Vector3());
+        const targetHeight = 10; 
+        const scale = size.y > 0 ? targetHeight / size.y : 1;
+        yawGroup.scale.setScalar(scale);
+
+        // Re-center to origin
+        const finalBox = new THREE.Box3().setFromObject(yawGroup);
+        const center = finalBox.getCenter(new THREE.Vector3());
+        yawGroup.position.sub(center);
+
+        return yawGroup;
+    }
+
+    // FIXED: Safe emissive check
+    setEmissive(colorHex) {
+        const applyEmissive = (node) => {
+            if (node.isMesh && node.material) {
+                if (Array.isArray(node.material)) {
+                    node.material.forEach(m => { if (m.emissive) m.emissive.setHex(colorHex); });
+                } else {
+                    if (node.material.emissive) node.material.emissive.setHex(colorHex);
+                }
+            }
+        };
+        if (this.mesh.isMesh) {
+            applyEmissive(this.mesh);
+        } else {
+            this.mesh.traverse(applyEmissive);
+        }
+    }
+
     destroy() {
         if (this.grappleLine) {
             this.scene.remove(this.grappleLine);
@@ -71,7 +155,7 @@ export class Killer {
 
     stun(duration) {
         this.stunned = duration;
-        this.mesh.material.emissive.setHex(0xffffff);
+        this.setEmissive(0xffffff); 
         this.velocity.set(0,0,0);
         this.currentSpeed = 1.0;
         
@@ -81,12 +165,11 @@ export class Killer {
                 this.isRushing = true;
                 this.rushTimer = this.config.rush.duration;
                 this.stunCount = 0;
-                this.mesh.material.emissive.setHex(0xff0000); 
+                this.setEmissive(0xff0000); 
             }
         }
     }
 
-    // NEW: Anti-Wall-Stuck Logic
     resolveWallStuck(obstacles) {
         for (let obs of obstacles) {
             if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
@@ -113,18 +196,17 @@ export class Killer {
             this.rushTimer--;
             if (this.rushTimer <= 0) {
                 this.isRushing = false;
-                this.mesh.material.emissive.setHex(0x550000);
+                this.setEmissive(0x550000); 
             }
         }
 
         if (this.stunned > 0) {
             this.stunned--;
-            if (this.stunned === 0 && !this.isRushing) this.mesh.material.emissive.setHex(0x550000);
+            if (this.stunned === 0 && !this.isRushing) this.setEmissive(0x550000); 
             this.velocity.x *= this.damping; this.velocity.z *= this.damping;
             this.mesh.position.x += this.velocity.x;
             this.mesh.position.z += this.velocity.z;
             
-            // APPLY ANTI-WALL-STUCK even when stunned
             this.resolveWallStuck(obstacles);
             return;
         }
@@ -220,7 +302,6 @@ export class Killer {
             }
         }
 
-        // APPLY ANTI-WALL-STUCK
         this.resolveWallStuck(obstacles);
     }
 
