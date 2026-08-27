@@ -37,7 +37,7 @@ export const KillerVariables = {
         }
     },
     '2011X': {
-        speed: 1.5,
+        speed: 1.4,
         size: 4,
         m1: {
             cooldown: 30,
@@ -53,13 +53,13 @@ export const KillerVariables = {
         },
         abilities: {
             teleport: {
-                cooldown: 900, // 15s
+                cooldown: 720, // 11s
                 windup: 120, // 2s
                 arriveRadius: 15,
                 bleedDuration: 120 // 2s
             },
             gods_trickery: {
-                cooldown: 1080, // 18s
+                cooldown: 960, // 16s
                 duration: 60, // 1s
                 hitboxCount: 5,
                 hitboxSpacing: 5,
@@ -79,7 +79,7 @@ export const KillerVariables = {
         }
     },
     'Starved': {
-        speed: 1.1,
+        speed: 1.2,
         size: 4,
         m1: {
             cooldown: 60,
