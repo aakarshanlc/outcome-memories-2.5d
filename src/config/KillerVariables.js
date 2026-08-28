@@ -15,7 +15,7 @@ export const KillerVariables = {
         m1: { cooldown: 30, windup: 30, attackDuration: 12, hitCount: 6, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1_2011x', applyBleed: true, bleedDuration: 180, sfx: 'killer_m1' },
         abilities: {
             teleport: { cooldown: 720, windup: 120, arriveRadius: 15, bleedDuration: 120, sfx: 'teleport' },
-            gods_trickery: { cooldown: 960, duration: 60, hitboxCount: 5, hitboxSpacing: 5, hitboxWidth: 10, hitboxDepth: 10, invertDuration: 300, sfx: 'trickery' }
+            gods_trickery: { cooldown: 960, duration: 60, hitboxCount: 5, hitboxSpacing: 5, hitboxWidth: 10, hitboxDepth: 10, invertDuration: 180, sfx: 'trickery' }
         },
         rush: { stunThreshold: 5, duration: 540, speedMultiplier: 1.5 },
         ai: { attackRange: 14, visionRange: 9999 }
