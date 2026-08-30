@@ -338,7 +338,7 @@ export class GameManager {
                                 
                                 if (h.type.includes('killer_m1')) {
                                     p.hitSpeedBoost = 30; 
-                                    this.audio.playSfx('killer_m1_hit'); // SFX on hit
+                                    this.audio.playSfx(h.owner.type, 'm1_hit'); // Updated SFX call
                                 }
                                 h.hasHit.add(p);
                             }

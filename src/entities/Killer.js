@@ -344,8 +344,7 @@ export class Killer {
             if (dx !== 0 || dz !== 0) { this.m1AttackAngle.set(dx, 0, dz).normalize(); } 
             else { this.m1AttackAngle.set(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y)).normalize(); }
             
-            // SFX on M1 start
-            gameManager.audio.playSfx(this.config.m1.sfx);
+            gameManager.audio.playSfx(this.type, this.config.m1.sfx); // Updated SFX call
         }
 
         if (this.m1State === 'windup') {
@@ -378,7 +377,7 @@ export class Killer {
             this.teleportState = 'windup';
             this.teleportTimer = tpCfg.windup;
             this.ability1Cooldown = tpCfg.cooldown;
-            gameManager.audio.playSfx(tpCfg.sfx); // SFX
+            gameManager.audio.playSfx(this.type, tpCfg.sfx); // Updated SFX call
         }
 
         if (this.teleportState === 'windup') {
@@ -406,7 +405,7 @@ export class Killer {
             this.trickeryState = 'active';
             this.trickeryTimer = trickCfg.duration;
             this.ability2Cooldown = trickCfg.cooldown;
-            gameManager.audio.playSfx(trickCfg.sfx); // SFX
+            gameManager.audio.playSfx(this.type, trickCfg.sfx); // Updated SFX call
             
             let target = null;
             let minDist = Infinity;
@@ -460,7 +459,7 @@ export class Killer {
                 this.grappleTarget = target;
                 this.grappleProjectile = { x: this.mesh.position.x, z: this.mesh.position.z };
                 this.ability1Cooldown = cfg.cooldown;
-                gameManager.audio.playSfx(cfg.sfx); // SFX
+                gameManager.audio.playSfx(this.type, cfg.sfx); // Updated SFX call
                 
                 const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
                 const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
@@ -584,7 +583,7 @@ export class Killer {
                 lifetime: cfg.lifetime
             };
             this.ability2Cooldown = cfg.cooldown;
-            gameManager.audio.playSfx(cfg.sfx); // SFX
+            gameManager.audio.playSfx(this.type, cfg.sfx); // Play throw SFX
         }
 
         if (this.activeBomb) {
@@ -623,6 +622,7 @@ export class Killer {
                             }
                         }
                     });
+                    gameManager.audio.playSfx(this.type, cfg.explosionSfx); // Play explosion SFX!
                     this.removeBomb();
                 } else if (hitWall) {
                     bomb.state = 'proximity';
@@ -645,6 +645,7 @@ export class Killer {
                             }
                         }
                     });
+                    gameManager.audio.playSfx(this.type, cfg.explosionSfx); // Play explosion SFX!
                     this.removeBomb();
                 }
             }

@@ -6,20 +6,8 @@ import tailsLmsTrack from '../assets/music/Tailslms.mp3';
 import knucklesLmsTrack from '../assets/music/Knuckleslms.mp3';
 import defaultLmsTrack from '../assets/music/Eternal Hope, Eternal Fight.mp3';
 
-// Import all SFX from src/assets/sfx/
-import dashSfx from '../assets/sfx/dash.mp3';
-import flySfx from '../assets/sfx/fly.mp3';
-import gunFireSfx from '../assets/sfx/gun_fire.mp3';
-import parrySfx from '../assets/sfx/parry.mp3';
-import punchSfx from '../assets/sfx/punch.mp3';
-import grappleSfx from '../assets/sfx/grapple.mp3';
-import bombThrowSfx from '../assets/sfx/bomb_throw.mp3';
-import teleportSfx from '../assets/sfx/teleport.mp3';
-import trickerySfx from '../assets/sfx/trickery.mp3';
-import killerM1Sfx from '../assets/sfx/killer_m1.mp3';
-import killerM1HitSfx from '../assets/sfx/killer_m1_hit.mp3';
-import jumpPadSfx from '../assets/sfx/jump_pad.mp3';
-import blockSinkSfx from '../assets/sfx/block_sink.mp3';
+// NEW: Automatically import ALL mp3 files from the sfx folder and its subfolders!
+const sfxModules = import.meta.glob('../assets/sfx/**/*.mp3', { eager: true, query: '?url', import: 'default' });
 
 export class AudioManager {
     constructor() {
@@ -39,22 +27,35 @@ export class AudioManager {
             default_lms: defaultLmsTrack
         };
 
-        // SFX Mapping using imported variables
-        this.sfxTracks = {
-            'dash': dashSfx,
-            'gun_fire': gunFireSfx,
-            'fly': flySfx,
-            'parry': parrySfx,
-            'punch': punchSfx,
-            'grapple': grappleSfx,
-            'bomb_throw': bombThrowSfx,
-            'teleport': teleportSfx,
-            'trickery': trickerySfx,
-            'killer_m1': killerM1Sfx,
-            'killer_m1_hit': killerM1HitSfx,
-            'jump_pad': jumpPadSfx,
-            'block_sink': blockSinkSfx
-        };
+        // Parse the glob imports into a structured library: { Character: { action: [url1, url2] } }
+        this.sfxLibrary = {};
+        this.sfxCooldowns = {}; // Anti-spam tracker
+
+        for (const path in sfxModules) {
+            const url = sfxModules[path];
+            // Example path: ../assets/sfx/Sonic/dash_1.mp3
+            const cleanPath = path.replace('../assets/sfx/', '').replace('.mp3', '');
+            const parts = cleanPath.split('/');
+            
+            if (parts.length === 2) {
+                const charName = parts[0];
+                let actionName = parts[1];
+                
+                // If file is named "dash_1", we just want the action name "dash"
+                if (actionName.includes('_')) {
+                    const actionParts = actionName.split('_');
+                    // Check if the last part is a number
+                    if (!isNaN(actionParts[actionParts.length - 1])) {
+                        actionParts.pop(); // Remove the number
+                        actionName = actionParts.join('_'); // Rejoin in case action had an underscore
+                    }
+                }
+
+                if (!this.sfxLibrary[charName]) this.sfxLibrary[charName] = {};
+                if (!this.sfxLibrary[charName][actionName]) this.sfxLibrary[charName][actionName] = [];
+                this.sfxLibrary[charName][actionName].push(url);
+            }
+        }
 
         this.load();
         this.applyVolume();
@@ -94,15 +95,25 @@ export class AudioManager {
         this.currentTrack = null;
     }
 
-    // Universal SFX Player
-    playSfx(soundName) {
-        if (!soundName) return;
-        const url = this.sfxTracks[soundName];
-        if (!url) return;
+    // NEW: Dynamic SFX Player with Random Selection & Anti-Spam
+    playSfx(charName, actionName) {
+        if (!charName || !actionName) return;
 
-        // Create a new Audio object so sounds can overlap
-        const sfx = new Audio(url);
-        sfx.volume = this.sfxVolume;
-        sfx.play().catch(() => {});
+        // Anti-spam: Prevent the same sound from playing more than once every 100ms
+        const cooldownKey = `${charName}_${actionName}`;
+        const now = Date.now();
+        if (this.sfxCooldowns[cooldownKey] && now - this.sfxCooldowns[cooldownKey] < 100) {
+            return;
+        }
+        this.sfxCooldowns[cooldownKey] = now;
+
+        const sounds = this.sfxLibrary[charName]?.[actionName];
+        if (sounds && sounds.length > 0) {
+            // Pick a random variation!
+            const randomUrl = sounds[Math.floor(Math.random() * sounds.length)];
+            const sfx = new Audio(randomUrl);
+            sfx.volume = this.sfxVolume;
+            sfx.play().catch(() => {});
+        }
     }
 }
