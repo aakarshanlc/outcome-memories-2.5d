@@ -152,8 +152,7 @@ export class GameManager {
         } catch (e) {
             console.error("Failed to preload assets", e);
         }
-        
-        // NEW: Force the loading screen to stay visible for at least 2 seconds
+
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         this.initializeGame();
