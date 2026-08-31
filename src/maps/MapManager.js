@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MapVariables } from '../config/MapVariables.js';
+import { checkCircleBoxCollision } from '../engine/Collision.js';
 
 export class MapManager {
     constructor(scene) {
@@ -7,6 +8,7 @@ export class MapManager {
         this.obstacles = [];
         this.jumpPads = [];
         this.config = null;
+        this.mazeTimer = 0;
     }
 
     loadMap(mapName) {
@@ -44,100 +46,164 @@ export class MapManager {
     }
 
     generateMaze() {
-        const pieces = [
-            "001001111", "100100111", "111010010", "010010111", 
-            "010111010", "101101111", "111101101", "000111000", "010010010"
-        ];
+        const gridSize = 7;      // 7x7 cells keeps the maze inside the 200x200 arena
+        const cellSize = 24;     // corridor width: 24 minus wall thickness leaves plenty of room
+        const thickness = 3;     // thin walls
+        const span = gridSize * cellSize;
+        const offset = -span / 2;
 
-        for (let i = pieces.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+        // Edge walls between adjacent cells. V[r][c] separates (c,r) and (c+1,r);
+        // H[r][c] separates (c,r) and (c,r+1).
+        const V = Array.from({ length: gridSize }, () => new Array(gridSize - 1).fill(true));
+        const H = Array.from({ length: gridSize - 1 }, () => new Array(gridSize).fill(true));
+
+        const removeEdge = (c1, r1, c2, r2) => {
+            if (c1 === c2) H[Math.min(r1, r2)][c1] = false;
+            else V[r1][Math.min(c1, c2)] = false;
+        };
+
+        // Randomized DFS spanning tree
+        const visited = Array.from({ length: gridSize }, () => new Array(gridSize).fill(false));
+        const stack = [[0, 0]];
+        visited[0][0] = true;
+        while (stack.length > 0) {
+            const [c, r] = stack[stack.length - 1];
+            const neighbors = [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]]
+                .filter(([nc, nr]) => nc >= 0 && nc < gridSize && nr >= 0 && nr < gridSize && !visited[nr][nc]);
+            if (neighbors.length === 0) { stack.pop(); continue; }
+            const [nc, nr] = neighbors[Math.floor(Math.random() * neighbors.length)];
+            removeEdge(c, r, nc, nr);
+            visited[nr][nc] = true;
+            stack.push([nc, nr]);
         }
 
-        const cellSize = 20;   
-        const blockSize = 16;  
-        const gridSize = 9;    
-        const offset = -(gridSize * cellSize) / 2 + cellSize / 2;
+        // Braid the maze: knock down walls at dead ends so every route is a loop
+        // (a chase map should never have dead-end traps for survivors)
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const open = [];
+                const closed = [];
+                if (c > 0) (V[r][c - 1] ? closed : open).push(['v', r, c - 1]);
+                if (c < gridSize - 1) (V[r][c] ? closed : open).push(['v', r, c]);
+                if (r > 0) (H[r - 1][c] ? closed : open).push(['h', r - 1, c]);
+                if (r < gridSize - 1) (H[r][c] ? closed : open).push(['h', r, c]);
+                if (open.length <= 1 && closed.length > 0 && Math.random() < 0.75) {
+                    const [kind, er, ec] = closed[Math.floor(Math.random() * closed.length)];
+                    if (kind === 'v') V[er][ec] = false; else H[er][ec] = false;
+                }
+            }
+        }
 
-        for (let mr = 0; mr < 3; mr++) {
-            for (let mc = 0; mc < 3; mc++) {
-                const pieceIndex = mr * 3 + mc;
-                const piece = pieces[pieceIndex];
+        // Materialize remaining edges as thin walls
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize - 1; c++) {
+                if (V[r][c]) {
+                    this.addWall(offset + (c + 1) * cellSize - thickness / 2, offset + r * cellSize, thickness, cellSize, false, 0x555555, true);
+                }
+            }
+        }
+        for (let r = 0; r < gridSize - 1; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                if (H[r][c]) {
+                    this.addWall(offset + c * cellSize, offset + (r + 1) * cellSize - thickness / 2, cellSize, thickness, false, 0x555555, true);
+                }
+            }
+        }
 
-                for (let cr = 0; cr < 3; cr++) {
-                    for (let cc = 0; cc < 3; cc++) {
-                        const charIndex = cr * 3 + cc;
-                        if (piece[charIndex] === '1') {
-                            const r = mr * 3 + cr;
-                            const c = mc * 3 + cc;
-                            
-                            this.addWall(
-                                c * cellSize + offset, 
-                                r * cellSize + offset, 
-                                blockSize, 
-                                blockSize, 
-                                false, 
-                                0x555555,
-                                true 
-                            );
-                        }
+        // Gimmick: sliding gates. A few maze walls sweep back and forth across their
+        // corridor, periodically sealing and reopening routes. The braided layout
+        // guarantees an alternate way around every gate.
+        const gates = this.obstacles.filter(o => o.isMaze);
+        for (let i = gates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [gates[i], gates[j]] = [gates[j], gates[i]];
+        }
+        const gateCount = Math.min(6, gates.length);
+        for (let i = 0; i < gateCount; i++) {
+            const obs = gates[i];
+            const vertical = obs.w < obs.d; // thin vertical walls sweep across x, horizontal across z
+            obs.slide = {
+                axis: vertical ? 'x' : 'z',
+                center: vertical ? obs.x + obs.w / 2 : obs.z + obs.d / 2,
+                amp: cellSize / 2,
+                speed: Math.PI / 180, // full sweep cycle roughly every 6 seconds
+                phase: Math.random() * Math.PI * 2
+            };
+            obs.mesh.material.color.setHex(0xcc7722); // gates get a distinct color
+        }
+    }
+
+    update(players, killers, audio) {
+        const gates = this.obstacles.filter(o => o.slide);
+        if (gates.length === 0) return;
+
+        this.mazeTimer++;
+
+        for (let obs of gates) {
+            const s = obs.slide;
+            const t = Math.sin(this.mazeTimer * s.speed + s.phase);
+            const pos = s.center + t * s.amp;
+
+            let delta;
+            if (s.axis === 'x') {
+                delta = pos - (obs.x + obs.w / 2);
+                obs.x += delta;
+                obs.mesh.position.x += delta;
+            } else {
+                delta = pos - (obs.z + obs.d / 2);
+                obs.z += delta;
+                obs.mesh.position.z += delta;
+            }
+
+            // Anyone caught in the gate's path gets carried along with it, so it
+            // blocks and shoves without ever swallowing the player
+            this.pushBodies(obs, delta, players);
+            this.pushBodies(obs, delta, killers);
+
+            // Rumble at each end of the sweep, but only if a player is close enough to hear it
+            if (Math.abs(t) > 0.995) {
+                if (!s.atExtreme) {
+                    s.atExtreme = true;
+                    if (audio && this.config.sfx?.blockSink) {
+                        const near = players.some(p => p.health > 0 &&
+                            Math.hypot(p.mesh.position.x - obs.x, p.mesh.position.z - obs.z) < 60);
+                        if (near) audio.playSfx('Map', this.config.sfx.blockSink);
                     }
                 }
+            } else if (Math.abs(t) < 0.9) {
+                s.atExtreme = false;
             }
         }
     }
 
-    update(players, killers) {        
-        for (let obs of this.obstacles) {
-            if (!obs.isMaze) continue;
+    pushBodies(obs, delta, bodies) {
+        if (!bodies) return;
+        for (let b of bodies) {
+            if (b.health <= 0) continue;
+            if (!checkCircleBoxCollision(b.mesh.position.x, b.mesh.position.z, b.size, obs.x, obs.z, obs.w, obs.d)) continue;
 
-            if (obs.state === 'solid') {
-                let minDist = Infinity;
-                for (let p of players) {
-                    if (p.health <= 0) continue;
-                    const d = Math.hypot(p.mesh.position.x - (obs.x + obs.w/2), p.mesh.position.z - (obs.z + obs.d/2));
-                    if (d < minDist) minDist = d;
-                }
+            // Ride the gate's motion so the overlap never grows
+            if (obs.slide.axis === 'x') b.mesh.position.x += delta;
+            else b.mesh.position.z += delta;
 
-                if (minDist < 15) {
-                    obs.state = 'lowering';
-                    obs.timer = 120; 
-                }
-            } 
-            else if (obs.state === 'lowering') {
-                obs.timer--;
-                const progress = 1 - (obs.timer / 120);
-                obs.mesh.position.y = 5 - (10 * progress);
-                
-                if (obs.timer <= 0) {
-                    obs.state = 'low';
-                    obs.timer = 60; 
-                    obs.mesh.position.y = -5;
-                }
-            } 
-            else if (obs.state === 'low') {
-                obs.timer--;
-                if (obs.timer <= 0) {
-                    obs.state = 'rising';
-                    obs.timer = 120; 
-                }
-            } 
-            else if (obs.state === 'rising') {
-                obs.timer--;
-                const progress = 1 - (obs.timer / 120);
-                obs.mesh.position.y = -5 + (10 * progress);
-                
-                if (obs.timer <= 0) {
-                    obs.state = 'risen'; // NEW STATE: Cooldown begins
-                    obs.mesh.position.y = 5;
-                    obs.timer = 3600; // 60 seconds at 60fps
-                }
-            }
-            else if (obs.state === 'risen') {
-                obs.timer--;
-                // Block stays solid and at y=5, but cannot be triggered to lower
-                if (obs.timer <= 0) {
-                    obs.state = 'solid'; // Cooldown over, can be triggered again
+            // Still inside (was already overlapping): eject to the nearest face
+            if (checkCircleBoxCollision(b.mesh.position.x, b.mesh.position.z, b.size, obs.x, obs.z, obs.w, obs.d)) {
+                const cx = Math.max(obs.x, Math.min(b.mesh.position.x, obs.x + obs.w));
+                const cz = Math.max(obs.z, Math.min(b.mesh.position.z, obs.z + obs.d));
+                const ddx = b.mesh.position.x - cx;
+                const ddz = b.mesh.position.z - cz;
+                const dist = Math.hypot(ddx, ddz);
+                if (dist > 0.001) {
+                    b.mesh.position.x = cx + (ddx / dist) * (b.size + 0.1);
+                    b.mesh.position.z = cz + (ddz / dist) * (b.size + 0.1);
+                } else if (obs.slide.axis === 'x') {
+                    const toLeft = b.mesh.position.x - obs.x;
+                    const toRight = obs.x + obs.w - b.mesh.position.x;
+                    b.mesh.position.x = toLeft < toRight ? obs.x - b.size - 0.1 : obs.x + obs.w + b.size + 0.1;
+                } else {
+                    const toTop = b.mesh.position.z - obs.z;
+                    const toBottom = obs.z + obs.d - b.mesh.position.z;
+                    b.mesh.position.z = toTop < toBottom ? obs.z - b.size - 0.1 : obs.z + obs.d + b.size + 0.1;
                 }
             }
         }
@@ -146,21 +212,48 @@ export class MapManager {
     spawnJumpPads(count) {
         const innerWalls = this.obstacles.filter(w => !w.isBorder);
         for (let i = 0; i < count; i++) {
-            if (innerWalls.length === 0) break;
-            const wall = innerWalls[Math.floor(Math.random() * innerWalls.length)];
-            
-            const side = Math.floor(Math.random() * 4);
-            let px, pz;
-            if (side === 0) { px = wall.x - 5; pz = wall.z + wall.d/2; } 
-            else if (side === 1) { px = wall.x + wall.w + 5; pz = wall.z + wall.d/2; } 
-            else if (side === 2) { px = wall.x + wall.w/2; pz = wall.z - 5; } 
-            else { px = wall.x + wall.w/2; pz = wall.z + wall.d + 5; } 
-            
-            px = Math.max(-90, Math.min(90, px));
-            pz = Math.max(-90, Math.min(90, pz));
-            
-            this.addJumpPad(px, pz);
+            for (let attempt = 0; attempt < 60; attempt++) {
+                let px, pz;
+                if (innerWalls.length === 0) {
+                    px = Math.random() * 160 - 80;
+                    pz = Math.random() * 160 - 80;
+                } else {
+                    const wall = innerWalls[Math.floor(Math.random() * innerWalls.length)];
+                    const side = Math.floor(Math.random() * 4);
+                    if (side === 0) { px = wall.x - 5; pz = wall.z + wall.d/2; }
+                    else if (side === 1) { px = wall.x + wall.w + 5; pz = wall.z + wall.d/2; }
+                    else if (side === 2) { px = wall.x + wall.w/2; pz = wall.z - 5; }
+                    else { px = wall.x + wall.w/2; pz = wall.z + wall.d + 5; }
+                }
+
+                px = Math.max(-90, Math.min(90, px));
+                pz = Math.max(-90, Math.min(90, pz));
+
+                if (this.isClearForPad(px, pz)) {
+                    this.addJumpPad(px, pz);
+                    break;
+                }
+            }
         }
+    }
+
+    isClearForPad(x, z) {
+        const padSize = 3;
+        for (let obs of this.obstacles) {
+            // Treat sliding gates as their full sweep area so pads never end up
+            // in a gate's path
+            let ox = obs.x, oz = obs.z, ow = obs.w, od = obs.d;
+            if (obs.slide) {
+                const grow = obs.slide.amp + padSize;
+                if (obs.slide.axis === 'x') { ox -= grow; ow += grow * 2; }
+                else { oz -= grow; od += grow * 2; }
+            }
+            if (checkCircleBoxCollision(x, z, padSize, ox, oz, ow, od)) return false;
+        }
+        for (let pad of this.jumpPads) {
+            if (Math.hypot(pad.x - x, pad.z - z) < padSize + pad.size + 9) return false;
+        }
+        return true;
     }
 
     addJumpPad(x, z) {
@@ -183,11 +276,9 @@ export class MapManager {
         mesh.receiveShadow = true;
         this.scene.add(mesh);
         
-        this.obstacles.push({ 
-            x, z, w, d, mesh, isBorder, 
-            isMaze, 
-            state: 'solid', 
-            timer: 0
+        this.obstacles.push({
+            x, z, w, d, mesh, isBorder,
+            isMaze
         });
     }
 }

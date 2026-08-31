@@ -72,6 +72,15 @@ export class Killer {
         this.acceleration = 0.2;
         this.damping = 0.85;
 
+        // AI navigation state
+        this.navPath = null;
+        this.navPathIndex = 0;
+        this.navRepathTimer = 0;
+        this.lastPos = { x: 0, z: 0 };
+        this.stuckTimer = 0;
+        this.unstickTimer = 0;
+        this.unstickAngle = 0;
+
         this.m1State = 'idle';
         this.m1Timer = 0;
         this.m1Cooldown = 0;
@@ -200,6 +209,12 @@ export class Killer {
     }
 
     update(obstacles, players, gameManager) {
+        if (gameManager && gameManager.dev && gameManager.dev.freezeKiller) {
+            this.velocity.set(0, 0, 0);
+            this.resolveWallStuck(obstacles);
+            return;
+        }
+
         if (this.isRushing) {
             this.rushTimer--;
             if (this.rushTimer <= 0) {
@@ -234,21 +249,35 @@ export class Killer {
                 let tdx = target.mesh.position.x - this.mesh.position.x;
                 let tdz = target.mesh.position.z - this.mesh.position.z;
                 let dist = Math.hypot(tdx, tdz);
-                
+
                 const attackRange = this.config.ai?.attackRange || 12;
-                if (dist > attackRange && dist > 0) {
-                    dx = tdx / dist;
-                    dz = tdz / dist;
-                }
                 this.controls.m1 = dist <= attackRange;
-                
+
                 if (this.type === 'Tripwire' && this.config.abilities && !this.isRushing) {
-                    this.controls.ability1 = (dist <= (this.config.abilities.grapple?.range || 60) && this.ability1Cooldown <= 0);
+                    // Only grapple when the target is actually reachable in a straight line
+                    this.controls.ability1 = (dist <= (this.config.abilities.grapple?.range || 60) && this.ability1Cooldown <= 0 && this.hasLineOfSight(target, obstacles));
                     this.controls.ability2 = (dist <= (this.config.abilities.bomb?.throwRange || 80) && this.ability2Cooldown <= 0);
                 }
                 if (this.type === '2011X' && this.config.abilities && !this.isRushing) {
                     this.controls.ability1 = (dist <= 60 && this.ability1Cooldown <= 0);
                     this.controls.ability2 = (dist <= 50 && this.ability2Cooldown <= 0);
+                }
+
+                if (dist > attackRange) {
+                    this.updateStuckDetection();
+
+                    let dir = null;
+                    if (this.unstickTimer > 0) {
+                        this.unstickTimer--;
+                        dir = { x: Math.sin(this.unstickAngle), z: Math.cos(this.unstickAngle) };
+                    } else if (dist < 15 || (dist < 100 && this.hasLineOfSight(target, obstacles))) {
+                        dir = { x: tdx / dist, z: tdz / dist };
+                    } else {
+                        dir = this.getNavDirection(target, obstacles);
+                    }
+                    if (!dir) dir = { x: tdx / dist, z: tdz / dist };
+                    dx = dir.x;
+                    dz = dir.z;
                 }
             } else {
                 this.controls.m1 = false;
@@ -262,7 +291,8 @@ export class Killer {
             if (this.controls.right) dx += 1;
         }
 
-        if (dx !== 0 && dz !== 0) { dx *= 0.707; dz *= 0.707; }
+        // AI directions are already normalized; only scale raw keyboard diagonals
+        if (dx !== 0 && dz !== 0 && !this.isAI) { dx *= 0.707; dz *= 0.707; }
 
         let isMoving = (dx !== 0 || dz !== 0);
         if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02; 
@@ -336,6 +366,161 @@ export class Killer {
         this.resolveWallStuck(obstacles);
     }
 
+    // --- AI NAVIGATION ---
+
+    hasLineOfSight(target, obstacles) {
+        const sx = this.mesh.position.x, sz = this.mesh.position.z;
+        const dx = target.mesh.position.x - sx;
+        const dz = target.mesh.position.z - sz;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 0.001) return true;
+
+        const steps = Math.max(1, Math.ceil(dist / 4));
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const px = sx + dx * t;
+            const pz = sz + dz * t;
+            for (let obs of obstacles) {
+                if (checkCircleBoxCollision(px, pz, this.size, obs.x, obs.z, obs.w, obs.d)) return false;
+            }
+        }
+        return true;
+    }
+
+    updateStuckDetection() {
+        const moved = Math.hypot(this.mesh.position.x - this.lastPos.x, this.mesh.position.z - this.lastPos.z);
+        this.lastPos = { x: this.mesh.position.x, z: this.mesh.position.z };
+        if (moved < 0.5) this.stuckTimer++; else this.stuckTimer = 0;
+        if (this.stuckTimer > 45) {
+            this.stuckTimer = 0;
+            this.navRepathTimer = 0;
+            this.unstickTimer = 30;
+            this.unstickAngle = Math.random() * Math.PI * 2;
+        }
+    }
+
+    getNavDirection(target, obstacles) {
+        this.navRepathTimer--;
+        if (this.navRepathTimer <= 0) {
+            this.navRepathTimer = 15;
+            this.computeNavPath(target, obstacles);
+        }
+
+        const path = this.navPath;
+        if (!path || path.length === 0) return null;
+
+        let idx = this.navPathIndex;
+        while (idx < path.length - 1 &&
+               Math.hypot(path[idx].x - this.mesh.position.x, path[idx].z - this.mesh.position.z) < 5) {
+            idx++;
+        }
+        this.navPathIndex = idx;
+
+        const wdx = path[idx].x - this.mesh.position.x;
+        const wdz = path[idx].z - this.mesh.position.z;
+        const wdist = Math.hypot(wdx, wdz);
+        if (wdist < 0.001) return null;
+        return { x: wdx / wdist, z: wdz / wdist };
+    }
+
+    computeNavPath(target, obstacles) {
+        const grid = this.buildNavGrid(obstacles);
+        const start = this.nearestFreeCell(this.worldToCell(this.mesh.position.x, this.mesh.position.z, grid), grid);
+        const goal = this.nearestFreeCell(this.worldToCell(target.mesh.position.x, target.mesh.position.z, grid), grid);
+        if (!start || !goal) { this.navPath = null; return; }
+
+        const size = grid.size;
+        const startIdx = start.r * size + start.c;
+        const goalIdx = goal.r * size + goal.c;
+
+        const prev = new Int32Array(size * size).fill(-1);
+        const visited = new Uint8Array(size * size);
+        const queue = [startIdx];
+        visited[startIdx] = 1;
+        let head = 0;
+        while (head < queue.length) {
+            const cur = queue[head++];
+            if (cur === goalIdx) break;
+            const r = Math.floor(cur / size);
+            const c = cur % size;
+            const neighbors = [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]];
+            for (const [nc, nr] of neighbors) {
+                if (nc < 0 || nc >= size || nr < 0 || nr >= size) continue;
+                const ni = nr * size + nc;
+                if (visited[ni] || grid.blocked[ni]) continue;
+                visited[ni] = 1;
+                prev[ni] = cur;
+                queue.push(ni);
+            }
+        }
+
+        if (!visited[goalIdx]) { this.navPath = null; return; }
+
+        const path = [];
+        let cur = goalIdx;
+        while (cur !== -1) {
+            const r = Math.floor(cur / size);
+            const c = cur % size;
+            path.push({ x: grid.min + (c + 0.5) * grid.cell, z: grid.min + (r + 0.5) * grid.cell });
+            cur = prev[cur];
+        }
+        path.reverse();
+        this.navPath = path;
+        this.navPathIndex = Math.min(1, path.length - 1);
+    }
+
+    // Marks a 4-unit grid over the arena where the killer's collision circle
+    // would overlap a wall. Rebuilt on every repath so sliding gates are current.
+    buildNavGrid(obstacles) {
+        const cell = 4;
+        const min = -100;
+        const size = 50;
+        const blocked = new Uint8Array(size * size);
+        const inflate = this.size + 0.5;
+
+        for (let obs of obstacles) {
+            const c0 = Math.max(0, Math.floor((obs.x - inflate - min) / cell));
+            const c1 = Math.min(size - 1, Math.floor((obs.x + obs.w + inflate - min) / cell));
+            const r0 = Math.max(0, Math.floor((obs.z - inflate - min) / cell));
+            const r1 = Math.min(size - 1, Math.floor((obs.z + obs.d + inflate - min) / cell));
+            for (let r = r0; r <= r1; r++) {
+                for (let c = c0; c <= c1; c++) {
+                    if (blocked[r * size + c]) continue;
+                    const cx = min + (c + 0.5) * cell;
+                    const cz = min + (r + 0.5) * cell;
+                    if (checkCircleBoxCollision(cx, cz, inflate, obs.x, obs.z, obs.w, obs.d)) {
+                        blocked[r * size + c] = 1;
+                    }
+                }
+            }
+        }
+        return { blocked, cell, min, size };
+    }
+
+    worldToCell(x, z, grid) {
+        const c = Math.floor((x - grid.min) / grid.cell);
+        const r = Math.floor((z - grid.min) / grid.cell);
+        if (c < 0 || c >= grid.size || r < 0 || r >= grid.size) return null;
+        return { r, c };
+    }
+
+    nearestFreeCell(cell, grid) {
+        if (!cell) return null;
+        if (!grid.blocked[cell.r * grid.size + cell.c]) return cell;
+        for (let radius = 1; radius <= 6; radius++) {
+            for (let dr = -radius; dr <= radius; dr++) {
+                for (let dc = -radius; dc <= radius; dc++) {
+                    if (Math.max(Math.abs(dr), Math.abs(dc)) !== radius) continue;
+                    const r = cell.r + dr;
+                    const c = cell.c + dc;
+                    if (r < 0 || r >= grid.size || c < 0 || c >= grid.size) continue;
+                    if (!grid.blocked[r * grid.size + c]) return { r, c };
+                }
+            }
+        }
+        return null;
+    }
+
     updateM1(players, gameManager, dx, dz) {
         if (this.controls.m1 && this.m1State === 'idle' && this.m1Cooldown <= 0) {
             this.m1State = 'windup';
@@ -394,6 +579,8 @@ export class Killer {
                     
                     gameManager.spawnHitbox(this.mesh.position.x, this.mesh.position.z, tpCfg.arriveRadius, 10, this, 'teleport_arrive', 0, { applyBleed: true, bleedDuration: tpCfg.bleedDuration }, 'sphere');
                 }
+                this.navPath = null;
+                this.navRepathTimer = 0;
                 this.teleportState = 'idle';
             }
         }
@@ -442,38 +629,46 @@ export class Killer {
         const cfg = this.config.abilities.grapple;
         if (!cfg) return;
 
-        if (this.controls.ability1 && this.ability1Cooldown <= 0 && this.grappleState === 'idle') {
-            let target = null;
-            let minDist = Infinity;
-            players.forEach(p => {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
-                    if (d < minDist) { 
-                        minDist = d; target = p;
+        if (this.grappleState === 'idle') {
+            if (this.controls.ability1 && this.ability1Cooldown <= 0) {
+                let target = null;
+                let minDist = Infinity;
+                players.forEach(p => {
+                    if (p.health > 0) {
+                        let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
+                        if (d < minDist) {
+                            minDist = d; target = p;
+                        }
                     }
-                }
-            });
+                });
 
-            if (target) {
-                this.grappleState = 'shooting';
-                this.grappleTarget = target;
-                this.grappleProjectile = { x: this.mesh.position.x, z: this.mesh.position.z };
-                this.ability1Cooldown = cfg.cooldown;
-                gameManager.audio.playSfx(this.type, cfg.sfx); // Updated SFX call
-                
-                const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-                const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
-                const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                this.grappleLine = new THREE.Line(geometry, material);
-                this.scene.add(this.grappleLine);
+                // Only fire with a target in range and a clear straight shot
+                if (target && minDist <= cfg.range && this.hasLineOfSight(target, obstacles)) {
+                    this.grappleState = 'shooting';
+                    this.grappleTarget = target;
+                    this.grappleProjectile = { x: this.mesh.position.x, z: this.mesh.position.z };
+                    this.ability1Cooldown = cfg.cooldown;
+                    gameManager.audio.playSfx(this.type, cfg.sfx);
+
+                    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+                    const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    this.grappleLine = new THREE.Line(geometry, material);
+                    this.scene.add(this.grappleLine);
+                }
             }
         }
+        else if (this.grappleState === 'shooting') {
+            if (!this.grappleTarget || this.grappleTarget.health <= 0) {
+                this.grappleState = 'idle';
+                this.removeGrappleLine();
+                return;
+            }
 
-        if (this.grappleState === 'shooting') {
-            let dx = this.grappleTarget.mesh.position.x - this.grappleProjectile.x;
-            let dz = this.grappleTarget.mesh.position.z - this.grappleProjectile.z;
-            let dist = Math.hypot(dx, dz);
-            
+            const dx = this.grappleTarget.mesh.position.x - this.grappleProjectile.x;
+            const dz = this.grappleTarget.mesh.position.z - this.grappleProjectile.z;
+            const dist = Math.hypot(dx, dz);
+
             if (dist > 0) {
                 this.grappleProjectile.x += (dx / dist) * cfg.projectileSpeed;
                 this.grappleProjectile.z += (dz / dist) * cfg.projectileSpeed;
@@ -489,37 +684,38 @@ export class Killer {
             } else {
                 let hitWall = false;
                 for (let obs of obstacles) {
-                    const wallTopY = obs.mesh.position.y + 5;
-                    if (0 < wallTopY - 0.2) {
-                        if (checkCircleBoxCollision(this.grappleProjectile.x, this.grappleProjectile.z, 2, obs.x, obs.z, obs.w, obs.d)) {
-                            hitWall = true; break;
-                        }
+                    if (checkCircleBoxCollision(this.grappleProjectile.x, this.grappleProjectile.z, 2, obs.x, obs.z, obs.w, obs.d)) {
+                        hitWall = true; break;
                     }
                 }
-                let distFromKiller = Math.hypot(this.grappleProjectile.x - this.mesh.position.x, this.grappleProjectile.z - this.mesh.position.z);
+                const distFromKiller = Math.hypot(this.grappleProjectile.x - this.mesh.position.x, this.grappleProjectile.z - this.mesh.position.z);
                 if (hitWall || distFromKiller > cfg.range) {
                     this.grappleState = 'idle';
                     this.removeGrappleLine();
                 }
             }
-        } 
+        }
         else if (this.grappleState === 'dragging') {
             if (this.grappleTarget && this.grappleTarget.health > 0) {
-                let dx = this.mesh.position.x - this.grappleTarget.mesh.position.x;
-                let dz = this.mesh.position.z - this.grappleTarget.mesh.position.z;
-                let dist = Math.hypot(dx, dz);
-                
+                const dx = this.mesh.position.x - this.grappleTarget.mesh.position.x;
+                const dz = this.mesh.position.z - this.grappleTarget.mesh.position.z;
+                const dist = Math.hypot(dx, dz);
+
                 if (dist > 5) {
-                    this.grappleTarget.mesh.position.x += (dx / dist) * cfg.dragSpeed;
-                    this.grappleTarget.mesh.position.z += (dz / dist) * cfg.dragSpeed;
-                    
-                    const points = [this.mesh.position, this.grappleTarget.mesh.position];
+                    const t = this.grappleTarget;
+                    const stepX = (dx / dist) * cfg.dragSpeed;
+                    const stepZ = (dz / dist) * cfg.dragSpeed;
+                    // Slide along walls instead of dragging the survivor through them
+                    if (!this.posBlocked(t.mesh.position.x + stepX, t.mesh.position.z, t.size, obstacles)) t.mesh.position.x += stepX;
+                    if (!this.posBlocked(t.mesh.position.x, t.mesh.position.z + stepZ, t.size, obstacles)) t.mesh.position.z += stepZ;
+
+                    const points = [this.mesh.position, t.mesh.position];
                     this.grappleLine.geometry.setFromPoints(points);
                 } else {
                     this.grappleState = 'idle';
                     this.removeGrappleLine();
                 }
-                
+
                 this.grappleTimer--;
                 if (this.grappleTimer <= 0) {
                     this.grappleState = 'idle';
@@ -530,6 +726,13 @@ export class Killer {
                 this.removeGrappleLine();
             }
         }
+    }
+
+    posBlocked(x, z, size, obstacles) {
+        for (let obs of obstacles) {
+            if (checkCircleBoxCollision(x, z, size, obs.x, obs.z, obs.w, obs.d)) return true;
+        }
+        return false;
     }
 
     removeGrappleLine() {
@@ -546,28 +749,7 @@ export class Killer {
         if (!cfg) return;
 
         if (this.controls.ability2 && this.ability2Cooldown <= 0 && !this.activeBomb) {
-            let target = null;
-            let minDist = Infinity;
-            players.forEach(p => {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
-                    if (d < minDist) { 
-                        minDist = d; target = p;
-                    }
-                }
-            });
-
-            let dx, dz, dist;
-            if (target) {
-                dx = target.mesh.position.x - this.mesh.position.x;
-                dz = target.mesh.position.z - this.mesh.position.z;
-                dist = Math.hypot(dx, dz) || 1; 
-            } else {
-                dx = Math.sin(this.mesh.rotation.y);
-                dz = Math.cos(this.mesh.rotation.y);
-                dist = 1;
-            }
-
+            // Stage 1: place the bomb at Tripwire's feet
             const geo = new THREE.SphereGeometry(3, 8, 8);
             const mat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x550000 });
             const mesh = new THREE.Mesh(geo, mat);
@@ -577,18 +759,43 @@ export class Killer {
 
             this.activeBomb = {
                 mesh: mesh,
-                state: 'flying',
-                vx: (dx / dist) * cfg.throwSpeed,
-                vz: (dz / dist) * cfg.throwSpeed,
-                lifetime: cfg.lifetime
+                state: 'placed',
+                vx: 0,
+                vz: 0,
+                lifetime: cfg.lifetime,
+                placeTimer: 180 // launch unlocked after 3 seconds
             };
             this.ability2Cooldown = cfg.cooldown;
-            gameManager.audio.playSfx(this.type, cfg.sfx); // Play throw SFX
+            gameManager.audio.playSfx(this.type, cfg.sfx);
+        } else if (this.controls.ability2 && this.activeBomb && this.activeBomb.state === 'placed' && this.activeBomb.placeTimer <= 0) {
+            // Stage 2: launch toward the survivor nearest to Tripwire
+            let target = null;
+            let minDist = Infinity;
+            players.forEach(p => {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
+                    if (d < minDist) {
+                        minDist = d; target = p;
+                    }
+                }
+            });
+
+            if (target) {
+                const bomb = this.activeBomb;
+                const dx = target.mesh.position.x - bomb.mesh.position.x;
+                const dz = target.mesh.position.z - bomb.mesh.position.z;
+                const dist = Math.hypot(dx, dz) || 1;
+                bomb.vx = (dx / dist) * cfg.launchSpeed;
+                bomb.vz = (dz / dist) * cfg.launchSpeed;
+                bomb.state = 'flying';
+                gameManager.audio.playSfx(this.type, cfg.sfx);
+            }
         }
 
         if (this.activeBomb) {
             let bomb = this.activeBomb;
             bomb.lifetime--;
+            if (bomb.placeTimer > 0) bomb.placeTimer--;
 
             if (bomb.state === 'flying') {
                 bomb.mesh.position.x += bomb.vx;

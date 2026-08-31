@@ -90,7 +90,7 @@ export class Player {
         this.punchTimer = 0;
         this.blockMesh = null;
         
-        this.flyCharges = this.config.abilities.fly ? this.config.abilities.fly.maxCharges : 0;
+        this.flyCharges = this.config.abilities?.fly?.maxCharges || 0;
         this.flyCooldown = 0;
         this.flyChargeCooldown = 0;
         this.flyBoostTimer = 0;
@@ -98,6 +98,8 @@ export class Player {
         this.gunCharging = false;
         this.gunChargeTimer = 0;
         this.stillTimer = 0;
+        this.gasterTpState = 'idle';
+        this.gasterTpTimer = 0;
 
         if (charName === 'Knuckles') {
             const ringGeo = new THREE.TorusGeometry(this.size + 4, 0.5, 8, 24);
@@ -132,9 +134,12 @@ export class Player {
     }
 
     takeDamage(amount, attacker) {
+        if (this.gameManager && this.gameManager.dev && this.gameManager.dev.godMode) return;
         if (this.isBlocking) { this.triggerBlockSuccess(attacker); return; }
         this.health -= amount;
         this.highlightTimer = 10;
+        // Gaster's teleport windup is interrupted by any damage
+        if (this.gasterTpState === 'windup') { this.gasterTpState = 'idle'; this.gasterTpTimer = 0; }
         if (this.health <= 0) { this.health = 0; this.mesh.visible = false; }
     }
 
@@ -145,6 +150,38 @@ export class Player {
         this.ability1Cooldown = this.config.abilities.parry.cooldown;
         this.dashActive = this.config.abilities.parry.speedBoostDuration;
         if (killer) killer.stun(this.config.abilities.parry.stunDuration);
+        // Landed parry: heal 10, overhealing up to 150% of max health
+        this.health = Math.min(this.health + 10, Math.ceil(this.maxHealth * 1.5));
+    }
+
+    performBlink(distance, obstacles) {
+        let dx, dz;
+        if (this.velocity.lengthSq() > 0.01) {
+            const v = this.velocity.clone().normalize();
+            dx = v.x; dz = v.z;
+        } else {
+            dx = Math.sin(this.mesh.rotation.y);
+            dz = Math.cos(this.mesh.rotation.y);
+        }
+
+        // Step back toward the start until the destination is clear of walls
+        for (let d = distance; d > 0; d -= 2) {
+            const tx = Math.max(-90, Math.min(90, this.mesh.position.x + dx * d));
+            const tz = Math.max(-90, Math.min(90, this.mesh.position.z + dz * d));
+            if (!this.posBlockedAt(tx, tz, obstacles)) {
+                this.mesh.position.x = tx;
+                this.mesh.position.z = tz;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    posBlockedAt(x, z, obstacles) {
+        for (let obs of obstacles) {
+            if (checkCircleBoxCollision(x, z, this.size, obs.x, obs.z, obs.w, obs.d)) return true;
+        }
+        return false;
     }
 
     setEmissive(colorHex) {
@@ -238,7 +275,7 @@ export class Player {
             if (this.controls.ability1 && this.ability1Cooldown <= 0) {
                 this.dashActive = this.config.abilities.dash.duration;
                 this.ability1Cooldown = this.config.abilities.dash.cooldown;
-                gameManager.audio.playSfx('Sonic', this.config.abilities.dash.sfx); // Updated SFX call
+                gameManager.audio.playSfx('Sonic', this.config.abilities.dash.sfx);
             }
         }
         else if (this.characterName === 'Knuckles') {
@@ -251,13 +288,13 @@ export class Player {
                 this.blockTimer = this.config.abilities.parry.duration;
                 this.ability1Cooldown = this.config.abilities.parry.cooldown;
                 if (this.blockMesh) this.blockMesh.visible = true;
-                gameManager.audio.playSfx('Knuckles', this.config.abilities.parry.sfx); // Updated SFX call
+                gameManager.audio.playSfx('Knuckles', this.config.abilities.parry.sfx);
             }
             if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.punchState === 'idle') {
                 this.punchState = 'windup';
                 this.punchTimer = this.config.abilities.punch.windupDuration;
                 this.ability2Cooldown = this.config.abilities.punch.cooldown;
-                gameManager.audio.playSfx('Knuckles', this.config.abilities.punch.sfx); // Updated SFX call
+                gameManager.audio.playSfx('Knuckles', this.config.abilities.punch.sfx);
             }
             if (this.punchState === 'windup') {
                 currentSpeed *= 0.5; 
@@ -307,7 +344,7 @@ export class Player {
                 gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, dir.x, dir.z, this, this.config.abilities.gun.damage, finalStun, this.config.abilities.gun.projectileSpeed);
                 this.ability1Cooldown = this.config.abilities.gun.cooldown;
                 this.gunCharging = false;
-                gameManager.audio.playSfx('Tails', this.config.abilities.gun.sfx); // Updated SFX call
+                gameManager.audio.playSfx('Tails', this.config.abilities.gun.sfx);
             }
 
             if (this.controls.ability2 && this.flyCharges > 0 && this.flyCooldown <= 0 && this.flyChargeCooldown <= 0) {
@@ -331,7 +368,7 @@ export class Player {
                         }
                     }
                 }
-                gameManager.audio.playSfx('Tails', this.config.abilities.fly.sfx); // Updated SFX call
+                gameManager.audio.playSfx('Tails', this.config.abilities.fly.sfx);
             }
 
             if (this.flyCooldown > 0) {
@@ -358,6 +395,23 @@ export class Player {
             }
         }
 
+        else if (this.characterName === 'Gaster') {
+            const blink = this.config.abilities.blink;
+            if (this.gasterTpState === 'windup') {
+                this.setEmissive(0xaa00ff); // purple charge glow
+                this.gasterTpTimer--;
+                if (this.gasterTpTimer <= 0) {
+                    if (this.performBlink(blink.distance, obstacles)) {
+                        this.ability1Cooldown = blink.cooldown;
+                    }
+                    this.gasterTpState = 'idle';
+                }
+            } else if (this.controls.ability1 && this.ability1Cooldown <= 0) {
+                this.gasterTpState = 'windup';
+                this.gasterTpTimer = blink.windup;
+            }
+        }
+
         if (gameManager.mapManager && gameManager.mapManager.jumpPads) {
             for (let pad of gameManager.mapManager.jumpPads) {
                 let dist = Math.hypot(this.mesh.position.x - pad.x, this.mesh.position.z - pad.z);
@@ -365,7 +419,7 @@ export class Player {
                     if (this.padCooldown <= 0 && this.mesh.position.y <= 6.1) { 
                         this.vertVel = gameManager.mapManager.config.padBoost;
                         this.padCooldown = gameManager.mapManager.config.padCooldown;
-                        gameManager.audio.playSfx('Map', 'jump_pad'); // Updated SFX call
+                        gameManager.audio.playSfx('Map', 'jump_pad');
                     }
                 }
             }

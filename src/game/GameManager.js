@@ -4,6 +4,7 @@ import { MapManager } from '../maps/MapManager.js';
 import { Player } from '../entities/Player.js';
 import { Killer } from '../entities/Killer.js';
 import { UIManager } from '../ui/UIManager.js';
+import { DevPanel } from '../ui/DevPanel.js';
 import { Controls } from './Controls.js';
 import { AudioManager } from './AudioManager.js';
 import { Hitbox } from '../engine/Hitbox.js';
@@ -36,10 +37,18 @@ export class GameManager {
         this.settings = {
             showHitboxes: savedHit === null ? true : savedHit === 'true'
         };
+
+        // Dev toggles — all default off; flipped from the Shift+~ dev panel
+        this.dev = {
+            gasterUnlocked: false,
+            godMode: false,
+            freezeKiller: false
+        };
+        this.devPanel = new DevPanel(this);
         
         this.state = 'MENU';
         this.keys = {};
-        this.gamepadStates = {}; // NEW: Gamepad states
+        this.gamepadStates = {};
         this.setupInput();
         
         this.players = [];
@@ -58,7 +67,7 @@ export class GameManager {
             selectedMap: 'Open Field'
         };
 
-        // FIX: Start menu music on first user interaction to bypass browser autoplay block
+        // Start audio on first user interaction to bypass browser autoplay block
         const startAudio = () => {
             this.audio.hasInteracted = true;
             this.ui.showScreen(this.ui.activeScreen); 
@@ -75,6 +84,10 @@ export class GameManager {
     setupInput() {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
+            if (e.code === 'Backquote' && e.shiftKey) {
+                this.devPanel.toggle();
+                return;
+            }
             if (e.key === 'Escape' && this.state === 'PLAYING') {
                 this.state = 'PAUSED';
                 this.audio.stopMusic();
@@ -88,7 +101,6 @@ export class GameManager {
         window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
     }
 
-    // NEW: Gamepad Polling Logic
     startGamepadPolling() {
         const poll = () => {
             const pads = navigator.getGamepads();
@@ -184,7 +196,8 @@ export class GameManager {
         const survivorTypeColors = {
             'Sonic': 0x0064ff,
             'Tails': 0xffd700,
-            'Knuckles': 0xcf2020
+            'Knuckles': 0xcf2020,
+            'Gaster': 0xe8e8e8
         };
 
         for (let i = 0; i < this.gameSetup.survivorCount; i++) {
@@ -195,6 +208,7 @@ export class GameManager {
             const pColor = survivorTypeColors[charName] || 0x0064ff;
             
             const player = new Player(this.engine.scene, controlsObj, pColor, charName);
+            player.gameManager = this;
             const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
             player.mesh.position.set(pSpawn.x, 6, pSpawn.z);
             player.controlId = sId;
@@ -251,6 +265,12 @@ export class GameManager {
         else this.audio.playMusic('default_lms');
     }
 
+    getSelectableSurvivors() {
+        const chars = ['Sonic', 'Tails', 'Knuckles'];
+        if (this.dev.gasterUnlocked) chars.push('Gaster');
+        return chars;
+    }
+
     stopGame() {
         this.state = 'MENU';
         if (this.ring) this.ring.destroy();
@@ -282,7 +302,7 @@ export class GameManager {
         requestAnimationFrame(() => this.gameLoop());
 
         if (this.state === 'PLAYING') {
-            this.mapManager.update(this.players, this.killers);
+            this.mapManager.update(this.players, this.killers, this.audio);
 
             this.players.forEach(p => {
                 const scheme = this.controls.getScheme(p.controlId);
@@ -334,11 +354,11 @@ export class GameManager {
                             if (hit) {
                                 p.takeDamage(h.damage, h.owner);
                                 if (h.data && h.data.applyBleed) p.bleedTimer = h.data.bleedDuration || 180;
-                                if (h.type === 'gods_trickery') p.invertedControlsTimer = h.data.invertDuration || 300;
+                                if (h.type === 'gods_trickery') p.invertedControlsTimer = h.data.invertDuration || 180;
                                 
                                 if (h.type.includes('killer_m1')) {
                                     p.hitSpeedBoost = 30; 
-                                    this.audio.playSfx(h.owner.type, 'm1_hit'); // Updated SFX call
+                                    this.audio.playSfx(h.owner.type, 'm1_hit');
                                 }
                                 h.hasHit.add(p);
                             }
@@ -353,11 +373,11 @@ export class GameManager {
                             else hit = checkCircleCircleCollision(h.x, h.z, h.radius, k.mesh.position.x, k.mesh.position.z, k.size);
 
                             if (hit) {
-                                k.stun(h.owner.config.abilities.punch.stunDuration);
+                                k.stun(h.owner.config.abilities?.punch?.stunDuration || 60);
                                 const kbVec = new THREE.Vector3(k.mesh.position.x - h.x, 0, k.mesh.position.z - h.z);
                                 if (kbVec.lengthSq() === 0) kbVec.set(0, 0, 1);
                                 kbVec.normalize();
-                                const knockbackForce = h.owner.config.abilities.punch.knockback || 15;
+                                const knockbackForce = h.owner.config.abilities?.punch?.knockback || 15;
                                 k.mesh.position.x += kbVec.x * knockbackForce;
                                 k.mesh.position.z += kbVec.z * knockbackForce;
                                 h.hasHit.add(k);

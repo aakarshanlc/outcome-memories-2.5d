@@ -1,4 +1,3 @@
-// Import the music files directly so Vite can resolve their paths
 import menuTrack from '../assets/music/menu1.mp3';
 import tripwireTrack from '../assets/music/Tripwirechase.mp3';
 import x2011Track from '../assets/music/2011Xchase.mp3';
@@ -6,7 +5,6 @@ import tailsLmsTrack from '../assets/music/Tailslms.mp3';
 import knucklesLmsTrack from '../assets/music/Knuckleslms.mp3';
 import defaultLmsTrack from '../assets/music/Eternal Hope, Eternal Fight.mp3';
 
-// NEW: Automatically import ALL mp3 files from the sfx folder and its subfolders!
 const sfxModules = import.meta.glob('../assets/sfx/**/*.mp3', { eager: true, query: '?url', import: 'default' });
 
 export class AudioManager {
@@ -27,13 +25,12 @@ export class AudioManager {
             default_lms: defaultLmsTrack
         };
 
-        // Parse the glob imports into a structured library: { Character: { action: [url1, url2] } }
         this.sfxLibrary = {};
-        this.sfxCooldowns = {}; // Anti-spam tracker
+        this.sfxCooldowns = {};
+        this.sfxCache = {};
 
         for (const path in sfxModules) {
             const url = sfxModules[path];
-            // Example path: ../assets/sfx/Sonic/dash_1.mp3
             const cleanPath = path.replace('../assets/sfx/', '').replace('.mp3', '');
             const parts = cleanPath.split('/');
             
@@ -41,19 +38,20 @@ export class AudioManager {
                 const charName = parts[0];
                 let actionName = parts[1];
                 
-                // If file is named "dash_1", we just want the action name "dash"
                 if (actionName.includes('_')) {
                     const actionParts = actionName.split('_');
-                    // Check if the last part is a number
                     if (!isNaN(actionParts[actionParts.length - 1])) {
-                        actionParts.pop(); // Remove the number
-                        actionName = actionParts.join('_'); // Rejoin in case action had an underscore
+                        actionParts.pop();
+                        actionName = actionParts.join('_');
                     }
                 }
 
                 if (!this.sfxLibrary[charName]) this.sfxLibrary[charName] = {};
                 if (!this.sfxLibrary[charName][actionName]) this.sfxLibrary[charName][actionName] = [];
                 this.sfxLibrary[charName][actionName].push(url);
+
+                // Pre-cache the audio element to remove delay
+                if (!this.sfxCache[url]) this.sfxCache[url] = new Audio(url);
             }
         }
 
@@ -95,23 +93,19 @@ export class AudioManager {
         this.currentTrack = null;
     }
 
-    // NEW: Dynamic SFX Player with Random Selection & Anti-Spam
     playSfx(charName, actionName) {
         if (!charName || !actionName) return;
 
-        // Anti-spam: Prevent the same sound from playing more than once every 100ms
         const cooldownKey = `${charName}_${actionName}`;
         const now = Date.now();
-        if (this.sfxCooldowns[cooldownKey] && now - this.sfxCooldowns[cooldownKey] < 100) {
-            return;
-        }
+        if (this.sfxCooldowns[cooldownKey] && now - this.sfxCooldowns[cooldownKey] < 100) return;
         this.sfxCooldowns[cooldownKey] = now;
 
         const sounds = this.sfxLibrary[charName]?.[actionName];
         if (sounds && sounds.length > 0) {
-            // Pick a random variation!
             const randomUrl = sounds[Math.floor(Math.random() * sounds.length)];
-            const sfx = new Audio(randomUrl);
+            // Clone the cached node for zero-latency overlapping playback
+            const sfx = this.sfxCache[randomUrl].cloneNode();
             sfx.volume = this.sfxVolume;
             sfx.play().catch(() => {});
         }

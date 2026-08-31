@@ -303,7 +303,7 @@ export class UIManager {
                 const btn = document.getElementById(`btn-cycle-surv-${i}`);
                 if(btn) {
                     btn.onclick = () => {
-                        const allChars = ['Sonic', 'Tails', 'Knuckles'];
+                        const allChars = this.gameManager.getSelectableSurvivors();
                         const currentChars = this.gameManager.gameSetup.selectedSurvivors;
                         let currentChar = currentChars[i];
                         let nextChar = currentChar;
