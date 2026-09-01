@@ -473,7 +473,11 @@ export class Player {
         if (!collideZ) this.mesh.position.z = nextZ;
         else this.velocity.z = 0;
 
-        this.vertVel -= 0.15; 
+        let gravity = 0.15;
+        if (gameManager && gameManager.dev && gameManager.dev.moonGravity) {
+            gravity *= gameManager.devPanel.cfg.gravMult;
+        }
+        this.vertVel -= gravity;
         this.mesh.position.y += this.vertVel;
 
         if (this.mesh.position.y <= groundHeight) {

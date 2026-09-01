@@ -41,10 +41,25 @@ export class GameManager {
         this.dev = {
             gasterUnlocked: false,
             godMode: false,
-            freezeKiller: false
+            freezeKiller: false,
+            freezeTimers: false,
+            slowMo: false,
+            showFps: false,
+            showNavPath: false,
+            sanicMode: false,
+            giantMode: false,
+            moonGravity: false,
+            padSlotOffset: 0
         };
         this.devPanel = new DevPanel(this);
-        
+
+        this.frameCount = 0;
+        this.fps = 0;
+        this.fpsFrames = 0;
+        this.fpsStart = 0;
+        this.fpsEl = null;
+        this.navLine = null;
+
         this.state = 'MENU';
         this.keys = {};
         this.gamepadStates = {};
@@ -102,11 +117,14 @@ export class GameManager {
         const poll = () => {
             const pads = navigator.getGamepads();
             this.gamepadStates = {};
+            const connected = [];
             for (let i = 0; i < pads.length; i++) {
-                const pad = pads[i];
-                if (!pad) continue;
-                
-                this.gamepadStates[`p${i+1}`] = {
+                if (pads[i]) connected.push(pads[i]);
+            }
+            const n = Math.max(1, connected.length);
+            const off = ((this.dev.padSlotOffset % n) + n) % n;
+            connected.forEach((pad, i) => {
+                this.gamepadStates[`p${((i + off) % n) + 1}`] = {
                     up: pad.buttons[12]?.pressed || pad.axes[1] < -0.5,
                     down: pad.buttons[13]?.pressed || pad.axes[1] > 0.5,
                     left: pad.buttons[14]?.pressed || pad.axes[0] < -0.5,
@@ -115,7 +133,7 @@ export class GameManager {
                     ability1: pad.buttons[1]?.pressed,
                     ability2: pad.buttons[2]?.pressed
                 };
-            }
+            });
             requestAnimationFrame(poll);
         };
         requestAnimationFrame(poll);
@@ -295,10 +313,117 @@ export class GameManager {
         this.projectiles.push(new Projectile(this.engine.scene, x, z, dx, dz, owner, stunDuration, speed));
     }
 
+    devSkipPhase() {
+        if (this.state !== 'PLAYING') return;
+        const alive = this.players.filter(p => p.health > 0);
+        if (this.phase === 'ROUND') {
+            this.phase = 'LMS';
+            this.playLmsMusic(alive[0]);
+        } else if (this.phase === 'LMS') {
+            this.phase = 'RING';
+            const rSpawn = this.findSafeSpawn(this.mapManager.obstacles, -80, 80);
+            this.ring = new Ring(this.engine.scene, rSpawn.x, rSpawn.z);
+            this.arrow = new PointerArrow(this.engine.scene);
+        }
+    }
+
+    devTeleportToRing() {
+        if (this.state !== 'PLAYING' || !this.ring) return;
+        this.players.forEach((p, i) => {
+            if (p.health <= 0) return;
+            const a = (i / Math.max(1, this.players.length)) * Math.PI * 2;
+            p.mesh.position.set(this.ring.mesh.position.x + Math.cos(a) * 15, 6, this.ring.mesh.position.z + Math.sin(a) * 15);
+            p.velocity.set(0, 0, 0);
+        });
+    }
+
+    devResetCooldowns() {
+        this.players.forEach(p => {
+            p.ability1Cooldown = 0;
+            p.ability2Cooldown = 0;
+            p.flyCooldown = 0;
+            p.flyChargeCooldown = 0;
+            p.flyCharges = p.config.abilities?.fly?.maxCharges || 0;
+            p.gunCharging = false;
+            p.gunChargeTimer = 0;
+            p.punchState = 'idle';
+        });
+        this.killers.forEach(k => {
+            k.ability1Cooldown = 0;
+            k.ability2Cooldown = 0;
+            k.m1Cooldown = 0;
+            k.m1State = 'idle';
+        });
+    }
+
+    updateFpsOverlay() {
+        if (this.dev.showFps) {
+            if (!this.fpsEl) {
+                this.fpsEl = document.createElement('div');
+                this.fpsEl.id = 'fps-overlay';
+                this.fpsEl.style.cssText = 'position:fixed;top:12px;right:12px;z-index:10002;color:#0f0;background:rgba(0,0,0,0.8);padding:4px 10px;font:bold 14px monospace;border:1px solid #0f0;pointer-events:none;';
+                document.body.appendChild(this.fpsEl);
+            }
+            this.fpsEl.style.display = 'block';
+            this.fpsEl.innerText = `${this.fps} FPS`;
+        } else if (this.fpsEl) {
+            this.fpsEl.style.display = 'none';
+        }
+    }
+
+    updateNavPathViz() {
+        const k = this.killer;
+        const want = this.dev.showNavPath && this.state === 'PLAYING' && k && k.navPath && k.navPath.length > 0;
+        if (!want) {
+            if (this.navLine) this.navLine.visible = false;
+            return;
+        }
+        if (!this.navLine) {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(400 * 3), 3));
+            this.navLine = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+            this.navLine.frustumCulled = false;
+            this.engine.scene.add(this.navLine);
+        }
+        const pos = this.navLine.geometry.attributes.position;
+        const count = Math.min(k.navPath.length, 400);
+        for (let i = 0; i < count; i++) {
+            pos.setXYZ(i, k.navPath[i].x, 7, k.navPath[i].z);
+        }
+        pos.needsUpdate = true;
+        this.navLine.geometry.setDrawRange(0, count);
+        this.navLine.visible = true;
+    }
+
     gameLoop() {
         requestAnimationFrame(() => this.gameLoop());
 
-        if (this.state === 'PLAYING') {
+        this.frameCount++;
+        this.fpsFrames++;
+        const now = performance.now();
+        if (now - this.fpsStart >= 500) {
+            this.fps = Math.round(this.fpsFrames * 1000 / (now - this.fpsStart));
+            this.fpsFrames = 0;
+            this.fpsStart = now;
+            this.updateFpsOverlay();
+        }
+
+        if (this.state === 'PLAYING' && (!this.dev.slowMo || this.frameCount % 2 === 0)) {
+            const speedMult = this.dev.sanicMode ? this.devPanel.cfg.sanicMult : 1;
+            const sizeMult = this.dev.giantMode ? this.devPanel.cfg.giantScale : 1;
+            this.players.forEach(p => {
+                p.speed = p.config.speed * speedMult;
+                if (!p.mesh.userData.baseScale) p.mesh.userData.baseScale = p.mesh.scale.x || 1;
+                p.mesh.scale.setScalar(p.mesh.userData.baseScale * sizeMult);
+                p.size = p.config.size * sizeMult;
+            });
+            this.killers.forEach(k => {
+                k.maxSpeed = k.config.speed * speedMult;
+                if (!k.mesh.userData.baseScale) k.mesh.userData.baseScale = k.mesh.scale.x || 1;
+                k.mesh.scale.setScalar(k.mesh.userData.baseScale * sizeMult);
+                k.size = k.config.size * sizeMult;
+            });
+
             this.mapManager.update(this.players, this.killers, this.audio);
 
             this.players.forEach(p => {
@@ -393,7 +518,7 @@ export class GameManager {
                     this.phase = 'LMS';
                     this.playLmsMusic(alivePlayers[0]);
                 }
-                if (!isRushing) this.gameTimer--;
+                if (!isRushing && !this.dev.freezeTimers) this.gameTimer--;
                 this.ui.updateHUD('ROUND', this.gameTimer / 60, isRushing);
                 if (this.gameTimer <= 0) {
                     this.phase = 'LMS';
@@ -401,7 +526,7 @@ export class GameManager {
                 }
             } 
             else if (this.phase === 'LMS') {
-                if (!isRushing) this.lmsTimer--;
+                if (!isRushing && !this.dev.freezeTimers) this.lmsTimer--;
                 this.ui.updateHUD('LAST MAN STANDING', this.lmsTimer / 60, isRushing);
                 if (this.lmsTimer <= 0) {
                     this.phase = 'RING';
@@ -411,7 +536,7 @@ export class GameManager {
                 }
             } 
             else if (this.phase === 'RING') {
-                this.ringTimer--;
+                if (!this.dev.freezeTimers) this.ringTimer--;
                 this.ring.update();
                 this.ui.updateHUD('ESCAPE!', this.ringTimer / 60, false);
                 
@@ -442,6 +567,7 @@ export class GameManager {
             }
         }
 
+        this.updateNavPathViz();
         this.engine.render();
     }
 }
