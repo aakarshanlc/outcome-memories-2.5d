@@ -14,7 +14,7 @@ export const MapVariables = {
     'Maze Mania': {
         jumpPadCount: 4,
         padBoost: 2.2,
-        padCooldown: 60,
+        padCooldown: 180,
         sfx: { jumpPad: 'jump_pad', blockSink: 'block_sink' }
     }
 };

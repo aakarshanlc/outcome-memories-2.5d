@@ -39,7 +39,7 @@ export class GameManager {
             showHitboxes: savedHit === null ? true : savedHit === 'true'
         };
 
-        // Dev toggles — all default off; flipped from the Shift+~ dev panel
+        //Shift+~ dev panel
         this.dev = {
             gasterUnlocked: false,
             godMode: false,
@@ -420,7 +420,7 @@ export class GameManager {
                 this.ring.update();
                 this.ui.updateHUD('ESCAPE!', this.ringTimer / 60, false);
                 
-                if (this.ring && this.arrow) {
+                if (this.ring && this.arrow && this.killer) {
                     this.arrow.update(this.killer.mesh.position, this.ring.mesh.position);
                 }
 
