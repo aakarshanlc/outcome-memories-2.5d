@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
 import { SurvivorVariables } from '../config/SurvivorVariables.js';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
 import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
@@ -9,6 +10,7 @@ import knucklesModelUrl from '../assets/models/Knuckles/Knuckles.dae';
 import knucklesTextureUrl from '../assets/models/Knuckles/PLAYER00.png';
 import tailsModelUrl from '../assets/models/Tails/Tails.dae';
 import tailsTextureUrl from '../assets/models/Tails/PLAYER00.png';
+import gasterModelUrl from '../assets/models/Gaster/gaster.glb';
 
 export class Player {
     constructor(scene, controls, color, charName = 'Sonic') {
@@ -47,19 +49,17 @@ export class Player {
                         }
                     });
 
-                    const finalMesh = this.setupModel(model);
-                    const spawnX = this.mesh.position.x;
-                    const spawnZ = this.mesh.position.z;
-                    const spawnRot = this.mesh.rotation.y;
-
-                    scene.remove(this.mesh);
-                    this.mesh = finalMesh;
-                    this.mesh.position.set(spawnX, 6, spawnZ);
-                    this.mesh.rotation.y = spawnRot;
-                    scene.add(this.mesh);
-
-                    if (this.blockMesh) this.mesh.add(this.blockMesh);
+                    this.swapMesh(this.setupModel(model));
                 });
+            });
+        }
+        else if (charName === 'Gaster') {
+            const loader = new GLTFLoader();
+            loader.load(gasterModelUrl, (gltf) => {
+                gltf.scene.traverse((node) => {
+                    if (node.isMesh) node.castShadow = true;
+                });
+                this.swapMesh(this.setupModel(gltf.scene));
             });
         }
 
@@ -131,6 +131,20 @@ export class Player {
         yawGroup.position.sub(center);
 
         return yawGroup;
+    }
+
+    swapMesh(finalMesh) {
+        const spawnX = this.mesh.position.x;
+        const spawnZ = this.mesh.position.z;
+        const spawnRot = this.mesh.rotation.y;
+
+        this.scene.remove(this.mesh);
+        this.mesh = finalMesh;
+        this.mesh.position.set(spawnX, 6, spawnZ);
+        this.mesh.rotation.y = spawnRot;
+        this.scene.add(this.mesh);
+
+        if (this.blockMesh) this.mesh.add(this.blockMesh);
     }
 
     takeDamage(amount, attacker) {

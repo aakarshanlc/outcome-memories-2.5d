@@ -22,7 +22,6 @@ export class DevPanel {
             () => this.gameManager.dev.gasterUnlocked,
             v => {
                 this.gameManager.dev.gasterUnlocked = v;
-                // Drop Gaster from the setup lineup when the toggle goes off
                 if (!v) {
                     const sel = this.gameManager.gameSetup.selectedSurvivors;
                     for (let i = 0; i < sel.length; i++) {
@@ -74,16 +73,40 @@ export class DevPanel {
         }
         if (!this.visible) { this.el.style.display = 'none'; return; }
 
-        let html = '<div id="dev-panel-title">DEV PANEL <span>Shift + ~ closes</span></div>';
+        let html = `
+            <div id="dev-panel-title">THE PANEL</div>
+            <div id="dev-panel-subtitle">Shift + ~ closes</div>
+        `;
+
+        // Group entries into sections, each section starting at a header.
+        let section = null;
+        const sections = [];
         this.entries.forEach((e, i) => {
             if (e.type === 'header') {
-                html += `<div class="dev-header">${e.title}</div>`;
-            } else if (e.type === 'toggle') {
-                html += `<label class="dev-row"><input type="checkbox" data-dev-idx="${i}" ${e.get() ? 'checked' : ''}><span>${e.label}</span></label>`;
-            } else {
-                html += `<button class="dev-row dev-btn" data-dev-idx="${i}">${e.label}</button>`;
+                section = { title: e.title, rows: [] };
+                sections.push(section);
+            } else if (section) {
+                section.rows.push({ ...e, idx: i });
             }
         });
+
+        sections.forEach(sec => {
+            html += `<div class="dev-section">`;
+            html += `<div class="dev-header">${sec.title}</div>`;
+            sec.rows.forEach(row => {
+                if (row.type === 'toggle') {
+                    html += `
+                        <label class="dev-row dev-toggle-row">
+                            <span>${row.label}</span>
+                            <input type="checkbox" data-dev-idx="${row.idx}" ${row.get() ? 'checked' : ''}>
+                        </label>`;
+                } else {
+                    html += `<button class="dev-row dev-btn" data-dev-idx="${row.idx}">${row.label}</button>`;
+                }
+            });
+            html += `</div>`;
+        });
+
         this.el.innerHTML = html;
         this.el.style.display = 'block';
 
@@ -102,18 +125,106 @@ export class DevPanel {
         const style = document.createElement('style');
         style.id = 'dev-panel-style';
         style.textContent = `
-            #dev-panel { position: fixed; top: 60px; right: 15px; width: 250px; max-height: 80vh; overflow-y: auto;
-                background: rgba(10, 10, 14, 0.95); border: 2px solid #7a00ff; border-radius: 8px; padding: 12px;
-                z-index: 10000; font-family: monospace; color: #ddd; pointer-events: auto; user-select: none; }
-            #dev-panel-title { font-weight: bold; color: #b366ff; font-size: 16px; margin-bottom: 8px; }
-            #dev-panel-title span { font-weight: normal; font-size: 11px; color: #888; }
-            #dev-panel .dev-header { color: #7a00ff; font-size: 12px; font-weight: bold; margin: 10px 0 4px;
-                text-transform: uppercase; letter-spacing: 1px; }
-            #dev-panel .dev-row { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
-                background: #1a1a22; border: 1px solid #333; border-radius: 4px; color: #ddd; text-align: left;
-                padding: 6px 8px; margin: 4px 0; font-size: 13px; font-family: monospace; cursor: pointer; }
-            #dev-panel .dev-btn:hover { background: #2a2a35; border-color: #7a00ff; }
-            #dev-panel input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
+            #dev-panel {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 320px;
+                max-height: 85vh;
+                overflow-y: auto;
+                background: #060606;
+                border: 2px solid #d9d9d9;
+                border-radius: 6px;
+                padding: 16px 18px 20px;
+                z-index: 10000;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #eee;
+                pointer-events: auto;
+                user-select: none;
+                box-shadow: 0 0 0 4px rgba(0,0,0,0.6), 0 10px 40px rgba(0,0,0,0.7);
+            }
+
+            #dev-panel-title {
+                font-family: Georgia, 'Times New Roman', serif;
+                font-weight: bold;
+                font-style: italic;
+                font-size: 26px;
+                text-align: center;
+                letter-spacing: 1px;
+                color: #fff;
+                margin-bottom: 2px;
+            }
+
+            #dev-panel-subtitle {
+                text-align: center;
+                font-size: 11px;
+                color: #777;
+                margin-bottom: 12px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid #333;
+            }
+
+            #dev-panel .dev-section {
+                border-bottom: 1px solid #333;
+                padding: 10px 0 14px;
+            }
+            #dev-panel .dev-section:last-child {
+                border-bottom: none;
+                padding-bottom: 2px;
+            }
+
+            #dev-panel .dev-header {
+                text-align: center;
+                font-size: 15px;
+                font-weight: 600;
+                color: #fff;
+                text-transform: capitalize;
+                margin-bottom: 10px;
+            }
+
+            #dev-panel .dev-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                box-sizing: border-box;
+                background: transparent;
+                border: 1px solid #555;
+                border-radius: 4px;
+                color: #eee;
+                text-align: center;
+                padding: 8px 12px;
+                margin: 6px 0;
+                font-size: 13px;
+                font-family: inherit;
+                cursor: pointer;
+            }
+
+            #dev-panel .dev-toggle-row span {
+                text-align: left;
+            }
+
+            #dev-panel .dev-btn {
+                justify-content: center;
+                text-transform: capitalize;
+            }
+            #dev-panel .dev-btn:hover {
+                background: #1a1a1a;
+                border-color: #fff;
+            }
+
+            #dev-panel input[type="checkbox"] {
+                width: 15px;
+                height: 15px;
+                cursor: pointer;
+                accent-color: #d9d9d9;
+                flex-shrink: 0;
+            }
+
+            #dev-panel::-webkit-scrollbar { width: 8px; }
+            #dev-panel::-webkit-scrollbar-track { background: #111; }
+            #dev-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
         `;
         document.head.appendChild(style);
     }

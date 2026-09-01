@@ -24,6 +24,7 @@ import tripwireModelUrl from '../assets/models/Tripwire/tdoll.obj';
 import tripwireTextureUrl from '../assets/models/Tripwire/player01.png';
 import x2011ModelUrl from '../assets/models/2011X/2011x.glb';
 import starvedModelUrl from '../assets/models/Starved/starved_eggman.glb';
+import gasterModelUrl from '../assets/models/Gaster/gaster.glb';
 
 export class GameManager {
     constructor() {
@@ -153,6 +154,7 @@ export class GameManager {
         if (survivors.includes('Sonic')) { urlsToLoad.push(sonicModelUrl, sonicTextureUrl); }
         if (survivors.includes('Tails')) { urlsToLoad.push(tailsModelUrl, tailsTextureUrl); }
         if (survivors.includes('Knuckles')) { urlsToLoad.push(knucklesModelUrl, knucklesTextureUrl); }
+        if (survivors.includes('Gaster')) { urlsToLoad.push(gasterModelUrl); }
         
         const k = this.gameSetup.selectedKillerType;
         if (k === 'Tripwire') { urlsToLoad.push(tripwireModelUrl, tripwireTextureUrl); }
@@ -357,8 +359,8 @@ export class GameManager {
                                 if (h.type === 'gods_trickery') p.invertedControlsTimer = h.data.invertDuration || 180;
                                 
                                 if (h.type.includes('killer_m1')) {
-                                    p.hitSpeedBoost = 30; 
-                                    this.audio.playSfx(h.owner.type, 'm1_hit');
+                                    p.hitSpeedBoost = 45; 
+                                    this.audio.playSfx(h.owner.type, h.owner.config.m1.hitSfx || 'm1_hit');
                                 }
                                 h.hasHit.add(p);
                             }
@@ -418,8 +420,8 @@ export class GameManager {
                 this.ring.update();
                 this.ui.updateHUD('ESCAPE!', this.ringTimer / 60, false);
                 
-                if (this.ring && this.arrow && alivePlayers.length > 0) {
-                    this.arrow.update(alivePlayers[0].mesh.position, this.ring.mesh.position);
+                if (this.ring && this.arrow) {
+                    this.arrow.update(this.killer.mesh.position, this.ring.mesh.position);
                 }
 
                 if (this.ring) {
@@ -436,7 +438,7 @@ export class GameManager {
 
             if (alivePlayers.length === 0 && this.phase !== 'GAME_OVER') this.endGame('KILLER WINS', 'All survivors eliminated');
 
-            let camTarget = alivePlayers[0] || this.players[0];
+            let camTarget = this.survivor;
             if (camTarget) {
                 this.engine.camera.position.x = camTarget.mesh.position.x;
                 this.engine.camera.position.z = camTarget.mesh.position.z + 50;

@@ -46,9 +46,9 @@ export class MapManager {
     }
 
     generateMaze() {
-        const gridSize = 7;      // 7x7 cells keeps the maze inside the 200x200 arena
-        const cellSize = 24;     // corridor width: 24 minus wall thickness leaves plenty of room
-        const thickness = 3;     // thin walls
+        const gridSize = 8;
+        const cellSize = 24;
+        const thickness = 3;
         const span = gridSize * cellSize;
         const offset = -span / 2;
 
@@ -78,7 +78,6 @@ export class MapManager {
         }
 
         // Braid the maze: knock down walls at dead ends so every route is a loop
-        // (a chase map should never have dead-end traps for survivors)
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
                 const open = [];
@@ -110,9 +109,7 @@ export class MapManager {
             }
         }
 
-        // Gimmick: sliding gates. A few maze walls sweep back and forth across their
-        // corridor, periodically sealing and reopening routes. The braided layout
-        // guarantees an alternate way around every gate.
+        // Gimmick: sliding gates. A few maze walls sweep back and forth
         const gates = this.obstacles.filter(o => o.isMaze);
         for (let i = gates.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -155,8 +152,6 @@ export class MapManager {
                 obs.mesh.position.z += delta;
             }
 
-            // Anyone caught in the gate's path gets carried along with it, so it
-            // blocks and shoves without ever swallowing the player
             this.pushBodies(obs, delta, players);
             this.pushBodies(obs, delta, killers);
 
@@ -186,7 +181,7 @@ export class MapManager {
             if (obs.slide.axis === 'x') b.mesh.position.x += delta;
             else b.mesh.position.z += delta;
 
-            // Still inside (was already overlapping): eject to the nearest face
+            // Still inside eject to the nearest face
             if (checkCircleBoxCollision(b.mesh.position.x, b.mesh.position.z, b.size, obs.x, obs.z, obs.w, obs.d)) {
                 const cx = Math.max(obs.x, Math.min(b.mesh.position.x, obs.x + obs.w));
                 const cz = Math.max(obs.z, Math.min(b.mesh.position.z, obs.z + obs.d));

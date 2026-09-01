@@ -28,6 +28,7 @@ export class AudioManager {
         this.sfxLibrary = {};
         this.sfxCooldowns = {};
         this.sfxCache = {};
+        this.sfxLastPick = {};
 
         for (const path in sfxModules) {
             const url = sfxModules[path];
@@ -103,9 +104,17 @@ export class AudioManager {
 
         const sounds = this.sfxLibrary[charName]?.[actionName];
         if (sounds && sounds.length > 0) {
-            const randomUrl = sounds[Math.floor(Math.random() * sounds.length)];
+            // Random variant per play, never the same one twice in a row when
+            // there is more than one to choose from
+            let url = sounds[0];
+            if (sounds.length > 1) {
+                do {
+                    url = sounds[Math.floor(Math.random() * sounds.length)];
+                } while (url === this.sfxLastPick[cooldownKey]);
+                this.sfxLastPick[cooldownKey] = url;
+            }
             // Clone the cached node for zero-latency overlapping playback
-            const sfx = this.sfxCache[randomUrl].cloneNode();
+            const sfx = this.sfxCache[url].cloneNode();
             sfx.volume = this.sfxVolume;
             sfx.play().catch(() => {});
         }

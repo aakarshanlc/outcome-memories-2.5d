@@ -13,7 +13,6 @@ export class Engine {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
-        // FIX: Use PCFShadowMap instead of deprecated PCFSoftShadowMap
         this.renderer.shadowMap.type = THREE.PCFShadowMap; 
         document.body.appendChild(this.renderer.domElement);
 

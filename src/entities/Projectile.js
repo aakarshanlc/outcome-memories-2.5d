@@ -33,7 +33,7 @@ export class Projectile {
         for (let k of killers) {
             if (checkCircleCircleCollision(this.x, this.z, 1.5, k.mesh.position.x, k.mesh.position.z, k.size)) {
                     k.takeDamage(this.damage, this.owner);
-                    k.stun(this.stunDuration); // Apply stun!
+                    k.stun(this.stunDuration); 
                     this.destroy();
                     break;
                 }
