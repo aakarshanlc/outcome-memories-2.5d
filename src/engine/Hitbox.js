@@ -16,7 +16,6 @@ export class Hitbox {
         mat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.5 });
         
         if (shape === 'box') {
-            // FIX: Math.max prevents Three.js from crashing if width/depth is 0 or undefined
             const safeWidth = Math.max(1, width);
             const safeDepth = Math.max(1, depth);
             geo = new THREE.BoxGeometry(safeWidth, 10, safeDepth);

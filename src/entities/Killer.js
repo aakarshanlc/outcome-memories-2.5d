@@ -39,7 +39,7 @@ export class Killer {
                         }
                     });
 
-                    const finalMesh = this.setupModel(obj);
+                    const finalMesh = this.setupModel(obj, Math.PI / 2);
                     this.swapMesh(finalMesh);
                 });
             });
@@ -56,7 +56,7 @@ export class Killer {
                     }
                 });
 
-                const finalMesh = this.setupModel(model);
+                const finalMesh = this.setupModel(model, 0);
                 this.swapMesh(finalMesh);
             });
         }
@@ -72,7 +72,6 @@ export class Killer {
         this.acceleration = 0.2;
         this.damping = 0.85;
 
-        // AI navigation state
         this.navPath = null;
         this.navPathIndex = 0;
         this.navRepathTimer = 0;
@@ -121,10 +120,10 @@ export class Killer {
         this.scene.add(this.mesh);
     }
 
-    setupModel(model) {
+    setupModel(model, yawOffset) {
         const yawGroup = new THREE.Group();
         const modelGroup = new THREE.Group();
-        modelGroup.rotation.y = Math.PI / 2; 
+        modelGroup.rotation.y = yawOffset;
         modelGroup.add(model);
         yawGroup.add(modelGroup);
 
@@ -254,7 +253,6 @@ export class Killer {
                 this.controls.m1 = dist <= attackRange;
 
                 if (this.type === 'Tripwire' && this.config.abilities && !this.isRushing) {
-                    // Only grapple when the target is actually reachable in a straight line
                     this.controls.ability1 = (dist <= (this.config.abilities.grapple?.range || 60) && this.ability1Cooldown <= 0 && this.hasLineOfSight(target, obstacles));
                     this.controls.ability2 = (dist <= (this.config.abilities.bomb?.throwRange || 80) && this.ability2Cooldown <= 0);
                 }
@@ -291,7 +289,6 @@ export class Killer {
             if (this.controls.right) dx += 1;
         }
 
-        // AI directions are already normalized; only scale raw keyboard diagonals
         if (dx !== 0 && dz !== 0 && !this.isAI) { dx *= 0.707; dz *= 0.707; }
 
         let isMoving = (dx !== 0 || dz !== 0);
@@ -342,7 +339,6 @@ export class Killer {
             }
         }
 
-        // --- ABILITY WINDUP FLASHING LOGIC ---
         let isWindingUp = false; 
         if (this.type === 'Tripwire') {
             if (this.grappleState === 'shooting') isWindingUp = true;
@@ -366,7 +362,6 @@ export class Killer {
         this.resolveWallStuck(obstacles);
     }
 
-    // --- AI NAVIGATION ---
 
     hasLineOfSight(target, obstacles) {
         const sx = this.mesh.position.x, sz = this.mesh.position.z;
@@ -469,8 +464,6 @@ export class Killer {
         this.navPathIndex = Math.min(1, path.length - 1);
     }
 
-    // Marks a 4-unit grid over the arena where the killer's collision circle
-    // would overlap a wall. Rebuilt on every repath so sliding gates are current.
     buildNavGrid(obstacles) {
         const cell = 4;
         const min = -100;
@@ -529,7 +522,7 @@ export class Killer {
             if (dx !== 0 || dz !== 0) { this.m1AttackAngle.set(dx, 0, dz).normalize(); } 
             else { this.m1AttackAngle.set(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y)).normalize(); }
             
-            gameManager.audio.playSfx(this.type, this.config.m1.sfx); // Updated SFX call
+            gameManager.audio.playSfx(this.type, this.config.m1.sfx);
         }
 
         if (this.m1State === 'windup') {
@@ -562,7 +555,7 @@ export class Killer {
             this.teleportState = 'windup';
             this.teleportTimer = tpCfg.windup;
             this.ability1Cooldown = tpCfg.cooldown;
-            gameManager.audio.playSfx(this.type, tpCfg.sfx); // Updated SFX call
+            gameManager.audio.playSfx(this.type, tpCfg.sfx);
         }
 
         if (this.teleportState === 'windup') {
@@ -592,7 +585,7 @@ export class Killer {
             this.trickeryState = 'active';
             this.trickeryTimer = trickCfg.duration;
             this.ability2Cooldown = trickCfg.cooldown;
-            gameManager.audio.playSfx(this.type, trickCfg.sfx); // Updated SFX call
+            gameManager.audio.playSfx(this.type, trickCfg.sfx);
             
             let target = null;
             let minDist = Infinity;
@@ -642,7 +635,6 @@ export class Killer {
                     }
                 });
 
-                // Only fire with a target in range and a clear straight shot
                 if (target && minDist <= cfg.range && this.hasLineOfSight(target, obstacles)) {
                     this.grappleState = 'shooting';
                     this.grappleTarget = target;
@@ -705,7 +697,6 @@ export class Killer {
                     const t = this.grappleTarget;
                     const stepX = (dx / dist) * cfg.dragSpeed;
                     const stepZ = (dz / dist) * cfg.dragSpeed;
-                    // Slide along walls instead of dragging the survivor through them
                     if (!this.posBlocked(t.mesh.position.x + stepX, t.mesh.position.z, t.size, obstacles)) t.mesh.position.x += stepX;
                     if (!this.posBlocked(t.mesh.position.x, t.mesh.position.z + stepZ, t.size, obstacles)) t.mesh.position.z += stepZ;
 
@@ -749,7 +740,6 @@ export class Killer {
         if (!cfg) return;
 
         if (this.controls.ability2 && this.ability2Cooldown <= 0 && !this.activeBomb) {
-            // Stage 1: place the bomb at Tripwire's feet
             const geo = new THREE.SphereGeometry(3, 8, 8);
             const mat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x550000 });
             const mesh = new THREE.Mesh(geo, mat);
@@ -763,12 +753,11 @@ export class Killer {
                 vx: 0,
                 vz: 0,
                 lifetime: cfg.lifetime,
-                placeTimer: 180 // launch unlocked after 3 seconds
+                placeTimer: 180
             };
             this.ability2Cooldown = cfg.cooldown;
             gameManager.audio.playSfx(this.type, cfg.sfx);
         } else if (this.controls.ability2 && this.activeBomb && this.activeBomb.state === 'placed' && this.activeBomb.placeTimer <= 0) {
-            // Stage 2: launch toward the survivor nearest to Tripwire
             let target = null;
             let minDist = Infinity;
             players.forEach(p => {
@@ -829,7 +818,7 @@ export class Killer {
                             }
                         }
                     });
-                    gameManager.audio.playSfx(this.type, cfg.explosionSfx); // Play explosion SFX!
+                    gameManager.audio.playSfx(this.type, cfg.explosionSfx);
                     this.removeBomb();
                 } else if (hitWall) {
                     bomb.state = 'proximity';
@@ -852,7 +841,7 @@ export class Killer {
                             }
                         }
                     });
-                    gameManager.audio.playSfx(this.type, cfg.explosionSfx); // Play explosion SFX!
+                    gameManager.audio.playSfx(this.type, cfg.explosionSfx);
                     this.removeBomb();
                 }
             }

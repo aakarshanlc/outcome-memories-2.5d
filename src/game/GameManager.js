@@ -13,7 +13,6 @@ import { Ring } from '../entities/Ring.js';
 import { PointerArrow } from '../entities/PointerArrow.js';
 import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
 
-// Import all models and textures so Vite resolves their paths for preloading
 import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
 import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
 import knucklesModelUrl from '../assets/models/Knuckles/Knuckles.dae';
@@ -39,7 +38,6 @@ export class GameManager {
             showHitboxes: savedHit === null ? true : savedHit === 'true'
         };
 
-        //Shift+~ dev panel
         this.dev = {
             gasterUnlocked: false,
             godMode: false,
@@ -77,7 +75,6 @@ export class GameManager {
         window.addEventListener('click', startAudio);
         window.addEventListener('keydown', startAudio);
         
-        // Start polling gamepads
         this.startGamepadPolling();
     }
 
@@ -114,9 +111,9 @@ export class GameManager {
                     down: pad.buttons[13]?.pressed || pad.axes[1] > 0.5,
                     left: pad.buttons[14]?.pressed || pad.axes[0] < -0.5,
                     right: pad.buttons[15]?.pressed || pad.axes[0] > 0.5,
-                    m1: pad.buttons[0]?.pressed, // A / Cross
-                    ability1: pad.buttons[1]?.pressed, // B / Circle
-                    ability2: pad.buttons[2]?.pressed // X / Square
+                    m1: pad.buttons[0]?.pressed,
+                    ability1: pad.buttons[1]?.pressed,
+                    ability2: pad.buttons[2]?.pressed
                 };
             }
             requestAnimationFrame(poll);
@@ -245,7 +242,6 @@ export class GameManager {
         this.ui.initHUD();
         this.totalSurvivors = this.players.length;
         
-        // Timer scaling: 1 surv = 60s, 2 surv = 90s, 3 surv = 120s
         this.gameTimer = (this.totalSurvivors * 30 + 30) * 60; 
         this.lmsTimer = 60 * 60;   
         this.ringTimer = 15 * 60;  
@@ -295,8 +291,8 @@ export class GameManager {
         this.activeHitboxes.push(new Hitbox(this, this.engine.scene, x, z, radius, duration, owner, type, damage, data, shape, width, depth));
     }
 
-    spawnProjectile(x, z, dx, dz, owner, damage, stunDuration, speed) {
-        this.projectiles.push(new Projectile(this.engine.scene, x, z, dx, dz, owner, damage, stunDuration, speed));
+    spawnProjectile(x, z, dx, dz, owner, stunDuration, speed) {
+        this.projectiles.push(new Projectile(this.engine.scene, x, z, dx, dz, owner, stunDuration, speed));
     }
 
     gameLoop() {

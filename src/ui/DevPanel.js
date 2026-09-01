@@ -1,12 +1,3 @@
-// Dev overlay panel. Open/close with Shift + ` (~).
-//
-// Adding new controls is one line each in the constructor:
-//   this.addHeader('SECTION TITLE');
-//   this.addToggle('Label', () => someObj.flag, v => someObj.flag = v);
-//   this.addButton('Label', () => { ...do something... });
-//
-// Toggles and buttons only act on whatever they close over, so nothing here
-// affects the game unless the corresponding flag/feature is turned on.
 
 export class DevPanel {
     constructor(gameManager) {
@@ -78,7 +69,6 @@ export class DevPanel {
             <div id="dev-panel-subtitle">Shift + ~ closes</div>
         `;
 
-        // Group entries into sections, each section starting at a header.
         let section = null;
         const sections = [];
         this.entries.forEach((e, i) => {

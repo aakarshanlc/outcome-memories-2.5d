@@ -2,12 +2,11 @@ import * as THREE from 'three';
 import { checkCircleCircleCollision } from '../engine/Collision.js';
 
 export class Projectile {
-    constructor(scene, x, z, dx, dz, owner, damage, stunDuration, speed = 3.0) {
+    constructor(scene, x, z, dx, dz, owner, stunDuration, speed = 3.0) {
         this.scene = scene;
         this.x = x; this.z = z;
         this.dx = dx; this.dz = dz;
         this.owner = owner;
-        this.damage = damage;
         this.stunDuration = stunDuration;
         this.speed = speed;
         this.active = true;
@@ -32,8 +31,7 @@ export class Projectile {
 
         for (let k of killers) {
             if (checkCircleCircleCollision(this.x, this.z, 1.5, k.mesh.position.x, k.mesh.position.z, k.size)) {
-                    k.takeDamage(this.damage, this.owner);
-                    k.stun(this.stunDuration); 
+                    k.stun(this.stunDuration);
                     this.destroy();
                     break;
                 }

@@ -193,25 +193,20 @@ export class UIManager {
         this.activeScreen = screenName;
         this.setupEventListeners();
 
-        // --- AUDIO ROUTING LOGIC ---
         const videoEl = document.getElementById('menu-video');
         
         if (this.activeScreen === 'main') {
-            // We are on the Main Menu
             if (videoEl) {
                 videoEl.volume = this.gameManager.audio.musicVolume;
                 if (this.gameManager.audio.hasInteracted) {
-                    videoEl.muted = false; // Unmute video audio
-                    videoEl.play().catch(() => {}); // Ensure it plays
+                    videoEl.muted = false;
+                    videoEl.play().catch(() => {});
                 }
             }
-            // Stop the menu1.mp3 track so it doesn't play over the video
             this.gameManager.audio.stopMusic(); 
         } else {
-            // We are on Settings, Setup, Credits, etc.
-            if (videoEl) videoEl.muted = true; // Mute the video
+            if (videoEl) videoEl.muted = true;
             
-            // Play menu1.mp3
             if (this.gameManager.audio.hasInteracted) {
                 this.gameManager.audio.playMusic('menu');
             }
@@ -290,15 +285,13 @@ export class UIManager {
 
             document.getElementById('btn-cycle-surv-count').onclick = () => {
                 let count = this.gameManager.gameSetup.survivorCount;
-                count = (count % 3) + 1; // 1 -> 2 -> 3 -> 1
+                count = (count % 3) + 1;
                 this.gameManager.gameSetup.survivorCount = count;
                 
-                // Reset survivors to default order when count changes
                 this.gameManager.gameSetup.selectedSurvivors = ['Sonic', 'Tails', 'Knuckles'].slice(0, count);
-                this.showScreen('setup'); // Refresh UI
+                this.showScreen('setup');
             };
 
-            // Add event listeners for each survivor change button
             for(let i=0; i<this.gameManager.gameSetup.survivorCount; i++) {
                 const btn = document.getElementById(`btn-cycle-surv-${i}`);
                 if(btn) {
@@ -308,20 +301,18 @@ export class UIManager {
                         let currentChar = currentChars[i];
                         let nextChar = currentChar;
                         
-                        // Find the next character that isn't already selected
                         let idx = allChars.indexOf(currentChar);
                         do {
                             idx = (idx + 1) % allChars.length;
                             nextChar = allChars[idx];
                         } while (currentChars.includes(nextChar) && nextChar !== currentChar);
                         
-                        // If we looped back to the same one (unlikely with 3 chars), just pick the first available
                         if(nextChar === currentChar) {
                             nextChar = allChars.find(c => !currentChars.includes(c)) || currentChar;
                         }
 
                         currentChars[i] = nextChar;
-                        this.showScreen('setup'); // Refresh UI to show new name
+                        this.showScreen('setup');
                     };
                 }
             }

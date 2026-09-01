@@ -1,25 +1,22 @@
 import * as THREE from 'three';
 
-// Tunables — only used by this file.
 const COLOR = 0x00ffff;
-const ARROW_SCALE = 0.6;       // Overall arrow size
-const HOVER_Y = 13;            // Hover above walls
+const ARROW_SCALE = 0.6;
+const HOVER_Y = 13;
 const BOB_AMPLITUDE = 1.2;
 const BOB_SPEED = 0.1;
 const PULSE_AMPLITUDE = 0.08;
 const PULSE_SPEED = 0.2;
-const TURN_SPEED = 0.15;       // Fraction of the remaining yaw closed per frame
-const TURN_SNAP = 0.01;        // rad — snap instead of easing below this to stop wiggle
-const FADE_START = 30;         // Distance to ring where the arrow begins fading
-const FADE_END = 12;           // Distance where it is fully hidden
+const TURN_SPEED = 0.15;
+const TURN_SNAP = 0.01;
+const FADE_START = 30;
+const FADE_END = 12;
 
 export class PointerArrow {
     constructor(scene) {
         this.scene = scene;
         this.time = 0;
 
-        // Notched arrowhead drawn tip-toward -Y, then laid flat so the tip
-        // points along +Z at yaw 0 — one rotation.y aims it at the target.
         const shape = new THREE.Shape();
         shape.moveTo(0, -7);
         shape.lineTo(5.5, 5);
@@ -34,7 +31,7 @@ export class PointerArrow {
             transparent: true,
             side: THREE.DoubleSide,
             depthWrite: false,
-            fog: false, // Stays crisp at the far end of the scene fog
+            fog: false,
         });
         this.mat = mat;
 
@@ -54,7 +51,6 @@ export class PointerArrow {
         const dz = ringPos.z - playerPos.z;
         const dist = Math.hypot(dx, dz);
 
-        // Fade out as the ring comes within reach so it never blocks the escape
         const fade = THREE.MathUtils.clamp((dist - FADE_END) / (FADE_START - FADE_END), 0, 1);
         this.mesh.visible = fade > 0;
         if (!this.mesh.visible) return;
@@ -70,7 +66,7 @@ export class PointerArrow {
         if (dist > 0.001) {
             const targetYaw = Math.atan2(dx, dz);
             let diff = targetYaw - this.mesh.rotation.y;
-            diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // Shortest arc
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff));
             this.mesh.rotation.y = Math.abs(diff) > TURN_SNAP
                 ? this.mesh.rotation.y + diff * TURN_SPEED
                 : targetYaw;

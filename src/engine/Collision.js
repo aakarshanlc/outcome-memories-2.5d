@@ -6,7 +6,6 @@ export function checkCircleBoxCollision(cx, cz, radius, bx, bz, bw, bd) {
     return (distanceX * distanceX) + (distanceZ * distanceZ) < (radius * radius);
 }
 
-// NEW: Circle vs Circle collision (for Hitboxes hitting Players/Killers)
 export function checkCircleCircleCollision(x1, z1, r1, x2, z2, r2) {
     let dx = x1 - x2;
     let dz = z1 - z2;

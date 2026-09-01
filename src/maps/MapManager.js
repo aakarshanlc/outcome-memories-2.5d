@@ -52,8 +52,6 @@ export class MapManager {
         const span = gridSize * cellSize;
         const offset = -span / 2;
 
-        // Edge walls between adjacent cells. V[r][c] separates (c,r) and (c+1,r);
-        // H[r][c] separates (c,r) and (c,r+1).
         const V = Array.from({ length: gridSize }, () => new Array(gridSize - 1).fill(true));
         const H = Array.from({ length: gridSize - 1 }, () => new Array(gridSize).fill(true));
 
@@ -62,7 +60,6 @@ export class MapManager {
             else V[r1][Math.min(c1, c2)] = false;
         };
 
-        // Randomized DFS spanning tree
         const visited = Array.from({ length: gridSize }, () => new Array(gridSize).fill(false));
         const stack = [[0, 0]];
         visited[0][0] = true;
@@ -77,7 +74,6 @@ export class MapManager {
             stack.push([nc, nr]);
         }
 
-        // Braid the maze: knock down walls at dead ends so every route is a loop
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
                 const open = [];
@@ -93,7 +89,6 @@ export class MapManager {
             }
         }
 
-        // Materialize remaining edges as thin walls
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize - 1; c++) {
                 if (V[r][c]) {
@@ -109,7 +104,6 @@ export class MapManager {
             }
         }
 
-        // Gimmick: sliding gates. A few maze walls sweep back and forth
         const gates = this.obstacles.filter(o => o.isMaze);
         for (let i = gates.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -118,15 +112,15 @@ export class MapManager {
         const gateCount = Math.min(6, gates.length);
         for (let i = 0; i < gateCount; i++) {
             const obs = gates[i];
-            const vertical = obs.w < obs.d; // thin vertical walls sweep across x, horizontal across z
+            const vertical = obs.w < obs.d;
             obs.slide = {
                 axis: vertical ? 'x' : 'z',
                 center: vertical ? obs.x + obs.w / 2 : obs.z + obs.d / 2,
                 amp: cellSize / 2,
-                speed: Math.PI / 180, // full sweep cycle roughly every 6 seconds
+                speed: Math.PI / 180,
                 phase: Math.random() * Math.PI * 2
             };
-            obs.mesh.material.color.setHex(0xcc7722); // gates get a distinct color
+            obs.mesh.material.color.setHex(0xcc7722);
         }
     }
 
@@ -155,7 +149,6 @@ export class MapManager {
             this.pushBodies(obs, delta, players);
             this.pushBodies(obs, delta, killers);
 
-            // Rumble at each end of the sweep, but only if a player is close enough to hear it
             if (Math.abs(t) > 0.995) {
                 if (!s.atExtreme) {
                     s.atExtreme = true;
@@ -177,11 +170,9 @@ export class MapManager {
             if (b.health <= 0) continue;
             if (!checkCircleBoxCollision(b.mesh.position.x, b.mesh.position.z, b.size, obs.x, obs.z, obs.w, obs.d)) continue;
 
-            // Ride the gate's motion so the overlap never grows
             if (obs.slide.axis === 'x') b.mesh.position.x += delta;
             else b.mesh.position.z += delta;
 
-            // Still inside eject to the nearest face
             if (checkCircleBoxCollision(b.mesh.position.x, b.mesh.position.z, b.size, obs.x, obs.z, obs.w, obs.d)) {
                 const cx = Math.max(obs.x, Math.min(b.mesh.position.x, obs.x + obs.w));
                 const cz = Math.max(obs.z, Math.min(b.mesh.position.z, obs.z + obs.d));
@@ -235,8 +226,6 @@ export class MapManager {
     isClearForPad(x, z) {
         const padSize = 3;
         for (let obs of this.obstacles) {
-            // Treat sliding gates as their full sweep area so pads never end up
-            // in a gate's path
             let ox = obs.x, oz = obs.z, ow = obs.w, od = obs.d;
             if (obs.slide) {
                 const grow = obs.slide.amp + padSize;

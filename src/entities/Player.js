@@ -152,7 +152,6 @@ export class Player {
         if (this.isBlocking) { this.triggerBlockSuccess(attacker); return; }
         this.health -= amount;
         this.highlightTimer = 10;
-        // Gaster's teleport windup is interrupted by any damage
         if (this.gasterTpState === 'windup') { this.gasterTpState = 'idle'; this.gasterTpTimer = 0; }
         if (this.health <= 0) { this.health = 0; this.mesh.visible = false; }
     }
@@ -164,7 +163,6 @@ export class Player {
         this.ability1Cooldown = this.config.abilities.parry.cooldown;
         this.dashActive = this.config.abilities.parry.speedBoostDuration;
         if (killer) killer.stun(this.config.abilities.parry.stunDuration);
-        // Landed parry: heal 10, overhealing up to 150% of max health
         this.health = Math.min(this.health + 10, Math.ceil(this.maxHealth * 1.5));
     }
 
@@ -178,7 +176,6 @@ export class Player {
             dz = Math.cos(this.mesh.rotation.y);
         }
 
-        // Step back toward the start until the destination is clear of walls
         for (let d = distance; d > 0; d -= 2) {
             const tx = Math.max(-90, Math.min(90, this.mesh.position.x + dx * d));
             const tz = Math.max(-90, Math.min(90, this.mesh.position.z + dz * d));
@@ -355,7 +352,7 @@ export class Player {
                 const finalStun = this.config.abilities.gun.stunDuration + (chargeRatio * 120); 
                 const dir = new THREE.Vector3(dx, 0, dz);
                 if(dir.lengthSq() === 0) dir.set(0,0,1); else dir.normalize();
-                gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, dir.x, dir.z, this, this.config.abilities.gun.damage, finalStun, this.config.abilities.gun.projectileSpeed);
+                gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, dir.x, dir.z, this, finalStun, this.config.abilities.gun.projectileSpeed);
                 this.ability1Cooldown = this.config.abilities.gun.cooldown;
                 this.gunCharging = false;
                 gameManager.audio.playSfx('Tails', this.config.abilities.gun.sfx);
@@ -412,7 +409,7 @@ export class Player {
         else if (this.characterName === 'Gaster') {
             const blink = this.config.abilities.blink;
             if (this.gasterTpState === 'windup') {
-                this.setEmissive(0xaa00ff); // purple charge glow
+                this.setEmissive(0xaa00ff);
                 this.gasterTpTimer--;
                 if (this.gasterTpTimer <= 0) {
                     if (this.performBlink(blink.distance, obstacles)) {

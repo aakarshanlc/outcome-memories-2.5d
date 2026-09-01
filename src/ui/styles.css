@@ -60,7 +60,6 @@ h3 {
     font-size: 18px;
 }
 
-/* === GLITCH BUTTONS === */
 .button-49,
 .button-49:after {
   width: 150px;
@@ -81,11 +80,11 @@ h3 {
   cursor: pointer;
   margin: 10px 0;
   text-align: center;
-  transition: background 0.2s; /* Smooth transition for hover */
+  transition: background 0.2s;
 }
 
 .button-49:hover {
-  background: transparent; /* Background goes transparent on hover */
+  background: transparent;
 }
 
 .button-49:after {
@@ -95,7 +94,7 @@ h3 {
   --slice-3: inset(10% -6px 85% 0);
   --slice-4: inset(40% -6px 43% 0);
   --slice-5: inset(80% -6px 5% 0);
-  
+
   content: attr(data-text);
   display: block;
   position: absolute;
@@ -136,7 +135,6 @@ h3 {
     box-shadow: 4px 0px 0px #00E6F6;
 }
 
-/* === SETTINGS LAYOUT === */
 .settings-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -178,7 +176,6 @@ h3 {
     font-size: 14px;
 }
 
-/* === SETUP LAYOUT === */
 .setup-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -209,7 +206,6 @@ input[type="range"] {
 
 label { display: block; margin-bottom: 5px; font-size: 14px; }
 
-/* === MAIN MENU OVERHAUL === */
 .menu-bg-video {
   position: absolute;
   top: 0;
@@ -233,7 +229,7 @@ label { display: block; margin-bottom: 5px; font-size: 14px; }
   padding: 50px;
   box-sizing: border-box;
   background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.6) 100%);
-  pointer-events: auto; /* FIX: Allows buttons to be clicked */
+  pointer-events: auto;
 }
 
 .menu-title-top {

@@ -51,7 +51,6 @@ export class AudioManager {
                 if (!this.sfxLibrary[charName][actionName]) this.sfxLibrary[charName][actionName] = [];
                 this.sfxLibrary[charName][actionName].push(url);
 
-                // Pre-cache the audio element to remove delay
                 if (!this.sfxCache[url]) this.sfxCache[url] = new Audio(url);
             }
         }
@@ -104,8 +103,6 @@ export class AudioManager {
 
         const sounds = this.sfxLibrary[charName]?.[actionName];
         if (sounds && sounds.length > 0) {
-            // Random variant per play, never the same one twice in a row when
-            // there is more than one to choose from
             let url = sounds[0];
             if (sounds.length > 1) {
                 do {
@@ -113,7 +110,6 @@ export class AudioManager {
                 } while (url === this.sfxLastPick[cooldownKey]);
                 this.sfxLastPick[cooldownKey] = url;
             }
-            // Clone the cached node for zero-latency overlapping playback
             const sfx = this.sfxCache[url].cloneNode();
             sfx.volume = this.sfxVolume;
             sfx.play().catch(() => {});

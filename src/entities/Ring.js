@@ -7,12 +7,12 @@ export class Ring {
         const mat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00 });
         this.mesh = new THREE.Mesh(geo, mat);
         this.mesh.position.set(x, 5, z);
-        this.mesh.rotation.x = Math.PI / 2; // Lay flat
+        this.mesh.rotation.x = Math.PI / 2;
         scene.add(this.mesh);
     }
 
     update() {
-        this.mesh.rotation.z += 0.05; // Spin
+        this.mesh.rotation.z += 0.05;
     }
 
     destroy() {
