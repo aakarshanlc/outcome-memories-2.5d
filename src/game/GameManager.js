@@ -438,7 +438,7 @@ export class GameManager {
 
             if (alivePlayers.length === 0 && this.phase !== 'GAME_OVER') this.endGame('KILLER WINS', 'All survivors eliminated');
 
-            let camTarget = this.survivor;
+            let camTarget = alivePlayers[0] || this.players[0];
             if (camTarget) {
                 this.engine.camera.position.x = camTarget.mesh.position.x;
                 this.engine.camera.position.z = camTarget.mesh.position.z + 50;
