@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 
 const COLOR = 0x00ffff;
-const ARROW_SCALE = 0.6;
 const HOVER_Y = 13;
 const BOB_AMPLITUDE = 1.2;
 const BOB_SPEED = 0.1;
@@ -31,7 +30,7 @@ export class PointerArrow {
             transparent: true,
             side: THREE.DoubleSide,
             depthWrite: false,
-            fog: false,
+            fog: false, // Stays crisp at the far end of the scene fog
         });
         this.mat = mat;
 
@@ -66,13 +65,13 @@ export class PointerArrow {
         if (dist > 0.001) {
             const targetYaw = Math.atan2(dx, dz);
             let diff = targetYaw - this.mesh.rotation.y;
-            diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // Shortest arc
             this.mesh.rotation.y = Math.abs(diff) > TURN_SNAP
                 ? this.mesh.rotation.y + diff * TURN_SPEED
                 : targetYaw;
         }
 
-        this.mesh.scale.setScalar(ARROW_SCALE * (1 + Math.sin(this.time * PULSE_SPEED) * PULSE_AMPLITUDE));
+        this.mesh.scale.setScalar(1 + Math.sin(this.time * PULSE_SPEED) * PULSE_AMPLITUDE);
     }
 
     destroy() {
