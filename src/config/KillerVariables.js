@@ -1,6 +1,6 @@
 export const KillerVariables = {
     'Tripwire': {
-        speed: 1.3,
+        speed: 0.3,
         size: 4,
         m1: { cooldown: 60, windup: 30, duration: 10, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1', sfx: 'm1' },
         abilities: {
