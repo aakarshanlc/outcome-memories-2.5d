@@ -1,17 +1,45 @@
 import * as THREE from 'three';
 
+// Tunables — only used by this file.
+const COLOR = 0x00ffff;
+const ARROW_SCALE = 0.6;       // Overall arrow size
+const HOVER_Y = 13;            // Hover above walls
+const BOB_AMPLITUDE = 1.2;
+const BOB_SPEED = 0.1;
+const PULSE_AMPLITUDE = 0.08;
+const PULSE_SPEED = 0.2;
+const TURN_SPEED = 0.15;       // Fraction of the remaining yaw closed per frame
+const TURN_SNAP = 0.01;        // rad — snap instead of easing below this to stop wiggle
+const FADE_START = 30;         // Distance to ring where the arrow begins fading
+const FADE_END = 12;           // Distance where it is fully hidden
+
 export class PointerArrow {
     constructor(scene) {
         this.scene = scene;
         this.time = 0;
 
-        // Single triangle dart. Geometry is pre-rotated to point along +Z at
-        // yaw 0, so it is aimed with one rotation.y in update().
-        const geo = new THREE.ConeGeometry(3.5, 9, 3);
-        geo.rotateX(Math.PI / 2);
-        const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        // Notched arrowhead drawn tip-toward -Y, then laid flat so the tip
+        // points along +Z at yaw 0 — one rotation.y aims it at the target.
+        const shape = new THREE.Shape();
+        shape.moveTo(0, -7);
+        shape.lineTo(5.5, 5);
+        shape.lineTo(0, 2);
+        shape.lineTo(-5.5, 5);
+        shape.closePath();
+        const geo = new THREE.ShapeGeometry(shape);
+        geo.rotateX(-Math.PI / 2);
+
+        const mat = new THREE.MeshBasicMaterial({
+            color: COLOR,
+            transparent: true,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            fog: false, // Stays crisp at the far end of the scene fog
+        });
+        this.mat = mat;
+
         this.mesh = new THREE.Mesh(geo, mat);
-        this.mesh.position.y = 13; // Hover above walls
+        this.mesh.position.y = HOVER_Y;
         this.mesh.visible = false;
         scene.add(this.mesh);
     }
@@ -21,24 +49,39 @@ export class PointerArrow {
             this.mesh.visible = false;
             return;
         }
-        this.time++;
-        this.mesh.visible = true;
-
-        this.mesh.position.x = playerPos.x;
-        this.mesh.position.z = playerPos.z;
-        this.mesh.position.y = 13 + Math.sin(this.time * 0.1) * 1.2;
 
         const dx = ringPos.x - playerPos.x;
         const dz = ringPos.z - playerPos.z;
-        if (dx !== 0 || dz !== 0) {
-            this.mesh.rotation.y = Math.atan2(dx, dz);
+        const dist = Math.hypot(dx, dz);
+
+        // Fade out as the ring comes within reach so it never blocks the escape
+        const fade = THREE.MathUtils.clamp((dist - FADE_END) / (FADE_START - FADE_END), 0, 1);
+        this.mesh.visible = fade > 0;
+        if (!this.mesh.visible) return;
+
+        this.time++;
+        this.mat.opacity = fade;
+        this.mesh.position.set(
+            playerPos.x,
+            HOVER_Y + Math.sin(this.time * BOB_SPEED) * BOB_AMPLITUDE,
+            playerPos.z
+        );
+
+        if (dist > 0.001) {
+            const targetYaw = Math.atan2(dx, dz);
+            let diff = targetYaw - this.mesh.rotation.y;
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // Shortest arc
+            this.mesh.rotation.y = Math.abs(diff) > TURN_SNAP
+                ? this.mesh.rotation.y + diff * TURN_SPEED
+                : targetYaw;
         }
 
-        const pulse = 1 + Math.sin(this.time * 0.2) * 0.08;
-        this.mesh.scale.setScalar(pulse);
+        this.mesh.scale.setScalar(ARROW_SCALE * (1 + Math.sin(this.time * PULSE_SPEED) * PULSE_AMPLITUDE));
     }
 
     destroy() {
         this.scene.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
     }
 }

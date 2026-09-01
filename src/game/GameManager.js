@@ -68,7 +68,6 @@ export class GameManager {
             selectedMap: 'Open Field'
         };
 
-        // Start audio on first user interaction to bypass browser autoplay block
         const startAudio = () => {
             this.audio.hasInteracted = true;
             this.ui.showScreen(this.ui.activeScreen); 
@@ -420,8 +419,9 @@ export class GameManager {
                 this.ring.update();
                 this.ui.updateHUD('ESCAPE!', this.ringTimer / 60, false);
                 
-                if (this.ring && this.arrow && this.killer) {
-                    this.arrow.update(this.killer.mesh.position, this.ring.mesh.position);
+                if (this.ring && this.arrow) {
+                    const guide = alivePlayers[0];
+                    if (guide) this.arrow.update(guide.mesh.position, this.ring.mesh.position);
                 }
 
                 if (this.ring) {
