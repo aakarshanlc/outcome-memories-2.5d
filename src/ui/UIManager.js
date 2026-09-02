@@ -5,6 +5,9 @@ export class UIManager {
         this.activeScreen = null;
         this.waitingForKey = null;
         this.hudElement = null;
+
+        window.addEventListener('gamepadconnected', () => this.refreshDeviceDropdowns());
+        window.addEventListener('gamepaddisconnected', () => this.refreshDeviceDropdowns());
     }
 
     btn(text, id, small = false) {
@@ -26,7 +29,7 @@ export class UIManager {
         if (!this.hudElement) return;
         let phaseText = phase;
         let timerText = Math.max(0, Math.ceil(timeLeft));
-        
+
         if (isRush) {
             phaseText = "RUSH";
             this.root.querySelector('#phase-text').style.color = '#ff0000';
@@ -50,12 +53,19 @@ export class UIManager {
         `;
     }
 
-    showGameOver(title, subtitle) {
+    showGameOver(title, subtitle, summary = []) {
         this.hideAll();
+        const color = /ESCAPE[SD]/.test(title) ? '#00ff00' : '#ff0000';
+        const statusText = { escaped: 'ESCAPED', died: 'DIED', 'too slow': 'TOO SLOW' };
+        const statusColor = { escaped: '#33ff66', died: '#ff4444', 'too slow': '#ffd700' };
+        const rows = summary.map(s =>
+            `<div style="color:${statusColor[s.status] || '#fff'};">${s.label} — ${statusText[s.status] || s.status}</div>`
+        ).join('');
         this.root.innerHTML = `
             <div class="menu-screen" style="background: rgba(0,0,0,0.9);">
-                <h1 style="font-size: 80px; color: ${title.includes('ESCAPES') ? '#00ff00' : '#ff0000'};">${title}</h1>
+                <h1 style="font-size: 80px; color: ${color};">${title}</h1>
                 <h2 style="font-size: 30px; color: #aaa;">${subtitle}</h2>
+                ${rows ? `<div class="gameover-summary">${rows}</div>` : ''}
                 ${this.btn('BACK TO MENU', 'btn-game-over')}
             </div>
         `;
@@ -73,12 +83,12 @@ export class UIManager {
                 <video id="menu-video" autoplay loop muted playsinline class="menu-bg-video">
                     <source src="./backgrounds/menu-animation.mp4" type="video/mp4">
                 </video>
-                
+
                 <div class="main-menu-overlay">
                     <div class="menu-title-top">
                         <h1>Outcome Memories 2.5D</h1>
                     </div>
-                    
+
                     <div class="menu-buttons-left">
                         ${this.btn('PLAY', 'btn-play')}
                         ${this.btn('SETTINGS', 'btn-settings')}
@@ -93,7 +103,7 @@ export class UIManager {
             html = `
                 <div class="menu-screen" id="settings-menu" style="justify-content: flex-start; padding-top: 30px; overflow-y: auto;">
                     <h1>SETTINGS</h1>
-                    
+
                     <div class="settings-grid">
                         <div class="settings-col">
                             <h3>AUDIO</h3>
@@ -106,23 +116,23 @@ export class UIManager {
                                 <input type="range" id="sfx-slider" min="0" max="100" value="${audio.sfxVolume*100}">
                             </div>
                         </div>
-                        
+
                         <div class="settings-col">
                             <h3>VISUALS</h3>
                             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px;">
-                                <input type="checkbox" id="hitbox-toggle" ${showHit} style="width: 20px; height: 20px;"> 
+                                <input type="checkbox" id="hitbox-toggle" ${showHit} style="width: 20px; height: 20px;">
                                 Show Hitboxes
                             </label>
                         </div>
                     </div>
 
                     <div class="controls-grid">
-                        <div class="control-box"><h3>P1</h3>${this.generateControlButtons('p1', schemes.p1)}</div>
-                        <div class="control-box"><h3>P2</h3>${this.generateControlButtons('p2', schemes.p2)}</div>
-                        <div class="control-box"><h3>P3</h3>${this.generateControlButtons('p3', schemes.p3)}</div>
-                        <div class="control-box"><h3>P4</h3>${this.generateControlButtons('p4', schemes.p4)}</div>
+                        <div class="control-box"><h3>P1</h3>${this.generateDeviceDropdown('p1')}${this.generateControlButtons('p1', schemes.p1)}</div>
+                        <div class="control-box"><h3>P2</h3>${this.generateDeviceDropdown('p2')}${this.generateControlButtons('p2', schemes.p2)}</div>
+                        <div class="control-box"><h3>P3</h3>${this.generateDeviceDropdown('p3')}${this.generateControlButtons('p3', schemes.p3)}</div>
+                        <div class="control-box"><h3>P4</h3>${this.generateDeviceDropdown('p4')}${this.generateControlButtons('p4', schemes.p4)}</div>
                     </div>
-                    
+
                     <div style="margin-top: 30px;">
                         ${this.btn('BACK', 'btn-settings-back')}
                     </div>
@@ -142,7 +152,7 @@ export class UIManager {
         } else if (screenName === 'setup') {
             const aiChecked = this.gameManager.gameSetup.killerIsAI;
             const survCount = this.gameManager.gameSetup.survivorCount;
-            
+
             let survHtml = '';
             for(let i=0; i<survCount; i++) {
                 survHtml += `
@@ -194,7 +204,7 @@ export class UIManager {
         this.setupEventListeners();
 
         const videoEl = document.getElementById('menu-video');
-        
+
         if (this.activeScreen === 'main') {
             if (videoEl) {
                 videoEl.volume = this.gameManager.audio.musicVolume;
@@ -203,14 +213,43 @@ export class UIManager {
                     videoEl.play().catch(() => {});
                 }
             }
-            this.gameManager.audio.stopMusic(); 
+            this.gameManager.audio.stopMusic();
         } else {
             if (videoEl) videoEl.muted = true;
-            
+
             if (this.gameManager.audio.hasInteracted) {
                 this.gameManager.audio.playMusic('menu');
             }
         }
+    }
+
+    deviceOptionHtml(current) {
+        const options = this.gameManager.getDeviceOptions();
+        let opts = options.map(o =>
+            `<option value="${o.id}" ${o.id === current ? 'selected' : ''}>${o.label}</option>`).join('');
+        if (!options.some(o => o.id === current)) {
+            const label = current.startsWith('gp:')
+                ? `Gamepad ${Number(current.slice(3)) + 1} (disconnected)`
+                : current;
+            opts += `<option value="${current}" selected>${label}</option>`;
+        }
+        return opts;
+    }
+
+    refreshDeviceDropdowns() {
+        if (this.activeScreen !== 'settings') return;
+        document.querySelectorAll('select.device-select').forEach(sel => {
+            sel.innerHTML = this.deviceOptionHtml(this.gameManager.inputBindings[sel.dataset.slot]);
+        });
+    }
+
+    generateDeviceDropdown(playerId) {
+        const gm = this.gameManager;
+        return `
+            <label class="device-row">
+                <span>Input</span>
+                <select class="device-select" data-slot="${playerId}">${this.deviceOptionHtml(gm.inputBindings[playerId])}</select>
+            </label>`;
     }
 
     generateControlButtons(playerId, scheme) {
@@ -220,23 +259,54 @@ export class UIManager {
             const key = keys[i];
             const val = scheme[key].toUpperCase();
             return `<div class="control-row">
-                        <span>${label}:</span> 
+                        <span>${label}:</span>
                         <button class="button-49 btn-sm" data-player="${playerId}" data-key="${key}" data-text="${val}">${val}</button>
                     </div>`;
         }).join('');
     }
 
-    hideAll() { this.root.innerHTML = ''; this.hudElement = null; }
+    hideAll() {
+        this.root.innerHTML = '';
+        this.hudElement = null;
+        if (this.qteEl) this.qteEl.style.display = 'none';
+    }
+
+    ensureQte() {
+        if (!this.qteEl) {
+            const el = document.createElement('div');
+            el.id = 'qte-overlay';
+            el.innerHTML = `
+                <div id="qte-label">HEAL</div>
+                <div id="qte-bar"><div id="qte-zone"></div><div id="qte-marker"></div></div>`;
+            document.body.appendChild(el);
+            this.qteEl = el;
+        }
+        return this.qteEl;
+    }
+
+    showQte(progress, zoneStart, zoneWidth, combo) {
+        const el = this.ensureQte();
+        el.style.display = 'block';
+        const zone = el.querySelector('#qte-zone');
+        zone.style.left = (zoneStart * 100) + '%';
+        zone.style.width = (zoneWidth * 100) + '%';
+        zone.style.background = combo ? '#ffd700' : '#33ff66';
+        el.querySelector('#qte-marker').style.left = `calc(${Math.min(1, Math.max(0, progress)) * 100}% - 5px)`;
+    }
+
+    hideQte() {
+        if (this.qteEl) this.qteEl.style.display = 'none';
+    }
 
     setupEventListeners() {
         if (this.activeScreen === 'main') {
             document.getElementById('btn-play').onclick = () => this.showScreen('setup');
             document.getElementById('btn-settings').onclick = () => this.showScreen('settings');
             document.getElementById('btn-credits').onclick = () => this.showScreen('credits');
-        } 
+        }
         else if (this.activeScreen === 'settings') {
             document.getElementById('btn-settings-back').onclick = () => this.showScreen('main');
-            
+
             const mSlider = document.getElementById('music-slider');
             mSlider.oninput = () => {
                 this.gameManager.audio.musicVolume = mSlider.value / 100;
@@ -256,12 +326,19 @@ export class UIManager {
                 localStorage.setItem('om_show_hitboxes', e.target.checked);
             };
 
+            document.querySelectorAll('select.device-select').forEach(sel => {
+                sel.onchange = () => {
+                    this.gameManager.inputBindings[sel.dataset.slot] = sel.value;
+                    this.gameManager.saveInputBindings();
+                };
+            });
+
             document.querySelectorAll('button[data-player]').forEach(btn => {
                 btn.onclick = (e) => {
                     const btnEl = e.currentTarget;
                     this.waitingForKey = { player: btnEl.dataset.player, key: btnEl.dataset.key, button: btnEl };
                     btnEl.innerText = "...";
-                    btnEl.dataset.text = "..."; 
+                    btnEl.dataset.text = "...";
                 };
             });
             document.onkeydown = (e) => {
@@ -275,10 +352,10 @@ export class UIManager {
                     this.waitingForKey = null;
                 }
             };
-        } 
+        }
         else if (this.activeScreen === 'credits') {
             document.getElementById('btn-credits-back').onclick = () => this.showScreen('main');
-        } 
+        }
         else if (this.activeScreen === 'setup') {
             document.getElementById('btn-setup-back').onclick = () => this.showScreen('main');
             document.getElementById('btn-start-game').onclick = () => { this.gameManager.startGame(); };
@@ -287,7 +364,7 @@ export class UIManager {
                 let count = this.gameManager.gameSetup.survivorCount;
                 count = (count % 3) + 1;
                 this.gameManager.gameSetup.survivorCount = count;
-                
+
                 this.gameManager.gameSetup.selectedSurvivors = ['Sonic', 'Tails', 'Knuckles'].slice(0, count);
                 this.showScreen('setup');
             };
@@ -300,13 +377,13 @@ export class UIManager {
                         const currentChars = this.gameManager.gameSetup.selectedSurvivors;
                         let currentChar = currentChars[i];
                         let nextChar = currentChar;
-                        
+
                         let idx = allChars.indexOf(currentChar);
                         do {
                             idx = (idx + 1) % allChars.length;
                             nextChar = allChars[idx];
                         } while (currentChars.includes(nextChar) && nextChar !== currentChar);
-                        
+
                         if(nextChar === currentChar) {
                             nextChar = allChars.find(c => !currentChars.includes(c)) || currentChar;
                         }
@@ -328,11 +405,11 @@ export class UIManager {
             document.getElementById('btn-toggle-ai').onclick = () => {
                 this.gameManager.gameSetup.killerIsAI = !this.gameManager.gameSetup.killerIsAI;
                 const isAI = this.gameManager.gameSetup.killerIsAI;
-                
+
                 const aiBtn = document.getElementById('btn-toggle-ai');
                 aiBtn.style.background = isAI ? '#ff3333' : '#333';
                 document.getElementById('ai-status').innerText = isAI ? 'ON' : 'OFF';
-                
+
                 const playerBox = document.getElementById('killer-player-box');
                 if (playerBox) {
                     playerBox.style.display = isAI ? 'none' : 'flex';
@@ -341,7 +418,7 @@ export class UIManager {
 
             document.getElementById('btn-cycle-killer-player').onclick = () => {
                 let p = this.gameManager.gameSetup.killerPlayer;
-                p = (p % 4) + 1; 
+                p = (p % 4) + 1;
                 this.gameManager.gameSetup.killerPlayer = p;
                 document.getElementById('killer-player').innerText = `P${p}`;
             };

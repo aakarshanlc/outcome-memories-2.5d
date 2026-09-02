@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
+import { buildNavGrid, worldToCell, nearestFreeCell, computePath } from '../engine/NavGrid.js';
 import { KillerVariables } from '../config/KillerVariables.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -15,7 +16,7 @@ export class Killer {
         this.controls = controls;
         this.type = type;
         this.config = KillerVariables[type] || KillerVariables['Tripwire'];
-        
+
         const geo = new THREE.ConeGeometry(4, 12, 6);
         const mat = new THREE.MeshStandardMaterial({ color: color, emissive: 0x550000 });
         this.mesh = new THREE.Mesh(geo, mat);
@@ -26,11 +27,11 @@ export class Killer {
         if (type === 'Tripwire') {
             const loader = new OBJLoader();
             const textureLoader = new THREE.TextureLoader();
-            
+
             textureLoader.load(tripwireTextureUrl, (texture) => {
-                texture.flipY = false; 
-                texture.colorSpace = THREE.SRGBColorSpace; 
-                
+                texture.flipY = false;
+                texture.colorSpace = THREE.SRGBColorSpace;
+
                 loader.load(tripwireModelUrl, (obj) => {
                     obj.traverse((node) => {
                         if (node.isMesh) {
@@ -43,11 +44,11 @@ export class Killer {
                     this.swapMesh(finalMesh);
                 });
             });
-        } 
+        }
         else if (type === '2011X' || type === 'Starved') {
             const loader = new GLTFLoader();
             const modelUrl = type === '2011X' ? x2011ModelUrl : starvedModelUrl;
-            
+
             loader.load(modelUrl, (gltf) => {
                 const model = gltf.scene;
                 model.traverse((node) => {
@@ -67,7 +68,7 @@ export class Killer {
         this.stunned = 0;
         this.controlId = 'p2';
         this.isAI = false;
-        
+
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.acceleration = 0.2;
         this.damping = 0.85;
@@ -88,21 +89,21 @@ export class Killer {
 
         this.ability1Cooldown = 0;
         this.ability2Cooldown = 0;
-        
+
         this.grappleState = 'idle';
         this.grappleTarget = null;
         this.grappleTimer = 0;
         this.grappleLine = null;
         this.grappleProjectile = null;
-        
+
         this.activeBomb = null;
-        
+
         this.teleportState = 'idle';
         this.teleportTimer = 0;
         this.trickeryState = 'idle';
         this.trickeryTimer = 0;
         this.trickeryAngle = 0;
-        
+
         this.stunCount = 0;
         this.isRushing = false;
         this.rushTimer = 0;
@@ -131,7 +132,7 @@ export class Killer {
         if (box.isEmpty()) return yawGroup;
 
         const size = box.getSize(new THREE.Vector3());
-        const targetHeight = 8; 
+        const targetHeight = 8;
         const scale = size.y > 0 ? targetHeight / size.y : 1;
         yawGroup.scale.setScalar(scale);
 
@@ -167,17 +168,17 @@ export class Killer {
 
     stun(duration) {
         this.stunned = duration;
-        this.setEmissive(0xffffff); 
+        this.setEmissive(0xffffff);
         this.velocity.set(0,0,0);
         this.currentSpeed = 1.0;
-        
+
         if (this.type === '2011X' && this.config.rush && !this.isRushing) {
             this.stunCount++;
             if (this.stunCount >= this.config.rush.stunThreshold) {
                 this.isRushing = true;
                 this.rushTimer = this.config.rush.duration;
                 this.stunCount = 0;
-                this.setEmissive(0xff0000); 
+                this.setEmissive(0xff0000);
             }
         }
     }
@@ -190,11 +191,11 @@ export class Killer {
                 if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
                     let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
                     let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
-                    
+
                     let dx = this.mesh.position.x - closestX;
                     let dz = this.mesh.position.z - closestZ;
                     let dist = Math.hypot(dx, dz);
-                    
+
                     if (dist > 0) {
                         this.mesh.position.x = closestX + (dx / dist) * (this.size + 0.1);
                         this.mesh.position.z = closestZ + (dz / dist) * (this.size + 0.1);
@@ -218,13 +219,13 @@ export class Killer {
             this.rushTimer--;
             if (this.rushTimer <= 0) {
                 this.isRushing = false;
-                this.setEmissive(0x550000); 
+                this.setEmissive(0x550000);
             }
         }
 
         if (this.stunned > 0) {
             this.stunned--;
-            if (this.stunned === 0 && !this.isRushing) this.setEmissive(0x550000); 
+            if (this.stunned === 0 && !this.isRushing) this.setEmissive(0x550000);
             this.velocity.x *= this.damping; this.velocity.z *= this.damping;
             this.mesh.position.x += this.velocity.x;
             this.mesh.position.z += this.velocity.z;
@@ -292,7 +293,7 @@ export class Killer {
         if (dx !== 0 && dz !== 0 && !this.isAI) { dx *= 0.707; dz *= 0.707; }
 
         let isMoving = (dx !== 0 || dz !== 0);
-        if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02; 
+        if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02;
         else this.currentSpeed += (1.0 - this.currentSpeed) * 0.05;
 
         let currentSpeed = this.currentSpeed;
@@ -327,7 +328,7 @@ export class Killer {
         if (this.ability2Cooldown > 0) this.ability2Cooldown--;
 
         this.updateM1(players, gameManager, dx, dz);
-        
+
         if (!this.isRushing) {
             if (this.type === 'Tripwire' && this.config.abilities) {
                 this.updateGrapple(players, obstacles, gameManager);
@@ -339,7 +340,7 @@ export class Killer {
             }
         }
 
-        let isWindingUp = false; 
+        let isWindingUp = false;
         if (this.type === 'Tripwire') {
             if (this.grappleState === 'shooting') isWindingUp = true;
             if (this.activeBomb && this.activeBomb.state === 'flying') isWindingUp = true;
@@ -356,12 +357,11 @@ export class Killer {
                 this.setEmissive(0x550000);
             }
         } else {
-            this.setEmissive(0x550000); 
+            this.setEmissive(0x550000);
         }
 
         this.resolveWallStuck(obstacles);
     }
-
 
     hasLineOfSight(target, obstacles) {
         const sx = this.mesh.position.x, sz = this.mesh.position.z;
@@ -420,98 +420,20 @@ export class Killer {
 
     computeNavPath(target, obstacles) {
         const grid = this.buildNavGrid(obstacles);
-        const start = this.nearestFreeCell(this.worldToCell(this.mesh.position.x, this.mesh.position.z, grid), grid);
-        const goal = this.nearestFreeCell(this.worldToCell(target.mesh.position.x, target.mesh.position.z, grid), grid);
-        if (!start || !goal) { this.navPath = null; return; }
-
-        const size = grid.size;
-        const startIdx = start.r * size + start.c;
-        const goalIdx = goal.r * size + goal.c;
-
-        const prev = new Int32Array(size * size).fill(-1);
-        const visited = new Uint8Array(size * size);
-        const queue = [startIdx];
-        visited[startIdx] = 1;
-        let head = 0;
-        while (head < queue.length) {
-            const cur = queue[head++];
-            if (cur === goalIdx) break;
-            const r = Math.floor(cur / size);
-            const c = cur % size;
-            const neighbors = [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]];
-            for (const [nc, nr] of neighbors) {
-                if (nc < 0 || nc >= size || nr < 0 || nr >= size) continue;
-                const ni = nr * size + nc;
-                if (visited[ni] || grid.blocked[ni]) continue;
-                visited[ni] = 1;
-                prev[ni] = cur;
-                queue.push(ni);
-            }
-        }
-
-        if (!visited[goalIdx]) { this.navPath = null; return; }
-
-        const path = [];
-        let cur = goalIdx;
-        while (cur !== -1) {
-            const r = Math.floor(cur / size);
-            const c = cur % size;
-            path.push({ x: grid.min + (c + 0.5) * grid.cell, z: grid.min + (r + 0.5) * grid.cell });
-            cur = prev[cur];
-        }
-        path.reverse();
-        this.navPath = path;
-        this.navPathIndex = Math.min(1, path.length - 1);
+        this.navPath = computePath(this.mesh.position.x, this.mesh.position.z, target.mesh.position.x, target.mesh.position.z, grid);
+        this.navPathIndex = this.navPath ? Math.min(1, this.navPath.length - 1) : 0;
     }
 
     buildNavGrid(obstacles) {
-        const cell = 4;
-        const min = -100;
-        const size = 50;
-        const blocked = new Uint8Array(size * size);
-        const inflate = this.size + 0.5;
-
-        for (let obs of obstacles) {
-            const c0 = Math.max(0, Math.floor((obs.x - inflate - min) / cell));
-            const c1 = Math.min(size - 1, Math.floor((obs.x + obs.w + inflate - min) / cell));
-            const r0 = Math.max(0, Math.floor((obs.z - inflate - min) / cell));
-            const r1 = Math.min(size - 1, Math.floor((obs.z + obs.d + inflate - min) / cell));
-            for (let r = r0; r <= r1; r++) {
-                for (let c = c0; c <= c1; c++) {
-                    if (blocked[r * size + c]) continue;
-                    const cx = min + (c + 0.5) * cell;
-                    const cz = min + (r + 0.5) * cell;
-                    if (checkCircleBoxCollision(cx, cz, inflate, obs.x, obs.z, obs.w, obs.d)) {
-                        blocked[r * size + c] = 1;
-                    }
-                }
-            }
-        }
-        return { blocked, cell, min, size };
+        return buildNavGrid(obstacles, this.size + 0.5);
     }
 
     worldToCell(x, z, grid) {
-        const c = Math.floor((x - grid.min) / grid.cell);
-        const r = Math.floor((z - grid.min) / grid.cell);
-        if (c < 0 || c >= grid.size || r < 0 || r >= grid.size) return null;
-        return { r, c };
+        return worldToCell(x, z, grid);
     }
 
     nearestFreeCell(cell, grid) {
-        if (!cell) return null;
-        if (!grid.blocked[cell.r * grid.size + cell.c]) return cell;
-        for (let radius = 1; radius <= 6; radius++) {
-            for (let dr = -radius; dr <= radius; dr++) {
-                for (let dc = -radius; dc <= radius; dc++) {
-                    if (Math.max(Math.abs(dr), Math.abs(dc)) !== radius) continue;
-                    const r = cell.r + dr;
-                    const c = cell.c + dc;
-                    if (r < 0 || r >= grid.size || c < 0 || c >= grid.size) continue;
-                    if (!grid.blocked[r * grid.size + c]) return { r, c };
-                }
-            }
-        }
-        return null;
+        return nearestFreeCell(cell, grid);
     }
 
     updateM1(players, gameManager, dx, dz) {
@@ -519,9 +441,9 @@ export class Killer {
             this.m1State = 'windup';
             this.m1Timer = this.config.m1.windup || 0;
             this.m1HitboxCount = 0;
-            if (dx !== 0 || dz !== 0) { this.m1AttackAngle.set(dx, 0, dz).normalize(); } 
+            if (dx !== 0 || dz !== 0) { this.m1AttackAngle.set(dx, 0, dz).normalize(); }
             else { this.m1AttackAngle.set(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y)).normalize(); }
-            
+
             gameManager.audio.playSfx(this.type, this.config.m1.sfx);
         }
 
@@ -538,7 +460,7 @@ export class Killer {
                 const hz = this.mesh.position.z + this.m1AttackAngle.z * 10;
                 let type = this.config.m1.hitboxType;
                 let data = this.config.m1.applyBleed ? { applyBleed: true, bleedDuration: this.config.m1.bleedDuration || 180 } : null;
-                
+
                 const hw = this.config.m1.hitboxWidth || 20;
                 const hd = this.config.m1.hitboxDepth || 20;
                 gameManager.spawnHitbox(hx, hz, 0, 10, this, type, this.config.m1.damage, data, 'box', hw, hd);
@@ -566,10 +488,10 @@ export class Killer {
                     let angle = Math.random() * Math.PI * 2;
                     this.mesh.position.x = target.mesh.position.x + Math.cos(angle) * 20;
                     this.mesh.position.z = target.mesh.position.z + Math.sin(angle) * 20;
-                    
+
                     this.mesh.position.x = Math.max(-90, Math.min(90, this.mesh.position.x));
                     this.mesh.position.z = Math.max(-90, Math.min(90, this.mesh.position.z));
-                    
+
                     gameManager.spawnHitbox(this.mesh.position.x, this.mesh.position.z, tpCfg.arriveRadius, 10, this, 'teleport_arrive', 0, { applyBleed: true, bleedDuration: tpCfg.bleedDuration }, 'sphere');
                 }
                 this.navPath = null;
@@ -586,7 +508,7 @@ export class Killer {
             this.trickeryTimer = trickCfg.duration;
             this.ability2Cooldown = trickCfg.cooldown;
             gameManager.audio.playSfx(this.type, trickCfg.sfx);
-            
+
             let target = null;
             let minDist = Infinity;
             players.forEach(p => {
@@ -604,14 +526,14 @@ export class Killer {
 
         if (this.trickeryState === 'active') {
             this.trickeryTimer--;
-            
+
             if (this.trickeryTimer % 10 === 0) {
                 const offset = (1 - this.trickeryTimer / trickCfg.duration) * trickCfg.hitboxSpacing * trickCfg.hitboxCount;
                 const hx = this.mesh.position.x + Math.cos(this.trickeryAngle) * (offset + 10);
                 const hz = this.mesh.position.z + Math.sin(this.trickeryAngle) * (offset + 10);
                 gameManager.spawnHitbox(hx, hz, 0, 10, this, 'gods_trickery', 0, { invertDuration: trickCfg.invertDuration }, 'box', trickCfg.hitboxWidth, trickCfg.hitboxDepth);
             }
-            
+
             if (this.trickeryTimer <= 0) {
                 this.trickeryState = 'idle';
             }

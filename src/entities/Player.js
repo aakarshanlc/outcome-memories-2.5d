@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { checkCircleBoxCollision } from '../engine/Collision.js';
+import { checkCircleBoxCollision, checkCircleCircleCollision } from '../engine/Collision.js';
 import { SurvivorVariables } from '../config/SurvivorVariables.js';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -17,7 +17,7 @@ export class Player {
         this.scene = scene;
         this.controls = controls;
         this.characterName = charName;
-        
+
         this.config = SurvivorVariables[charName] || SurvivorVariables['Sonic'];
 
         const geo = new THREE.CapsuleGeometry(3, 6, 4, 8);
@@ -35,11 +35,11 @@ export class Player {
 
             const loader = new ColladaLoader();
             const textureLoader = new THREE.TextureLoader();
-            
+
             textureLoader.load(textureUrl, (texture) => {
-                texture.flipY = false; 
-                texture.colorSpace = THREE.SRGBColorSpace; 
-                
+                texture.flipY = false;
+                texture.colorSpace = THREE.SRGBColorSpace;
+
                 loader.load(modelUrl, (collada) => {
                     const model = collada.scene;
                     model.traverse((node) => {
@@ -64,12 +64,12 @@ export class Player {
         }
 
         this.speed = this.config.speed;
-        this.size = this.config.size; 
-        
+        this.size = this.config.size;
+
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.acceleration = 0.2;
         this.damping = 0.85;
-        
+
         this.maxHealth = this.config.maxHealth;
         this.health = this.maxHealth;
         this.bleedTimer = 0;
@@ -80,16 +80,16 @@ export class Player {
         this.ability2Cooldown = 0;
         this.dashActive = 0;
         this.hitSpeedBoost = 0;
-        
+
         this.vertVel = 0;
         this.padCooldown = 0;
-        
+
         this.isBlocking = false;
         this.blockTimer = 0;
         this.punchState = 'idle';
         this.punchTimer = 0;
         this.blockMesh = null;
-        
+
         this.flyCharges = this.config.abilities?.fly?.maxCharges || 0;
         this.flyCooldown = 0;
         this.flyChargeCooldown = 0;
@@ -97,24 +97,66 @@ export class Player {
         this.carryTarget = null;
         this.gunCharging = false;
         this.gunChargeTimer = 0;
-        this.stillTimer = 0;
         this.gasterTpState = 'idle';
         this.gasterTpTimer = 0;
+
+        this.healState = 'idle';
+        this.healTimer = 0;
+        this.healTotalGranted = 0;
+        this.healTickTimer = 0;
+        this.healStreak = 0;
+        this.healTarget = null;
+        this.escaped = false;
+        this.qteActive = false;
+        this.qteTimer = 0;
+        this.qteGapTimer = 0;
+        this.qteZoneStart = 0;
+        this.qteCount = 0;
+        this.prevAbility1 = false;
+        this.sonicWindup = 0;
+        this.creamDashTimer = 0;
+        this.dashDamageReduction = 0;
+        this.dashDir = { x: 0, z: 1 };
+        this.endlagTimer = 0;
+        this.endlagStrength = 0;
+        this.cheeseBob = 0;
+        this.cheeseMesh = null;
+        this.cheeseHealRing = null;
+
+        if (charName === 'Cream') {
+            const heal = this.config.abilities.heal;
+            this.cheeseSize = heal.cheeseSize;
+            this.cheeseMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(heal.cheeseSize, 16, 12),
+                new THREE.MeshStandardMaterial({ color: 0x8fd6ff })
+            );
+            this.cheeseMesh.castShadow = true;
+            this.cheeseMesh.position.set(this.mesh.position.x + 4, 4, this.mesh.position.z + 4);
+            scene.add(this.cheeseMesh);
+
+            this.cheeseHealRing = new THREE.Mesh(
+                new THREE.TorusGeometry(heal.healRadius, 0.35, 8, 48),
+                new THREE.MeshBasicMaterial({ color: 0x33ff66, transparent: true, opacity: 0.5 })
+            );
+            this.cheeseHealRing.rotation.x = Math.PI / 2;
+            this.cheeseHealRing.visible = false;
+            scene.add(this.cheeseHealRing);
+        }
 
         if (charName === 'Knuckles') {
             const ringGeo = new THREE.TorusGeometry(this.size + 4, 0.5, 8, 24);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 });
             this.blockMesh = new THREE.Mesh(ringGeo, ringMat);
-            this.blockMesh.rotation.x = Math.PI / 2; 
+            this.blockMesh.rotation.x = Math.PI / 2;
             this.blockMesh.visible = false;
-            this.mesh.add(this.blockMesh); 
+            this.mesh.add(this.blockMesh);
         }
     }
 
     setupModel(model) {
         const yawGroup = new THREE.Group();
         const modelGroup = new THREE.Group();
-        modelGroup.rotation.y = Math.PI / 2; 
+        modelGroup.rotation.y = Math.PI / 2;
         modelGroup.add(model);
         yawGroup.add(modelGroup);
 
@@ -122,7 +164,7 @@ export class Player {
         if (box.isEmpty()) return yawGroup;
 
         const size = box.getSize(new THREE.Vector3());
-        const targetHeight = 8; 
+        const targetHeight = 8;
         const scale = size.y > 0 ? targetHeight / size.y : 1;
         yawGroup.scale.setScalar(scale);
 
@@ -150,14 +192,60 @@ export class Player {
     takeDamage(amount, attacker) {
         if (this.gameManager && this.gameManager.dev && this.gameManager.dev.godMode) return;
         if (this.isBlocking) { this.triggerBlockSuccess(attacker); return; }
+        if (this.dashDamageReduction > 0) amount = Math.ceil(amount * (1 - this.dashDamageReduction));
         this.health -= amount;
         this.highlightTimer = 10;
         if (this.gasterTpState === 'windup') { this.gasterTpState = 'idle'; this.gasterTpTimer = 0; }
-        if (this.health <= 0) { this.health = 0; this.mesh.visible = false; }
+        if (this.health <= 0) {
+            this.health = 0;
+            this.mesh.visible = false;
+            if (this.cheeseMesh) this.cheeseMesh.visible = false;
+            if (this.cheeseHealRing) this.cheeseHealRing.visible = false;
+            if (this.healState !== 'idle') this.endHeal();
+        }
+    }
+
+    findHealTarget(players) {
+        let best = null, bestDist = Infinity;
+        if (players) {
+            for (const p of players) {
+                if (p === this || p.health <= 0 || p.escaped) continue;
+                const d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
+                if (d < bestDist) { bestDist = d; best = p; }
+            }
+        }
+        return best || this;
+    }
+
+    applyEndlag(cfg) {
+        if (!cfg) return;
+        this.endlagTimer = cfg.endlag || 0;
+        this.endlagStrength = cfg.endlagStrength || 0;
+    }
+
+    endHeal() {
+        this.healState = 'idle';
+        this.qteActive = false;
+        this.healTarget = null;
+        if (this.cheeseHealRing) this.cheeseHealRing.visible = false;
+        if (this.gameManager) this.gameManager.ui.hideQte();
+    }
+
+    onCheeseHit(damage) {
+        if (this.healState === 'idle') return;
+        const heal = this.config.abilities.heal;
+        this.ability1Cooldown = Math.max(this.ability1Cooldown, heal.cooldown + heal.hitPenalty);
+        if (damage > heal.dmgCancelThreshold) this.endHeal();
+    }
+
+    destroy() {
+        if (this.cheeseMesh) this.scene.remove(this.cheeseMesh);
+        if (this.cheeseHealRing) this.scene.remove(this.cheeseHealRing);
+        if (this.gameManager) this.gameManager.ui.hideQte();
     }
 
     triggerBlockSuccess(killer) {
-        this.isBlocking = false; 
+        this.isBlocking = false;
         this.blockTimer = 0;
         if (this.blockMesh) this.blockMesh.visible = false;
         this.ability1Cooldown = this.config.abilities.parry.cooldown;
@@ -220,11 +308,11 @@ export class Player {
                 if (checkCircleBoxCollision(this.mesh.position.x, this.mesh.position.z, this.size, obs.x, obs.z, obs.w, obs.d)) {
                     let closestX = Math.max(obs.x, Math.min(this.mesh.position.x, obs.x + obs.w));
                     let closestZ = Math.max(obs.z, Math.min(this.mesh.position.z, obs.z + obs.d));
-                    
+
                     let dx = this.mesh.position.x - closestX;
                     let dz = this.mesh.position.z - closestZ;
                     let dist = Math.hypot(dx, dz);
-                    
+
                     if (dist > 0) {
                         this.mesh.position.x = closestX + (dx / dist) * (this.size + 0.1);
                         this.mesh.position.z = closestZ + (dz / dist) * (this.size + 0.1);
@@ -245,10 +333,10 @@ export class Player {
             if (this.bleedTimer % 60 === 0) this.takeDamage(2, null);
         }
         if (this.highlightTimer > 0) {
-            this.setEmissive(0xff0000); 
+            this.setEmissive(0xff0000);
             this.highlightTimer--;
         } else {
-            this.setEmissive(0x000000); 
+            this.setEmissive(0x000000);
         }
 
         let up = this.controls.up;
@@ -262,7 +350,7 @@ export class Player {
             down = this.controls.up;
             left = this.controls.right;
             right = this.controls.left;
-            this.setEmissive(0xff00ff); 
+            this.setEmissive(0xff00ff);
         }
 
         let dx = 0, dz = 0;
@@ -275,6 +363,7 @@ export class Player {
         let currentSpeed = this.speed;
         if (this.dashActive > 0) { currentSpeed *= 2.0; this.dashActive--; }
         if (this.hitSpeedBoost > 0) { currentSpeed *= 1.3; this.hitSpeedBoost--; }
+        if (this.endlagTimer > 0) { currentSpeed *= (1 - this.endlagStrength); this.endlagTimer--; }
 
         if (this.ability1Cooldown > 0) this.ability1Cooldown--;
         if (this.ability2Cooldown > 0) this.ability2Cooldown--;
@@ -283,10 +372,16 @@ export class Player {
         if (this.flyChargeCooldown > 0) this.flyChargeCooldown--;
 
         if (this.characterName === 'Sonic') {
-            if (this.controls.ability1 && this.ability1Cooldown <= 0) {
-                this.dashActive = this.config.abilities.dash.duration;
-                this.ability1Cooldown = this.config.abilities.dash.cooldown;
-                gameManager.audio.playSfx('Sonic', this.config.abilities.dash.sfx);
+            if (this.sonicWindup > 0) {
+                this.sonicWindup--;
+                if (this.sonicWindup <= 0) {
+                    this.dashActive = this.config.abilities.dash.duration;
+                    this.ability1Cooldown = this.config.abilities.dash.cooldown;
+                    this.applyEndlag(this.config.abilities.dash);
+                    gameManager.audio.playSfx('Sonic', this.config.abilities.dash.sfx);
+                }
+            } else if (this.controls.ability1 && this.ability1Cooldown <= 0) {
+                this.sonicWindup = this.config.abilities.dash.windup;
             }
         }
         else if (this.characterName === 'Knuckles') {
@@ -298,6 +393,7 @@ export class Player {
                 this.isBlocking = true;
                 this.blockTimer = this.config.abilities.parry.duration;
                 this.ability1Cooldown = this.config.abilities.parry.cooldown;
+                this.applyEndlag(this.config.abilities.parry);
                 if (this.blockMesh) this.blockMesh.visible = true;
                 gameManager.audio.playSfx('Knuckles', this.config.abilities.parry.sfx);
             }
@@ -308,11 +404,11 @@ export class Player {
                 gameManager.audio.playSfx('Knuckles', this.config.abilities.punch.sfx);
             }
             if (this.punchState === 'windup') {
-                currentSpeed *= 0.5; 
+                currentSpeed *= 0.5;
                 this.punchTimer--;
-                if (this.punchTimer <= 0) { 
-                    this.punchState = 'punching'; 
-                    this.punchTimer = this.config.abilities.punch.activeDuration; 
+                if (this.punchTimer <= 0) {
+                    this.punchState = 'punching';
+                    this.punchTimer = this.config.abilities.punch.activeDuration;
                 }
             }
             if (this.punchState === 'punching') {
@@ -321,35 +417,27 @@ export class Player {
                 if(dir.lengthSq() === 0) dir.set(0,0,1); else dir.normalize();
                 const hx = this.mesh.position.x + dir.x * 8;
                 const hz = this.mesh.position.z + dir.z * 8;
-                
+
                 const hw = this.config.abilities.punch.hitboxWidth || 15;
                 const hd = this.config.abilities.punch.hitboxDepth || 15;
                 gameManager.spawnHitbox(hx, hz, 0, 5, this, 'knuckles_punch', 0, null, 'box', hw, hd);
-                
+
                 this.punchTimer--;
                 if(this.punchTimer <= 0) this.punchState = 'idle';
             }
         }
         else if (this.characterName === 'Tails') {
-            if (this.velocity.lengthSq() < 0.1 && this.mesh.position.y <= 6.1) {
-                this.stillTimer++;
-                if (this.stillTimer > 180) {
-                    if (gameManager.gameTimer % 60 === 0) this.health = Math.min(this.maxHealth, this.health + 1);
-                }
-            } else {
-                this.stillTimer = 0;
-            }
-
             if (this.controls.ability1 && this.ability1Cooldown <= 0) {
                 if (!this.gunCharging) {
                     this.gunCharging = true;
                     this.gunChargeTimer = 0;
+                    this.applyEndlag(this.config.abilities.gun);
                 }
                 this.gunChargeTimer++;
-                currentSpeed *= 0.5; 
+                currentSpeed *= 0.5;
             } else if (this.gunCharging) {
                 const chargeRatio = Math.min(this.gunChargeTimer / this.config.abilities.gun.maxCharge, 1);
-                const finalStun = this.config.abilities.gun.stunDuration + (chargeRatio * 120); 
+                const finalStun = this.config.abilities.gun.stunDuration + (chargeRatio * 120);
                 const dir = new THREE.Vector3(dx, 0, dz);
                 if(dir.lengthSq() === 0) dir.set(0,0,1); else dir.normalize();
                 gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, dir.x, dir.z, this, finalStun, this.config.abilities.gun.projectileSpeed);
@@ -361,13 +449,13 @@ export class Player {
             if (this.controls.ability2 && this.flyCharges > 0 && this.flyCooldown <= 0 && this.flyChargeCooldown <= 0) {
                 this.flyCharges--;
                 this.flyChargeCooldown = this.config.abilities.fly.chargeCooldown;
-                this.vertVel = this.config.abilities.fly.boost; 
+                this.vertVel = this.config.abilities.fly.boost;
                 this.flyBoostTimer = this.config.abilities.fly.duration;
-                
+
                 if (this.flyCharges === 0) {
                     this.flyCooldown = this.config.abilities.fly.cooldown;
                 }
-                
+
                 if (players) {
                     for (let p of players) {
                         if (p !== this && p.health > 0 && p.mesh.position.y <= 6.1) {
@@ -394,10 +482,10 @@ export class Player {
             if (this.carryTarget && this.carryTarget.health > 0) {
                 this.carryTarget.mesh.position.x = this.mesh.position.x;
                 this.carryTarget.mesh.position.z = this.mesh.position.z;
-                this.carryTarget.mesh.position.y = this.mesh.position.y; 
+                this.carryTarget.mesh.position.y = this.mesh.position.y;
                 this.carryTarget.velocity.copy(this.velocity);
-                this.carryTarget.vertVel = this.vertVel; 
-                
+                this.carryTarget.vertVel = this.vertVel;
+
                 if (this.mesh.position.y <= 6.1 && this.vertVel <= 0) {
                     this.carryTarget = null;
                 }
@@ -423,11 +511,151 @@ export class Player {
             }
         }
 
+        else if (this.characterName === 'Cream') {
+            const heal = this.config.abilities.heal;
+            const abilityEdge = this.controls.ability1 && !this.prevAbility1;
+            this.prevAbility1 = this.controls.ability1;
+
+            const dash = this.config.abilities.dash;
+            if (this.creamDashTimer > 0) {
+                this.creamDashTimer--;
+                this.setEmissive(0x00aaff);
+
+                dx = this.dashDir.x;
+                dz = this.dashDir.z;
+                const dl = Math.hypot(dx, dz);
+                if (dl > 1) { dx /= dl; dz /= dl; }
+                for (const k of killers) {
+                    if (checkCircleCircleCollision(this.mesh.position.x, this.mesh.position.z, this.size, k.mesh.position.x, k.mesh.position.z, k.size)) {
+                        let kbx = this.velocity.x, kbz = this.velocity.z;
+                        const kbl = Math.hypot(kbx, kbz);
+                        if (kbl > 0.01) { kbx /= kbl; kbz /= kbl; }
+                        else { kbx = Math.sin(this.mesh.rotation.y); kbz = Math.cos(this.mesh.rotation.y); }
+                        k.mesh.position.x += kbx * dash.knockback;
+                        k.mesh.position.z += kbz * dash.knockback;
+                        this.dashActive = 0;
+                        this.creamDashTimer = 0;
+                        this.dashDamageReduction = 0;
+                        break;
+                    }
+                }
+            }
+            if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.creamDashTimer <= 0) {
+                this.dashActive = dash.duration;
+                this.creamDashTimer = dash.duration;
+                this.dashDamageReduction = dash.dmgReduction;
+                this.ability2Cooldown = dash.cooldown;
+                let ddx = this.velocity.x, ddz = this.velocity.z;
+                const ddl = Math.hypot(ddx, ddz);
+                if (ddl > 0.01) { ddx /= ddl; ddz /= ddl; }
+                else { ddx = Math.sin(this.mesh.rotation.y); ddz = Math.cos(this.mesh.rotation.y); }
+                this.dashDir = { x: ddx, z: ddz };
+                this.applyEndlag(dash);
+            }
+
+            if (this.healState === 'idle') {
+                if (abilityEdge && this.ability1Cooldown <= 0) {
+                    this.healTarget = this.findHealTarget(players);
+                    this.healState = 'active';
+                    this.healTotalGranted = heal.baseDuration;
+                    this.healTimer = heal.baseDuration;
+                    this.healTickTimer = heal.tickInterval;
+                    this.healStreak = 0;
+                    this.qteActive = false;
+                    this.qteGapTimer = heal.qteGap;
+                    this.qteCount = 0;
+                    this.ability1Cooldown = heal.cooldown;
+                    this.applyEndlag(heal);
+                }
+            } else {
+                this.healTimer--;
+                if (this.healTimer <= 0) {
+                    this.endHeal();
+                } else {
+                    if (this.healTarget.health <= 0 || this.healTarget.escaped) this.healTarget = this.findHealTarget(players);
+                    const tx = this.healTarget.mesh.position.x;
+                    const tz = this.healTarget.mesh.position.z;
+                    const arrived = Math.hypot(tx - this.cheeseMesh.position.x, tz - this.cheeseMesh.position.z) < 3;
+
+                    if (arrived) {
+                        this.cheeseHealRing.visible = true;
+                        this.healTickTimer--;
+                        if (this.healTickTimer <= 0) {
+                            this.healTickTimer = heal.tickInterval;
+                            const amount = this.healStreak >= 2 ? heal.comboHealPerTick : heal.healPerTick;
+                            for (const p of players) {
+                                if (p.health <= 0 || p.escaped) continue;
+                                const d = Math.hypot(p.mesh.position.x - this.cheeseMesh.position.x, p.mesh.position.z - this.cheeseMesh.position.z);
+                                if (d < heal.healRadius) p.health = Math.min(p.maxHealth, p.health + amount);
+                            }
+                        }
+                    } else {
+                        this.cheeseHealRing.visible = false;
+                    }
+
+                    if (this.qteActive) {
+                        this.qteTimer--;
+                        const progress = 1 - this.qteTimer / heal.qteWindow;
+                        gameManager.ui.showQte(progress, this.qteZoneStart, heal.qteZoneWidth, this.healStreak >= 2);
+                        let qteResult = null;
+                        if (abilityEdge) {
+                            qteResult = progress >= this.qteZoneStart && progress <= this.qteZoneStart + heal.qteZoneWidth;
+                        } else if (this.qteTimer <= 0) {
+                            qteResult = false;
+                        }
+                        if (qteResult !== null) {
+                            this.qteActive = false;
+                            this.qteGapTimer = heal.qteGap;
+                            this.qteCount++;
+                            if (qteResult) {
+                                this.healStreak++;
+                                if (this.healTotalGranted < heal.maxDuration) {
+                                    const grant = Math.min(heal.qteBonus, heal.maxDuration - this.healTotalGranted);
+                                    this.healTotalGranted += grant;
+                                    this.healTimer += grant;
+                                }
+                            } else {
+                                this.healStreak = 0;
+                            }
+                        }
+                    } else {
+                        this.qteGapTimer--;
+                        if (this.qteGapTimer <= 0 && this.qteCount < heal.maxQtes) {
+                            this.qteActive = true;
+                            this.qteTimer = heal.qteWindow;
+                            this.qteZoneStart = 0.08 + Math.random() * (0.84 - heal.qteZoneWidth);
+                        }
+                    }
+                }
+            }
+
+            const follow = this.healState !== 'idle' ? this.healTarget : this;
+            const fx = follow.mesh.position.x + (follow === this ? Math.sin(this.mesh.rotation.y) * heal.cheeseFollowOffset : 0);
+            const fz = follow.mesh.position.z + (follow === this ? Math.cos(this.mesh.rotation.y) * heal.cheeseFollowOffset : 0);
+            const cdx = fx - this.cheeseMesh.position.x;
+            const cdz = fz - this.cheeseMesh.position.z;
+            const cd = Math.hypot(cdx, cdz);
+            if (cd > heal.cheeseCatchupDist) {
+                this.cheeseMesh.position.x = fx;
+                this.cheeseMesh.position.z = fz;
+            } else if (cd > 0.4) {
+                const step = Math.min(heal.cheeseSpeed, cd);
+                this.cheeseMesh.position.x += (cdx / cd) * step;
+                this.cheeseMesh.position.z += (cdz / cd) * step;
+            }
+            this.cheeseBob += 0.08;
+            this.cheeseMesh.position.y = 4.5 + Math.sin(this.cheeseBob) * 0.7;
+            if (this.cheeseHealRing.visible) {
+                this.cheeseHealRing.position.x = this.cheeseMesh.position.x;
+                this.cheeseHealRing.position.z = this.cheeseMesh.position.z;
+            }
+        }
+
         if (gameManager.mapManager && gameManager.mapManager.jumpPads) {
             for (let pad of gameManager.mapManager.jumpPads) {
                 let dist = Math.hypot(this.mesh.position.x - pad.x, this.mesh.position.z - pad.z);
                 if (dist < this.size + pad.size) {
-                    if (this.padCooldown <= 0 && this.mesh.position.y <= 6.1) { 
+                    if (this.padCooldown <= 0 && this.mesh.position.y <= 6.1) {
                         this.vertVel = gameManager.mapManager.config.padBoost;
                         this.padCooldown = gameManager.mapManager.config.padCooldown;
                         gameManager.audio.playSfx('Map', 'jump_pad');
@@ -453,8 +681,8 @@ export class Player {
 
         for (let obs of obstacles) {
             const wallTopY = obs.mesh.position.y + 5;
-            const playerBaseY = this.mesh.position.y - 6; 
-            
+            const playerBaseY = this.mesh.position.y - 6;
+
             if (checkCircleBoxCollision(nextX, nextZ, this.size, obs.x, obs.z, obs.w, obs.d)) {
                 if (playerBaseY >= wallTopY - 0.2) {
                     if (this.vertVel <= 0) {
@@ -468,8 +696,8 @@ export class Player {
         }
 
         if (!collideX) this.mesh.position.x = nextX;
-        else this.velocity.x = 0; 
-        
+        else this.velocity.x = 0;
+
         if (!collideZ) this.mesh.position.z = nextZ;
         else this.velocity.z = 0;
 

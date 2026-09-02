@@ -30,7 +30,7 @@ export class PointerArrow {
             transparent: true,
             side: THREE.DoubleSide,
             depthWrite: false,
-            fog: false, // Stays crisp at the far end of the scene fog
+            fog: false,
         });
         this.mat = mat;
 
@@ -65,7 +65,7 @@ export class PointerArrow {
         if (dist > 0.001) {
             const targetYaw = Math.atan2(dx, dz);
             let diff = targetYaw - this.mesh.rotation.y;
-            diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // Shortest arc
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff));
             this.mesh.rotation.y = Math.abs(diff) > TURN_SNAP
                 ? this.mesh.rotation.y + diff * TURN_SPEED
                 : targetYaw;

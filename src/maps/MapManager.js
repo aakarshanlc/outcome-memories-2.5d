@@ -16,7 +16,7 @@ export class MapManager {
         this.jumpPads.forEach(pad => this.scene.remove(pad.mesh));
         this.obstacles = [];
         this.jumpPads = [];
-        
+
         this.config = MapVariables[mapName] || MapVariables['Open Field'];
 
         const floorGeo = new THREE.PlaneGeometry(200, 200);
@@ -26,16 +26,16 @@ export class MapManager {
         floor.receiveShadow = true;
         this.scene.add(floor);
 
-        this.addWall(-100, -100, 200, 5, true); 
-        this.addWall(-100, 95, 200, 5, true);  
-        this.addWall(-100, -100, 5, 200, true); 
-        this.addWall(95, -100, 5, 200, true);  
+        this.addWall(-100, -100, 200, 5, true);
+        this.addWall(-100, 95, 200, 5, true);
+        this.addWall(-100, -100, 5, 200, true);
+        this.addWall(95, -100, 5, 200, true);
 
         if (mapName === 'Box Arena') {
             this.addWall(0, 0, 20, 20);
             this.addWall(40, 40, 20, 20);
             this.addWall(-40, -40, 20, 20);
-        } 
+        }
         else if (mapName === 'Maze Mania') {
             this.generateMaze();
         }
@@ -247,19 +247,19 @@ export class MapManager {
         mesh.position.set(x, 0.5, z);
         mesh.castShadow = true;
         this.scene.add(mesh);
-        
+
         this.jumpPads.push({ x, z, size: 3, mesh });
     }
 
     addWall(x, z, w, d, isBorder = false, color = 0x555555, isMaze = false) {
-        const geo = new THREE.BoxGeometry(w, 10, d); 
+        const geo = new THREE.BoxGeometry(w, 10, d);
         const mat = new THREE.MeshStandardMaterial({ color: color });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(x + w/2, 5, z + d/2); 
+        mesh.position.set(x + w/2, 5, z + d/2);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         this.scene.add(mesh);
-        
+
         this.obstacles.push({
             x, z, w, d, mesh, isBorder,
             isMaze

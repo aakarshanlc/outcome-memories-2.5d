@@ -1,7 +1,7 @@
 export const MapVariables = {
     'Open Field': {
         jumpPadCount: 1,
-        padBoost: 2.2,      
+        padBoost: 2.2,
         padCooldown: 60,
         sfx: { jumpPad: 'jump_pad', blockSink: 'block_sink' }
     },

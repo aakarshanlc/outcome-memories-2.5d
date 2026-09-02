@@ -9,7 +9,6 @@ export class DevPanel {
 
         this.cfg = {
             stunSec: 5,
-            effectSel: 'Bleed',
             effectSec: 10,
             sanicMult: 3,
             giantScale: 2.5,
@@ -50,55 +49,55 @@ export class DevPanel {
             });
 
         this.addHeader('TESTING');
-        this.addButton('Skip Phase', () => gm.devSkipPhase());
         this.addToggle('Freeze Timers',
             () => gm.dev.freezeTimers,
             v => gm.dev.freezeTimers = v);
-        this.addToggle('Slow-Mo (50%)',
-            () => gm.dev.slowMo,
-            v => gm.dev.slowMo = v);
         this.addToggle('Show FPS',
             () => gm.dev.showFps,
             v => { gm.dev.showFps = v; gm.updateFpsOverlay(); });
+        this.addInput('FPS Bypass (0 = Max)',
+            () => gm.dev.renderFps,
+            v => {
+                gm.dev.renderFps = Math.max(0, Math.min(240, Math.round(v)));
+                localStorage.setItem('om_25d_fps', String(gm.dev.renderFps));
+                this.render();
+            },
+            { min: 0, max: 240, step: 1 });
         this.addToggle('Show AI Path',
             () => gm.dev.showNavPath,
             v => gm.dev.showNavPath = v);
-        this.addButton('Teleport Survivors To Ring', () => gm.devTeleportToRing());
-        this.addButton('Reset All Cooldowns', () => gm.devResetCooldowns());
+        this.addToggle('Survivor AI',
+            () => gm.dev.survivorAI,
+            v => gm.dev.survivorAI = v);
         this.addInput('Stun Killer (sec)',
             () => this.cfg.stunSec,
             v => this.cfg.stunSec = v,
             { min: 0.5, max: 60, step: 0.5 });
-        this.addButton('Stun Killer', () => {
-            gm.killers.forEach(k => k.stun(Math.round(this.cfg.stunSec * 60)));
-        });
+        this.addActionSelect('Instant Actions', [
+            { label: 'Skip Phase', run: () => gm.devSkipPhase() },
+            { label: 'Teleport Survivors To Ring', run: () => gm.devTeleportToRing() },
+            { label: 'Reset All Cooldowns', run: () => gm.devResetCooldowns() },
+            { label: 'Stun Killer', run: () => {
+                gm.killers.forEach(k => k.stun(Math.round(this.cfg.stunSec * 60)));
+            } }
+        ]);
 
         this.addHeader('GAMEPAD');
         this.addToggle('Gamepad Tester',
             () => !!this.gpTimer,
             v => v ? this.openGpTester() : this.closeGpTester());
         this.addButton('Rumble All Pads', () => this.rumblePads());
-        this.addButton('Rotate Pad Slots', () => {
-            gm.dev.padSlotOffset = (gm.dev.padSlotOffset + 1) % 4;
-        });
 
         this.addHeader('SURVIVOR EFFECTS');
-        this.addSelect('Effect',
-            ['Bleed', 'Inverted Controls', 'Speed Boost'],
-            () => this.cfg.effectSel,
-            v => this.cfg.effectSel = v);
         this.addInput('Duration (sec)',
             () => this.cfg.effectSec,
             v => this.cfg.effectSec = v,
             { min: 1, max: 60, step: 1 });
-        this.addButton('Apply Effect', () => {
-            const frames = Math.round(this.cfg.effectSec * 60);
-            living(p => {
-                if (this.cfg.effectSel === 'Bleed') p.bleedTimer = frames;
-                else if (this.cfg.effectSel === 'Inverted Controls') p.invertedControlsTimer = frames;
-                else if (this.cfg.effectSel === 'Speed Boost') p.hitSpeedBoost = frames;
-            });
-        });
+        this.addActionSelect('Apply Effect', [
+            { label: 'Bleed', run: () => living(p => p.bleedTimer = Math.round(this.cfg.effectSec * 60)) },
+            { label: 'Inverted Controls', run: () => living(p => p.invertedControlsTimer = Math.round(this.cfg.effectSec * 60)) },
+            { label: 'Speed Boost', run: () => living(p => p.hitSpeedBoost = Math.round(this.cfg.effectSec * 60)) }
+        ]);
 
         this.addHeader('CHAOS');
         this.addSelect('Chaos Mode',
@@ -114,15 +113,17 @@ export class DevPanel {
             v => this.chaosSetFlag(v));
 
         this.addHeader('ACTIONS');
-        this.addButton('+60s Round Timer', () => {
-            if (typeof gm.gameTimer === 'number') gm.gameTimer += 3600;
-        });
-        this.addButton('Heal All Survivors', () => {
-            gm.players.forEach(p => { p.health = p.maxHealth; p.mesh.visible = true; });
-        });
-        this.addButton('Kill All Survivors', () => {
-            gm.players.forEach(p => { p.health = 0; p.mesh.visible = false; });
-        });
+        this.addActionSelect('Game Actions', [
+            { label: '+60s Round Timer', run: () => {
+                if (typeof gm.gameTimer === 'number') gm.gameTimer += 3600;
+            } },
+            { label: 'Heal All Survivors', run: () => {
+                gm.players.forEach(p => { p.health = p.maxHealth; p.mesh.visible = true; });
+            } },
+            { label: 'Kill All Survivors', run: () => {
+                gm.players.forEach(p => { p.health = 0; p.mesh.visible = false; });
+            } }
+        ]);
     }
 
     addHeader(title) { this.entries.push({ type: 'header', title }); }
@@ -133,6 +134,9 @@ export class DevPanel {
     }
     addSelect(label, options, get, set) {
         this.entries.push({ type: 'select', label, options, get, set });
+    }
+    addActionSelect(label, actions) {
+        this.entries.push({ type: 'actionselect', label, actions });
     }
 
     chaosValue() {
@@ -222,6 +226,16 @@ export class DevPanel {
                             <span>${row.label}</span>
                             <select data-dev-idx="${row.idx}">${opts}</select>
                         </label>`;
+                } else if (row.type === 'actionselect') {
+                    const opts = row.actions.map((a, ai) =>
+                        `<option value="${ai}">${a.label}</option>`).join('');
+                    html += `
+                        <label class="dev-row dev-select-row">
+                            <span>${row.label}</span>
+                            <select data-dev-idx="${row.idx}">
+                                <option value="" selected>—</option>${opts}
+                            </select>
+                        </label>`;
                 } else {
                     html += `<button class="dev-row dev-btn" data-dev-idx="${row.idx}">${row.label}</button>`;
                 }
@@ -241,8 +255,15 @@ export class DevPanel {
                     const v = parseFloat(input.value);
                     if (!isNaN(v)) entry.set(v);
                 };
+                input.onkeydown = e => { if (e.key === 'Enter') input.blur(); };
             } else if (entry.type === 'select') {
                 input.onchange = () => entry.set(input.value);
+            } else if (entry.type === 'actionselect') {
+                input.onchange = () => {
+                    const action = entry.actions[Number(input.value)];
+                    if (action) action.run();
+                    input.value = '';
+                };
             } else {
                 input.onclick = () => entry.onClick();
             }
@@ -257,26 +278,24 @@ export class DevPanel {
         }
         this.gpEl.style.display = 'block';
         const update = () => {
-            const pads = [];
-            for (const pad of navigator.getGamepads()) {
-                if (pad && pad.connected) pads.push(pad);
-            }
-            const n = Math.max(1, pads.length);
-            const off = ((this.gameManager.dev.padSlotOffset % n) + n) % n;
             let html = '<div class="gp-title">GAMEPADS</div>';
-            if (!pads.length) html += '<div class="gp-empty">no pads connected</div>';
-            pads.forEach((pad, i) => {
-                const slot = ((i + off) % n) + 1;
+            let any = false;
+            const pads = navigator.getGamepads();
+            for (let i = 0; i < pads.length; i++) {
+                const pad = pads[i];
+                if (!pad || !pad.connected) continue;
+                any = true;
                 const btns = pad.buttons.map((b, bi) =>
                     `<span class="gp-b ${b.pressed ? 'on' : ''}">${bi}</span>`).join('');
                 const axes = pad.axes.map(a => a.toFixed(2)).join(', ');
                 html += `
                     <div class="gp-pad">
-                        <div class="gp-slot">P${slot} <span class="gp-id">${pad.id.slice(0, 24)}</span></div>
+                        <div class="gp-slot">GP${i + 1} <span class="gp-id">${pad.id.slice(0, 24)}</span></div>
                         <div class="gp-btns">${btns}</div>
                         <div class="gp-axes">axes: ${axes}</div>
                     </div>`;
-            });
+            }
+            if (!any) html += '<div class="gp-empty">no pads connected</div>';
             this.gpEl.innerHTML = html;
         };
         update();
@@ -323,7 +342,6 @@ export class DevPanel {
                 color: #eee;
                 pointer-events: auto;
                 user-select: none;
-                box-shadow: 0 0 0 4px rgba(0,0,0,0.6), 0 10px 40px rgba(0,0,0,0.7);
             }
 
             #dev-panel-title {

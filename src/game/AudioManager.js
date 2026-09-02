@@ -14,8 +14,8 @@ export class AudioManager {
         this.currentTrack = null;
         this.audioElement = new Audio();
         this.audioElement.loop = true;
-        this.hasInteracted = false; 
-        
+        this.hasInteracted = false;
+
         this.tracks = {
             menu: menuTrack,
             Tripwire: tripwireTrack,
@@ -34,11 +34,11 @@ export class AudioManager {
             const url = sfxModules[path];
             const cleanPath = path.replace('../assets/sfx/', '').replace('.mp3', '');
             const parts = cleanPath.split('/');
-            
+
             if (parts.length === 2) {
                 const charName = parts[0];
                 let actionName = parts[1];
-                
+
                 if (actionName.includes('_')) {
                     const actionParts = actionName.split('_');
                     if (!isNaN(actionParts[actionParts.length - 1])) {
@@ -80,10 +80,10 @@ export class AudioManager {
     playMusic(trackName) {
         const url = this.tracks[trackName];
         if (!url || this.currentTrack === trackName) return;
-        
+
         this.audioElement.src = url;
         this.applyVolume();
-        this.audioElement.play().catch(() => {}); 
+        this.audioElement.play().catch(() => {});
         this.currentTrack = trackName;
     }
 

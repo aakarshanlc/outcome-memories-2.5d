@@ -18,8 +18,8 @@ export class Controls {
                 this.schemes.p3 = saved.p3 || this.schemes.p3;
                 this.schemes.p4 = saved.p4 || this.schemes.p4;
             }
-        } catch (e) { 
-            console.error("Failed to load controls", e); 
+        } catch (e) {
+            console.error("Failed to load controls", e);
         }
     }
 

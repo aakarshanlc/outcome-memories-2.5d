@@ -5,19 +5,19 @@ export const KillerVariables = {
         m1: { cooldown: 60, windup: 30, duration: 10, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1', sfx: 'm1' },
         abilities: {
             grapple: { cooldown: 360, range: 60, projectileSpeed: 4.5, damage: 10, dragDuration: 30, dragSpeed: 2, sfx: 'grapple' },
-            bomb: { 
-                cooldown: 300, 
-                throwRange: 60, 
+            bomb: {
+                cooldown: 300,
+                throwRange: 60,
                 throwSpeed: 2,
                 launchSpeed: 2.5,
-                explodeRadius: 15, 
-                impactDamage: 20, 
-                aoeDamage: 10, 
-                proximityDamage: 15, 
-                proximityRadius: 10, 
-                lifetime: 900, 
-                sfx: 'bomb_throw', 
-                explosionSfx: 'bomb_explode' 
+                explodeRadius: 15,
+                impactDamage: 20,
+                aoeDamage: 10,
+                proximityDamage: 15,
+                proximityRadius: 10,
+                lifetime: 900,
+                sfx: 'bomb_throw',
+                explosionSfx: 'bomb_explode'
             }
         },
         ai: { attackRange: 14, visionRange: 9999 }

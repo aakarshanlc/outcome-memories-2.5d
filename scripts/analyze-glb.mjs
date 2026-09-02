@@ -1,6 +1,5 @@
 import fs from 'fs';
 
-// Parse a GLB's JSON chunk and report per-mesh POSITION bounds + node transforms,
 function analyze(path) {
     const buf = fs.readFileSync(path);
     const magic = buf.readUInt32LE(0);
@@ -19,7 +18,6 @@ function analyze(path) {
     console.log(`\n=== ${path} ===`);
     console.log(`glTF version: ${version}, generator-ish asset: ${JSON.stringify(json.asset || {})}`);
 
-    // Global bounds across all POSITION accessors (raw vertex data)
     let min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
     const compTypeSize = { 5126: 4, 5123: 2, 5125: 4 };
     for (const mesh of json.meshes || []) {
@@ -36,7 +34,6 @@ function analyze(path) {
     console.log(`raw bounds: min=[${min.map(v => v.toFixed(2))}] max=[${max.map(v => v.toFixed(2))}]`);
     console.log(`extents:    X=${ext[0].toFixed(2)}  Y=${ext[1].toFixed(2)}  Z=${ext[2].toFixed(2)}`);
 
-    // Node transforms (do any nodes carry non-identity rotation?)
     const rotNodes = [];
     const walk = (idx, depth) => {
         const n = json.nodes[idx];
@@ -48,7 +45,6 @@ function analyze(path) {
     (json.scenes[0].nodes || []).forEach(n => walk(n, 0));
     console.log(`nodes with rotation: ${rotNodes.length ? JSON.stringify(rotNodes.slice(0, 8), null, 1) : 'none'}`);
 
-    // Per-axis asymmetry of raw bounds (offset from center) — quills/nose hint front/back
     const mid = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
     console.log(`center: [${mid.map(v => v.toFixed(2))}]  (asymmetry: +X ${(max[0] - mid[0]).toFixed(2)} vs -X ${(mid[0] - min[0]).toFixed(2)}, +Z ${(max[2] - mid[2]).toFixed(2)} vs -Z ${(mid[2] - min[2]).toFixed(2)})`);
 }

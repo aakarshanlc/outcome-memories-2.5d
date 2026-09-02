@@ -14,7 +14,7 @@ export class Hitbox {
 
         let geo, mat;
         mat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.5 });
-        
+
         if (shape === 'box') {
             const safeWidth = Math.max(1, width);
             const safeDepth = Math.max(1, depth);
@@ -22,9 +22,9 @@ export class Hitbox {
         } else {
             geo = new THREE.SphereGeometry(Math.max(1, radius), 8, 8);
         }
-        
+
         this.mesh = new THREE.Mesh(geo, mat);
-        this.mesh.position.set(x, 5, z); 
+        this.mesh.position.set(x, 5, z);
         this.mesh.visible = gameManager.settings.showHitboxes;
         scene.add(this.mesh);
     }
@@ -33,7 +33,7 @@ export class Hitbox {
         this.duration--;
         this.mesh.material.opacity = (this.duration / this.maxDuration) * 0.5;
         this.mesh.visible = gameManager.settings.showHitboxes;
-        
+
         if (this.duration <= 0) {
             this.scene.remove(this.mesh);
             return false;
