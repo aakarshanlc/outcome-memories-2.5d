@@ -43,7 +43,7 @@ export const SurvivorVariables = {
                 hitPenalty: 300,
                 dmgCancelThreshold: 5,
                 healPerTick: 2,
-                comboHealPerTick: 8,
+                comboHealPerTick: 4,
                 tickInterval: 30,
                 baseDuration: 180,
                 maxDuration: 420,
@@ -57,7 +57,7 @@ export const SurvivorVariables = {
                 qteGap: 60,
                 qteZoneWidth: 0.3,
                 maxQtes: 4,
-                endlag: 45,
+                endlag: 150,
                 endlagStrength: 0.5
             },
             dash: {

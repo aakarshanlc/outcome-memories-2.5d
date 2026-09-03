@@ -2,9 +2,9 @@ export const KillerVariables = {
     'Tripwire': {
         speed: 1.3,
         size: 4,
-        m1: { cooldown: 60, windup: 30, duration: 10, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1', sfx: 'm1' },
+        m1: { cooldown: 60, windup: 30, duration: 10, damage: 10, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1', sfx: 'm1' },
         abilities: {
-            grapple: { cooldown: 360, range: 60, projectileSpeed: 4.5, damage: 10, dragDuration: 30, dragSpeed: 2, sfx: 'grapple' },
+            grapple: { cooldown: 360, range: 60, projectileSpeed: 4, damage: 10, dragDuration: 30, dragSpeed: 2, sfx: 'grapple' },
             bomb: {
                 cooldown: 300,
                 throwRange: 60,
@@ -14,7 +14,7 @@ export const KillerVariables = {
                 impactDamage: 20,
                 aoeDamage: 10,
                 proximityDamage: 15,
-                proximityRadius: 10,
+                proximityRadius: 30,
                 lifetime: 900,
                 sfx: 'bomb_throw',
                 explosionSfx: 'bomb_explode'
@@ -25,10 +25,10 @@ export const KillerVariables = {
     '2011X': {
         speed: 1.4,
         size: 4,
-        m1: { cooldown: 30, windup: 30, attackDuration: 12, hitCount: 6, damage: 3, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1_2011x', applyBleed: true, bleedDuration: 180, sfx: 'killer_m1', hitSfx: 'killer_m1_hit' },
+        m1: { cooldown: 30, windup: 30, attackDuration: 12, hitCount: 6, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1_2011x', applyBleed: true, bleedDuration: 180, sfx: 'killer_m1', hitSfx: 'killer_m1_hit' },
         abilities: {
-            teleport: { cooldown: 720, windup: 120, arriveRadius: 15, bleedDuration: 120, sfx: 'teleport' },
-            gods_trickery: { cooldown: 960, duration: 60, hitboxCount: 5, hitboxSpacing: 4, hitboxWidth: 10, hitboxDepth: 10, invertDuration: 120, sfx: 'trickery' }
+            teleport: { cooldown: 720, windup: 120, arriveRadius: 20, bleedDuration: 120, sfx: 'teleport' },
+            gods_trickery: { cooldown: 900, duration: 60, hitboxCount: 6, hitboxSpacing: 3, hitboxWidth: 10, hitboxDepth: 10, invertDuration: 120, sfx: 'trickery' }
         },
         rush: { stunThreshold: 5, duration: 540, speedMultiplier: 1.5 },
         ai: { attackRange: 14, visionRange: 9999 }
