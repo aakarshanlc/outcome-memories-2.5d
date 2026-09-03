@@ -39,34 +39,34 @@ export const SurvivorVariables = {
         size: 3,
         abilities: {
             heal: {
-                cooldown: 1440,        // 24s ability cooldown
-                hitPenalty: 300,       // +5s cooldown when Cheese is hit during a heal
-                dmgCancelThreshold: 5, // cheese hit by an attack dealing more than this cancels the heal
-                healPerTick: 2,        // hp per tick
-                comboHealPerTick: 8,   // hp per tick after 2 QTEs in a row
-                tickInterval: 30,      // 0.5s between heal ticks
-                baseDuration: 180,     // 3s base heal duration
-                maxDuration: 420,      // heal can never last longer than 7s
-                qteBonus: 90,          // +1.5s of heal per successful QTE
-                healRadius: 14,        // radius of the heal zone around Cheese
-                cheeseSpeed: 2.2,      // Cheese movement speed per frame
-                cheeseSize: 1.2,       // Cheese hitbox/visual radius
-                cheeseFollowOffset: 5, // distance Cheese trails behind Cream
-                cheeseCatchupDist: 30, // beyond this Cheese teleports back to Cream
-                qteWindow: 60,         // frames the QTE marker takes to cross the bar
-                qteGap: 60,            // frames between QTE prompts
-                qteZoneWidth: 0.3,     // success zone size (fraction of the bar)
-                maxQtes: 4,            // total QTE prompts allowed per heal
-                endlag: 45,            // frames of slowdown from ability start
-                endlagStrength: 0.5    // speed multiplier reduction while endlag lasts
+                cooldown: 1440,
+                hitPenalty: 300,
+                dmgCancelThreshold: 5,
+                healPerTick: 2,
+                comboHealPerTick: 8,
+                tickInterval: 30,
+                baseDuration: 180,
+                maxDuration: 420,
+                qteBonus: 90,
+                healRadius: 14,
+                cheeseSpeed: 2.2,
+                cheeseSize: 1.2,
+                cheeseFollowOffset: 5,
+                cheeseCatchupDist: 30,
+                qteWindow: 60,
+                qteGap: 60,
+                qteZoneWidth: 0.3,
+                maxQtes: 4,
+                endlag: 45,
+                endlagStrength: 0.5
             },
             dash: {
-                cooldown: 480,         // same as Sonic's dash
-                duration: 45,          // same duration as Sonic's dash
-                knockback: 12,         // a little less than Knuckles' punch (15)
-                dmgReduction: 0.75,    // 75% damage reduction while dashing
+                cooldown: 480,
+                duration: 45,
+                knockback: 12,
+                dmgReduction: 0.75,
                 endlag: 15,
-                endlagStrength: 0.2    // speed multiplier reduction while endlag lasts
+                endlagStrength: 0.2
             }
         }
     }
