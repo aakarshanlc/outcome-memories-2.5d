@@ -1,6 +1,14 @@
 import { checkCircleBoxCollision } from './Collision.js';
 
+const gridCache = new Map();
+
+export function clearNavGridCache() {
+    gridCache.clear();
+}
+
 export function buildNavGrid(obstacles, inflate = 3.5, cell = 4, min = -100, size = 50) {
+    let grid = gridCache.get(inflate);
+    if (grid) return grid;
     const blocked = new Uint8Array(size * size);
     for (let obs of obstacles) {
         const c0 = Math.max(0, Math.floor((obs.x - inflate - min) / cell));
@@ -18,7 +26,9 @@ export function buildNavGrid(obstacles, inflate = 3.5, cell = 4, min = -100, siz
             }
         }
     }
-    return { blocked, cell, min, size };
+    const cached = { blocked, cell, min, size };
+    gridCache.set(inflate, cached);
+    return cached;
 }
 
 export function worldToCell(x, z, grid) {

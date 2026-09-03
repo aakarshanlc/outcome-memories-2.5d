@@ -9,6 +9,7 @@ export class MapManager {
         this.jumpPads = [];
         this.config = null;
         this.mazeTimer = 0;
+        this.navDirty = true;
     }
 
     loadMap(mapName) {
@@ -16,6 +17,7 @@ export class MapManager {
         this.jumpPads.forEach(pad => this.scene.remove(pad.mesh));
         this.obstacles = [];
         this.jumpPads = [];
+        this.navDirty = true;
 
         this.config = MapVariables[mapName] || MapVariables['Open Field'];
 
@@ -145,6 +147,7 @@ export class MapManager {
                 obs.z += delta;
                 obs.mesh.position.z += delta;
             }
+            if (delta !== 0) this.navDirty = true;
 
             this.pushBodies(obs, delta, players);
             this.pushBodies(obs, delta, killers);

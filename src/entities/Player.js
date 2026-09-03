@@ -119,6 +119,7 @@ export class Player {
         this.dashDir = { x: 0, z: 1 };
         this.endlagTimer = 0;
         this.endlagStrength = 0;
+        this.emissiveState = null;
         this.cheeseBob = 0;
         this.cheeseMesh = null;
         this.cheeseHealRing = null;
@@ -185,6 +186,7 @@ export class Player {
         this.mesh.position.set(spawnX, 6, spawnZ);
         this.mesh.rotation.y = spawnRot;
         this.scene.add(this.mesh);
+        this.emissiveState = null;
 
         if (this.blockMesh) this.mesh.add(this.blockMesh);
     }
@@ -332,12 +334,7 @@ export class Player {
             this.bleedTimer--;
             if (this.bleedTimer % 60 === 0) this.takeDamage(2, null);
         }
-        if (this.highlightTimer > 0) {
-            this.setEmissive(0xff0000);
-            this.highlightTimer--;
-        } else {
-            this.setEmissive(0x000000);
-        }
+        if (this.highlightTimer > 0) this.highlightTimer--;
 
         let up = this.controls.up;
         let down = this.controls.down;
@@ -350,7 +347,16 @@ export class Player {
             down = this.controls.up;
             left = this.controls.right;
             right = this.controls.left;
-            this.setEmissive(0xff00ff);
+        }
+
+        let want = 0x000000;
+        if (this.highlightTimer > 0) want = 0xff0000;
+        if (this.creamDashTimer > 0) want = 0x00aaff;
+        if (this.characterName === 'Gaster' && this.gasterTpState === 'windup') want = 0xaa00ff;
+        if (this.invertedControlsTimer > 0) want = 0xff00ff;
+        if (want !== this.emissiveState) {
+            this.setEmissive(want);
+            this.emissiveState = want;
         }
 
         let dx = 0, dz = 0;
@@ -497,7 +503,6 @@ export class Player {
         else if (this.characterName === 'Gaster') {
             const blink = this.config.abilities.blink;
             if (this.gasterTpState === 'windup') {
-                this.setEmissive(0xaa00ff);
                 this.gasterTpTimer--;
                 if (this.gasterTpTimer <= 0) {
                     if (this.performBlink(blink.distance, obstacles)) {
@@ -519,7 +524,6 @@ export class Player {
             const dash = this.config.abilities.dash;
             if (this.creamDashTimer > 0) {
                 this.creamDashTimer--;
-                this.setEmissive(0x00aaff);
 
                 dx = this.dashDir.x;
                 dz = this.dashDir.z;

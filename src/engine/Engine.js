@@ -10,7 +10,7 @@ export class Engine {
         this.camera.position.set(0, 70, 50);
         this.camera.lookAt(0, 0, 0);
 
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -30,8 +30,8 @@ export class Engine {
         dirLight.shadow.camera.near = 0.1;
         dirLight.shadow.camera.far = 300;
 
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
         dirLight.shadow.bias = -0.0005;
 
         this.scene.add(dirLight);

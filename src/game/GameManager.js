@@ -13,7 +13,7 @@ import { Projectile } from '../entities/Projectile.js';
 import { Ring } from '../entities/Ring.js';
 import { PointerArrow } from '../entities/PointerArrow.js';
 import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
-import { buildNavGrid, computePath } from '../engine/NavGrid.js';
+import { buildNavGrid, computePath, clearNavGridCache } from '../engine/NavGrid.js';
 
 import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
 import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
@@ -238,6 +238,8 @@ export class GameManager {
         this.arrow = null;
 
         this.mapManager.loadMap(this.gameSetup.selectedMap);
+        clearNavGridCache();
+        this.mapManager.navDirty = false;
 
         const allPlayers = ['p1', 'p2', 'p3', 'p4'];
         const killerId = this.gameSetup.killerIsAI ? null : `p${this.gameSetup.killerPlayer}`;
@@ -595,6 +597,10 @@ export class GameManager {
         }
 
         if (this.state === 'PLAYING') {
+            if (this.mapManager.navDirty) {
+                clearNavGridCache();
+                this.mapManager.navDirty = false;
+            }
             const speedMult = this.dev.sanicMode ? this.devPanel.cfg.sanicMult : 1;
             const sizeMult = this.dev.giantMode ? this.devPanel.cfg.giantScale : 1;
             this.players.forEach(p => {

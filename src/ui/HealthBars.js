@@ -47,7 +47,7 @@ export class HealthBars {
         text.className = 'hp-text';
         root.append(fill, text);
         document.body.appendChild(root);
-        return { root, fill, text };
+        return { root, fill, text, cache: { left: null, top: null, hidden: null, width: null, color: null, textValue: null } };
     }
 
     update(players, camera) {
@@ -64,17 +64,23 @@ export class HealthBars {
 
             this.projector.set(p.mesh.position.x, p.mesh.position.y - 6, p.mesh.position.z).project(camera);
             if (this.projector.z > 1) {
-                bar.root.style.display = 'none';
+                if (!bar.cache.hidden) { bar.root.style.display = 'none'; bar.cache.hidden = true; }
                 continue;
             }
-            bar.root.style.display = 'block';
-            bar.root.style.left = ((this.projector.x * 0.5 + 0.5) * window.innerWidth) + 'px';
-            bar.root.style.top = ((-this.projector.y * 0.5 + 0.5) * window.innerHeight + 8) + 'px';
+            if (bar.cache.hidden) { bar.root.style.display = 'block'; bar.cache.hidden = false; }
+
+            const left = Math.round((this.projector.x * 0.5 + 0.5) * window.innerWidth);
+            const top = Math.round((-this.projector.y * 0.5 + 0.5) * window.innerHeight + 8);
+            if (bar.cache.left !== left) { bar.root.style.left = left + 'px'; bar.cache.left = left; }
+            if (bar.cache.top !== top) { bar.root.style.top = top + 'px'; bar.cache.top = top; }
 
             const pct = Math.max(0, Math.min(1, p.health / p.maxHealth));
-            bar.fill.style.width = (pct * 100) + '%';
-            bar.fill.style.background = pct > 0.6 ? '#33ff66' : pct > 0.3 ? '#ffd700' : '#ff4444';
-            bar.text.textContent = `${Math.ceil(p.health)}/${p.maxHealth}`;
+            const width = Math.round(pct * 100);
+            if (bar.cache.width !== width) { bar.fill.style.width = width + '%'; bar.cache.width = width; }
+            const color = pct > 0.6 ? '#33ff66' : pct > 0.3 ? '#ffd700' : '#ff4444';
+            if (bar.cache.color !== color) { bar.fill.style.background = color; bar.cache.color = color; }
+            const text = `${Math.ceil(p.health)}/${p.maxHealth}`;
+            if (bar.cache.textValue !== text) { bar.text.textContent = text; bar.cache.textValue = text; }
         }
 
         for (const [p, bar] of this.bars) {

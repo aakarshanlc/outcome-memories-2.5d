@@ -5,6 +5,7 @@ export class UIManager {
         this.activeScreen = null;
         this.waitingForKey = null;
         this.hudElement = null;
+        this.lastHudKey = null;
 
         window.addEventListener('gamepadconnected', () => this.refreshDeviceDropdowns());
         window.addEventListener('gamepaddisconnected', () => this.refreshDeviceDropdowns());
@@ -27,18 +28,15 @@ export class UIManager {
 
     updateHUD(phase, timeLeft, isRush = false) {
         if (!this.hudElement) return;
-        let phaseText = phase;
-        let timerText = Math.max(0, Math.ceil(timeLeft));
+        const timerText = Math.max(0, Math.ceil(timeLeft));
+        const key = `${phase}|${timerText}|${isRush}`;
+        if (key === this.lastHudKey) return;
+        this.lastHudKey = key;
+        const phaseText = isRush ? 'RUSH' : phase;
+        const phaseColor = isRush ? '#ff0000' : '#ff4444';
 
-        if (isRush) {
-            phaseText = "RUSH";
-            this.root.querySelector('#phase-text').style.color = '#ff0000';
-            this.root.querySelector('#timer-text').style.color = '#ff0000';
-        } else {
-            this.root.querySelector('#phase-text').style.color = '#ff4444';
-            this.root.querySelector('#timer-text').style.color = '#ffffff';
-        }
-
+        this.root.querySelector('#phase-text').style.color = phaseColor;
+        this.root.querySelector('#timer-text').style.color = isRush ? '#ff0000' : '#ffffff';
         this.root.querySelector('#phase-text').innerText = phaseText;
         this.root.querySelector('#timer-text').innerText = `${timerText}s`;
     }
@@ -268,6 +266,7 @@ export class UIManager {
     hideAll() {
         this.root.innerHTML = '';
         this.hudElement = null;
+        this.lastHudKey = null;
         if (this.qteEl) this.qteEl.style.display = 'none';
     }
 
