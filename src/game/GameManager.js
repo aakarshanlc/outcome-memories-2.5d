@@ -14,6 +14,7 @@ import { Ring } from '../entities/Ring.js';
 import { PointerArrow } from '../entities/PointerArrow.js';
 import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
 import { buildNavGrid, computePath, clearNavGridCache } from '../engine/NavGrid.js';
+import { ViewportManager } from '../engine/Viewports.js';
 
 import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
 import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
@@ -33,6 +34,7 @@ export class GameManager {
         this.mapManager = new MapManager(this.engine.scene);
         this.ui = new UIManager(this);
         this.healthBars = new HealthBars();
+        this.viewports = new ViewportManager();
         this.controls = new Controls();
         this.audio = new AudioManager();
 
@@ -253,6 +255,8 @@ export class GameManager {
             'Gaster': 0xe8e8e8
         };
 
+        const viewportTargets = [];
+
         for (let i = 0; i < this.gameSetup.survivorCount; i++) {
             const sId = survivorIds[i];
             const controlsObj = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
@@ -266,6 +270,12 @@ export class GameManager {
             player.mesh.position.set(pSpawn.x, 6, pSpawn.z);
             player.controlId = sId;
             this.players.push(player);
+            viewportTargets.push({
+                entity: player,
+                color: pColor,
+                kind: 'survivor',
+                label: `${charName} · ${sId.toUpperCase()}`
+            });
         }
 
         const k1Controls = { up: false, down: false, left: false, right: false, ability1: false, ability2: false, m1: false };
@@ -284,6 +294,13 @@ export class GameManager {
             this.killer.controlId = killerId;
         }
         this.killers.push(this.killer);
+        viewportTargets.push({
+            entity: this.killer,
+            color: killerColor,
+            kind: 'killer',
+            label: `${this.killer.type} · KILLER${this.gameSetup.killerIsAI ? ' (AI)' : ''}`
+        });
+        this.viewports.build(viewportTargets);
 
         this.players.forEach(p => {
             p.ability1Cooldown = 120;
@@ -326,6 +343,7 @@ export class GameManager {
     stopGame() {
         this.state = 'MENU';
         this.healthBars.clear();
+        this.viewports.destroy();
         if (this.ring) this.ring.destroy();
         if (this.arrow) this.arrow.destroy();
         this.ring = null;
@@ -792,12 +810,7 @@ export class GameManager {
 
             if (alivePlayers.length === 0 && this.phase !== 'GAME_OVER') this.endGame('KILLER WINS', 'All survivors eliminated');
 
-            let camTarget = alivePlayers[0] || this.players[0];
-            if (camTarget) {
-                this.engine.camera.position.x = camTarget.mesh.position.x;
-                this.engine.camera.position.z = camTarget.mesh.position.z + 50;
-                this.engine.camera.lookAt(camTarget.mesh.position.x, 0, camTarget.mesh.position.z);
-            }
+            this.viewports.update();
         }
 
         let renders = 1;
@@ -808,11 +821,11 @@ export class GameManager {
         }
         if (!renders) return;
         this.updateNavPathViz();
-        if (this.state === 'PLAYING') this.healthBars.update(this.players, this.engine.camera);
+        if (this.state === 'PLAYING') this.healthBars.update(this.players, this.viewports);
         else this.healthBars.clear();
         while (renders-- > 0) {
             this.fpsFrames++;
-            this.engine.render();
+            this.engine.render(this.viewports.active ? this.viewports.entries : null);
         }
     }
 }

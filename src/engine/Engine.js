@@ -46,7 +46,26 @@ export class Engine {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    render() {
-        this.renderer.render(this.scene, this.camera);
+    // views: [{ camera, rect }] in CSS pixels, top-left origin — renders each into its
+    // scissored region of the one canvas. Without views, falls back to the full-page camera.
+    render(views) {
+        if (!views || views.length === 0) {
+            this.renderer.shadowMap.autoUpdate = true;
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
+
+        const height = window.innerHeight;
+        this.renderer.shadowMap.autoUpdate = false;
+        this.renderer.shadowMap.needsUpdate = true;
+        this.renderer.setScissorTest(true);
+        for (const view of views) {
+            const { x, y, w, h } = view.rect;
+            const glY = height - (y + h);
+            this.renderer.setViewport(x, glY, w, h);
+            this.renderer.setScissor(x, glY, w, h);
+            this.renderer.render(this.scene, view.camera);
+        }
+        this.renderer.setScissorTest(false);
     }
 }
