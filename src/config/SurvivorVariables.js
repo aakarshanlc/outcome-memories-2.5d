@@ -12,8 +12,8 @@ export const SurvivorVariables = {
         maxHealth: 100,
         size: 3,
         abilities: {
-            gun: { cooldown: 600, stunDuration: 60, projectileSpeed: 3.0, maxCharge: 120, endlag: 30, endlagStrength: 0.5, sfx: 'gun_fire' },
-            fly: { cooldown: 540, maxCharges: 3, chargeCooldown: 30, boost: 1.5, duration: 30, multiplier: 1.5, sfx: 'fly' }
+            gun: { cooldown: 600, stunDuration: 60, projectileSpeed: 3.5, maxCharge: 120, endlag: 30, endlagStrength: 0.5, sfx: 'gun_fire' },
+            fly: { cooldown: 540, maxCharges: 3, chargeCooldown: 30, boost: 2, duration: 30, multiplier: 1.5, sfx: 'fly' }
         }
     },
     'Knuckles': {
@@ -36,7 +36,7 @@ export const SurvivorVariables = {
     'Cream': {
         speed: 0.95,
         maxHealth: 80,
-        size: 3,
+        size: 2,
         abilities: {
             heal: {
                 cooldown: 1440,
