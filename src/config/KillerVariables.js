@@ -35,7 +35,7 @@ export const KillerVariables = {
     },
     'Starved': {
         speed: 1.2,
-        size: 4,
+        size: 6,
         m1: { cooldown: 60, windup: 30, duration: 10, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'starved_m1', sfx: 'm1' },
         projectile: { speed: 3.5, damage: 4, stunDuration: 12 },
         ai: { attackRange: 14, visionRange: 9999 }
