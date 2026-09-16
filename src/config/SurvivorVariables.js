@@ -13,7 +13,7 @@ export const SurvivorVariables = {
         size: 3,
         abilities: {
             gun: { cooldown: 600, stunDuration: 60, projectileSpeed: 3.5, maxCharge: 120, endlag: 30, endlagStrength: 0.5, sfx: 'gun_fire' },
-            fly: { cooldown: 540, maxCharges: 3, chargeCooldown: 30, boost: 2, duration: 30, multiplier: 1.5, sfx: 'fly' }
+            fly: { cooldown: 540, maxCharges: 3, chargeCooldown: 30, boost: 2.3, duration: 30, multiplier: 1.7, sfx: 'fly' }
         }
     },
     'Knuckles': {
