@@ -15,6 +15,14 @@ import { PointerArrow } from '../entities/PointerArrow.js';
 import { checkCircleCircleCollision, checkCircleBoxCollision } from '../engine/Collision.js';
 import { buildNavGrid, computePath, clearNavGridCache } from '../engine/NavGrid.js';
 import { ViewportManager } from '../engine/Viewports.js';
+import { FireWall } from '../entities/FireWall.js';
+
+// One simulation tick is exactly 1/60s: all game logic runs on this fixed step so
+// speed and timers never change with the display's refresh rate.
+const TICK_MS = 1000 / 60;
+
+// Shared empty gamepad state so menu frames don't allocate.
+const emptyGamepadStates = {};
 
 import sonicModelUrl from '../assets/models/Sonic/Sonic.dae';
 import sonicTextureUrl from '../assets/models/Sonic/PLAYER00.png';
@@ -30,6 +38,8 @@ import gasterModelUrl from '../assets/models/Gaster/gaster.glb';
 
 export class GameManager {
     constructor() {
+        // Debug handle: lets the console / dev tools inspect live game state.
+        window.om25d = this;
         this.engine = new Engine();
         this.mapManager = new MapManager(this.engine.scene);
         this.ui = new UIManager(this);
@@ -74,6 +84,7 @@ export class GameManager {
 
         this.frameCount = 0;
         this.renderAcc = 0;
+        this.tickAcc = 0;
         this.lastLoopTime = 0;
         this.aiStates = new Map();
         this.fps = 0;
@@ -91,12 +102,13 @@ export class GameManager {
         this.killers = [];
         this.activeHitboxes = [];
         this.projectiles = [];
+        this.fireWalls = [];
         this.ring = null;
         this.arrow = null;
 
         this.gameSetup = {
             survivorCount: 1,
-            selectedSurvivors: ['Sonic', 'Tails', 'Knuckles'],
+            selectedSurvivors: ['Sonic', 'Tails', 'Knuckles', 'Blaze'],
             selectedKillerType: 'Tripwire',
             killerPlayer: 2,
             killerIsAI: false,
@@ -112,7 +124,6 @@ export class GameManager {
         window.addEventListener('click', startAudio);
         window.addEventListener('keydown', startAudio);
 
-        this.startGamepadPolling();
     }
 
     setupInput() {
@@ -135,26 +146,27 @@ export class GameManager {
         window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
     }
 
-    startGamepadPolling() {
-        const poll = () => {
-            const pads = navigator.getGamepads();
-            this.gamepadStates = {};
-            for (let i = 0; i < pads.length; i++) {
-                const pad = pads[i];
-                if (!pad) continue;
-                this.gamepadStates[`gp:${i}`] = {
-                    up: pad.buttons[12]?.pressed || pad.axes[1] < -0.5,
-                    down: pad.buttons[13]?.pressed || pad.axes[1] > 0.5,
-                    left: pad.buttons[14]?.pressed || pad.axes[0] < -0.5,
-                    right: pad.buttons[15]?.pressed || pad.axes[0] > 0.5,
-                    m1: pad.buttons[0]?.pressed,
-                    ability1: pad.buttons[1]?.pressed,
-                    ability2: pad.buttons[2]?.pressed
-                };
-            }
-            requestAnimationFrame(poll);
-        };
-        requestAnimationFrame(poll);
+    // Polled from the fixed 60Hz tick instead of its own rAF loop: one input
+    // sampling point, consistent timing, and zero work while not playing.
+    pollGamepads() {
+        const pads = navigator.getGamepads();
+        let any = false;
+        const states = {};
+        for (let i = 0; i < pads.length; i++) {
+            const pad = pads[i];
+            if (!pad) continue;
+            any = true;
+            states[`gp:${i}`] = {
+                up: pad.buttons[12]?.pressed || pad.axes[1] < -0.5,
+                down: pad.buttons[13]?.pressed || pad.axes[1] > 0.5,
+                left: pad.buttons[14]?.pressed || pad.axes[0] < -0.5,
+                right: pad.buttons[15]?.pressed || pad.axes[0] > 0.5,
+                m1: pad.buttons[0]?.pressed,
+                ability1: pad.buttons[1]?.pressed,
+                ability2: pad.buttons[2]?.pressed
+            };
+        }
+        this.gamepadStates = any ? states : emptyGamepadStates;
     }
 
     saveInputBindings() {
@@ -232,10 +244,12 @@ export class GameManager {
         if (this.arrow) this.arrow.destroy();
         this.activeHitboxes.forEach(h => this.engine.scene.remove(h.mesh));
         this.projectiles.forEach(p => this.engine.scene.remove(p.mesh));
+        this.fireWalls.forEach(w => w.destroy());
         this.players = [];
         this.killers = [];
         this.activeHitboxes = [];
         this.projectiles = [];
+        this.fireWalls = [];
         this.ring = null;
         this.arrow = null;
 
@@ -252,6 +266,7 @@ export class GameManager {
             'Tails': 0xffd700,
             'Knuckles': 0xcf2020,
             'Cream': 0xf5c89e,
+            'Blaze': 0xff7722,
             'Gaster': 0xe8e8e8
         };
 
@@ -335,9 +350,20 @@ export class GameManager {
     }
 
     getSelectableSurvivors() {
-        const chars = ['Sonic', 'Tails', 'Knuckles', 'Cream'];
+        const chars = ['Sonic', 'Tails', 'Knuckles', 'Cream', 'Blaze'];
         if (this.dev.gasterUnlocked) chars.push('Gaster');
         return chars;
+    }
+
+    canPlaceFireWall() {
+        return this.fireWalls.length < 3;
+    }
+
+    spawnFireWall(owner, x, z) {
+        const wall = new FireWall(this, owner, x, z);
+        this.fireWalls.push(wall);
+        this.mapManager.navDirty = true;
+        return wall;
     }
 
     stopGame() {
@@ -597,16 +623,54 @@ export class GameManager {
                 if (p.ability2Cooldown <= 0 && killerDist < 20) p.aiPulse2 = 6;
                 break;
             }
+            case 'Blaze':
+                if (p.ability1Cooldown <= 0 && killerDist < 30) p.aiPulse1 = 6;
+                if (p.ability2Cooldown <= 0 && killerDist < 12) p.aiPulse2 = 6;
+                break;
         }
     }
 
     gameLoop() {
         requestAnimationFrame(() => this.gameLoop());
 
-        this.frameCount++;
         const now = performance.now();
-        const dt = this.lastLoopTime ? now - this.lastLoopTime : 1000 / 60;
+        let dt = this.lastLoopTime ? now - this.lastLoopTime : TICK_MS;
         this.lastLoopTime = now;
+        if (dt > 250) dt = 250; // tab was hidden / long stall: don't try to catch up
+
+        // Fixed-step simulation: run however many 60Hz ticks the wall clock owes us.
+        this.tickAcc += dt;
+        let ticks = 0;
+        while (this.tickAcc >= TICK_MS && ticks < 4) {
+            this.tick();
+            this.tickAcc -= TICK_MS;
+            ticks++;
+        }
+        if (this.tickAcc >= TICK_MS) this.tickAcc = 0;
+
+        // Render pacing: locked to 60fps by default (the dev FPS bypass raises it).
+        const renderCap = this.dev.renderFps || 60;
+        this.renderAcc = Math.min(this.renderAcc + renderCap * dt / 1000, 10);
+        let renders = Math.floor(this.renderAcc);
+        this.renderAcc -= renders;
+        if (!renders) return;
+
+        // Opaque menu/loading/game-over screens fully cover the canvas — skip
+        // drawing the scene (and its shadow pass) entirely while they're up.
+        if (this.state !== 'PLAYING') return;
+
+        this.updateNavPathViz();
+        this.healthBars.update(this.players, this.viewports);
+        this.fpsFrames += renders;
+        while (renders-- > 0) {
+            this.engine.render(this.viewports.active ? this.viewports.entries : null);
+        }
+    }
+
+    tick() {
+        this.frameCount++;
+
+        const now = performance.now();
         if (now - this.fpsStart >= 500) {
             this.fps = Math.round(this.fpsFrames * 1000 / (now - this.fpsStart));
             this.fpsFrames = 0;
@@ -614,7 +678,11 @@ export class GameManager {
             this.updateFpsOverlay();
         }
 
-        if (this.state === 'PLAYING') {
+        if (this.state !== 'PLAYING') return;
+
+        this.pollGamepads();
+
+        {
             if (this.mapManager.navDirty) {
                 clearNavGridCache();
                 this.mapManager.navDirty = false;
@@ -635,6 +703,18 @@ export class GameManager {
             });
 
             this.mapManager.update(this.players, this.killers, this.audio);
+
+            for (let i = this.fireWalls.length - 1; i >= 0; i--) {
+                const w = this.fireWalls[i];
+                if (!w.update(this.players, this.killers) || w.destroyed) this.fireWalls.splice(i, 1);
+            }
+
+            // Fire walls are physical blockers for the killer only: survivors walk
+            // through their own flames, the killer has to path around or burn through.
+            let killerObstacles = this.mapManager.obstacles;
+            if (this.fireWalls.length > 0) {
+                killerObstacles = killerObstacles.concat(this.fireWalls.map(w => w.obstacle));
+            }
 
             this.players.forEach(p => {
                 const binding = this.inputBindings[p.controlId];
@@ -670,7 +750,7 @@ export class GameManager {
                     k.controls.ability1 = (scheme && this.keys[scheme.ability1]) || (gp ? gp.ability1 : false);
                     k.controls.ability2 = (scheme && this.keys[scheme.ability2]) || (gp ? gp.ability2 : false);
                 }
-                k.update(this.mapManager.obstacles, this.players.filter(p => p.health > 0 && !p.escaped), this);
+                k.update(killerObstacles, this.players.filter(p => p.health > 0 && !p.escaped), this);
             });
 
             for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -733,6 +813,23 @@ export class GameManager {
                             }
                         }
                     });
+                }
+
+                // Killer attacks chew through Blaze's fire walls.
+                if (this.fireWalls.length > 0 && h.damage > 0) {
+                    for (const w of this.fireWalls) {
+                        if (h.hasHit.has(w)) continue;
+                        const cx = w.obstacle.x + w.w / 2;
+                        const cz = w.obstacle.z + w.d / 2;
+                        const wr = Math.max(w.w, w.d) / 2;
+                        let hit = false;
+                        if (h.shape === 'box') hit = checkCircleBoxCollision(cx, cz, wr, h.x - h.width/2, h.z - h.depth/2, h.width, h.depth);
+                        else hit = checkCircleCircleCollision(h.x, h.z, h.radius, cx, cz, wr);
+                        if (hit) {
+                            h.hasHit.add(w);
+                            w.takeDamage(h.damage);
+                        }
+                    }
                 }
                 if (!h.update(this)) this.activeHitboxes.splice(i, 1);
             }
@@ -811,21 +908,6 @@ export class GameManager {
             if (alivePlayers.length === 0 && this.phase !== 'GAME_OVER') this.endGame('KILLER WINS', 'All survivors eliminated');
 
             this.viewports.update();
-        }
-
-        let renders = 1;
-        if (this.dev.renderFps) {
-            this.renderAcc = Math.min(this.renderAcc + this.dev.renderFps * dt / 1000, 10);
-            renders = Math.floor(this.renderAcc);
-            this.renderAcc -= renders;
-        }
-        if (!renders) return;
-        this.updateNavPathViz();
-        if (this.state === 'PLAYING') this.healthBars.update(this.players, this.viewports);
-        else this.healthBars.clear();
-        while (renders-- > 0) {
-            this.fpsFrames++;
-            this.engine.render(this.viewports.active ? this.viewports.entries : null);
         }
     }
 }

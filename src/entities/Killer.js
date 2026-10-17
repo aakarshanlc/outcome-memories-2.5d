@@ -107,6 +107,13 @@ export class Killer {
         this.stunCount = 0;
         this.isRushing = false;
         this.rushTimer = 0;
+
+        this.slowFrames = 0;
+        this.slowMult = 1;
+        this.emissiveState = null;
+        this.losTarget = null;
+        this.losResult = false;
+        this.losTimer = 0;
     }
 
     swapMesh(finalMesh) {
@@ -119,6 +126,7 @@ export class Killer {
         this.mesh.position.set(spawnX, 6, spawnZ);
         this.mesh.rotation.y = spawnRot;
         this.scene.add(this.mesh);
+        this.emissiveState = null;
     }
 
     setupModel(model, yawOffset) {
@@ -160,6 +168,14 @@ export class Killer {
         }
     }
 
+    // Traversing the whole model graph every frame was one of the biggest CPU
+    // costs in play: only touch materials when the desired glow actually changes.
+    setGlow(colorHex) {
+        if (this.emissiveState === colorHex) return;
+        this.emissiveState = colorHex;
+        this.setEmissive(colorHex);
+    }
+
     destroy() {
         if (this.grappleLine) this.removeGrappleLine();
         if (this.activeBomb) this.removeBomb();
@@ -168,7 +184,7 @@ export class Killer {
 
     stun(duration) {
         this.stunned = duration;
-        this.setEmissive(0xffffff);
+        this.setGlow(0xffffff);
         this.velocity.set(0,0,0);
         this.currentSpeed = 1.0;
 
@@ -178,7 +194,7 @@ export class Killer {
                 this.isRushing = true;
                 this.rushTimer = this.config.rush.duration;
                 this.stunCount = 0;
-                this.setEmissive(0xff0000);
+                this.setGlow(0xff0000);
             }
         }
     }
@@ -219,13 +235,13 @@ export class Killer {
             this.rushTimer--;
             if (this.rushTimer <= 0) {
                 this.isRushing = false;
-                this.setEmissive(0x550000);
+                this.setGlow(0x550000);
             }
         }
 
         if (this.stunned > 0) {
             this.stunned--;
-            if (this.stunned === 0 && !this.isRushing) this.setEmissive(0x550000);
+            if (this.stunned === 0 && !this.isRushing) this.setGlow(0x550000);
             this.velocity.x *= this.damping; this.velocity.z *= this.damping;
             this.mesh.position.x += this.velocity.x;
             this.mesh.position.z += this.velocity.z;
@@ -298,6 +314,7 @@ export class Killer {
 
         let currentSpeed = this.currentSpeed;
         if (this.isRushing) currentSpeed *= this.config.rush.speedMultiplier;
+        if (this.slowFrames > 0) { currentSpeed *= this.slowMult; this.slowFrames--; }
 
         let targetVx = dx * currentSpeed;
         let targetVz = dz * currentSpeed;
@@ -351,19 +368,29 @@ export class Killer {
         }
 
         if (isWindingUp) {
-            if (Math.floor(Date.now() / 100) % 2 === 0) {
-                this.setEmissive(0xffffff);
-            } else {
-                this.setEmissive(0x550000);
-            }
+            const want = Math.floor(Date.now() / 100) % 2 === 0 ? 0xffffff : 0x550000;
+            this.setGlow(want);
         } else {
-            this.setEmissive(0x550000);
+            this.setGlow(0x550000);
         }
 
         this.resolveWallStuck(obstacles);
     }
 
     hasLineOfSight(target, obstacles) {
+        // The raw sweep runs up to ~45 x obstacles per call and is asked for nearly
+        // every tick by the AI: reuse a stale-free-by-5-ticks result per target.
+        if (this.losTarget === target && this.losTimer > 0) {
+            this.losTimer--;
+            return this.losResult;
+        }
+        this.losTarget = target;
+        this.losTimer = 5;
+        this.losResult = this.computeLineOfSight(target, obstacles);
+        return this.losResult;
+    }
+
+    computeLineOfSight(target, obstacles) {
         const sx = this.mesh.position.x, sz = this.mesh.position.z;
         const dx = target.mesh.position.x - sx;
         const dz = target.mesh.position.z - sz;
@@ -565,10 +592,12 @@ export class Killer {
                     gameManager.audio.playSfx(this.type, cfg.sfx);
 
                     const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-                    const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
                     this.grappleLine = new THREE.Line(geometry, material);
+                    this.grappleLine.frustumCulled = false;
                     this.scene.add(this.grappleLine);
+                    this.updateGrappleLine(this.grappleProjectile.x, this.grappleProjectile.z);
                 }
             }
         }
@@ -588,8 +617,7 @@ export class Killer {
                 this.grappleProjectile.z += (dz / dist) * cfg.projectileSpeed;
             }
 
-            const points = [this.mesh.position, new THREE.Vector3(this.grappleProjectile.x, 6, this.grappleProjectile.z)];
-            this.grappleLine.geometry.setFromPoints(points);
+            this.updateGrappleLine(this.grappleProjectile.x, this.grappleProjectile.z);
 
             if (Math.hypot(this.grappleTarget.mesh.position.x - this.grappleProjectile.x, this.grappleTarget.mesh.position.z - this.grappleProjectile.z) < 5 + this.grappleTarget.size) {
                 this.grappleTarget.takeDamage(cfg.damage, this);
@@ -622,8 +650,7 @@ export class Killer {
                     if (!this.posBlocked(t.mesh.position.x + stepX, t.mesh.position.z, t.size, obstacles)) t.mesh.position.x += stepX;
                     if (!this.posBlocked(t.mesh.position.x, t.mesh.position.z + stepZ, t.size, obstacles)) t.mesh.position.z += stepZ;
 
-                    const points = [this.mesh.position, t.mesh.position];
-                    this.grappleLine.geometry.setFromPoints(points);
+                    this.updateGrappleLine(t.mesh.position.x, t.mesh.position.z);
                 } else {
                     this.grappleState = 'idle';
                     this.removeGrappleLine();
@@ -655,6 +682,16 @@ export class Killer {
             this.grappleLine.material.dispose();
             this.grappleLine = null;
         }
+    }
+
+    // Updates the 2-point line in place: setFromPoints rebuilt (and reallocated)
+    // the position buffer every frame the grapple was alive.
+    updateGrappleLine(x2, z2) {
+        if (!this.grappleLine) return;
+        const pos = this.grappleLine.geometry.attributes.position;
+        pos.setXYZ(0, this.mesh.position.x, 6, this.mesh.position.z);
+        pos.setXYZ(1, x2, 6, z2);
+        pos.needsUpdate = true;
     }
 
     updateBomb(players, obstacles, gameManager) {

@@ -55,7 +55,7 @@ export class DevPanel {
         this.addToggle('Show FPS',
             () => gm.dev.showFps,
             v => { gm.dev.showFps = v; gm.updateFpsOverlay(); });
-        this.addInput('FPS Bypass (0 = Max)',
+        this.addInput('FPS Bypass (0 = Lock 60)',
             () => gm.dev.renderFps,
             v => {
                 gm.dev.renderFps = Math.max(0, Math.min(240, Math.round(v)));

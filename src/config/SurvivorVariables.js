@@ -69,5 +69,27 @@ export const SurvivorVariables = {
                 endlagStrength: 0.2
             }
         }
+    },
+    'Blaze': {
+        speed: 0.9,
+        maxHealth: 90,
+        size: 3,
+        abilities: {
+            Firewall: {
+                cooldown: 360,
+                duration: 240,
+                speedDebuf: 0.8,
+                speedboost: 1.2,
+                health: 30,
+                hitboxWidth: 20,
+                hitboxDepth: 20,
+            },
+            SolFlame: {
+                cooldown: 480,
+                duration: 30,
+                speedDebuf: 0.9,
+                knockback: 10,
+            }
+        }
     }
 };

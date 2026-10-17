@@ -27,7 +27,7 @@ export class AudioManager {
 
         this.sfxLibrary = {};
         this.sfxCooldowns = {};
-        this.sfxCache = {};
+        this.sfxPools = {};
         this.sfxLastPick = {};
 
         for (const path in sfxModules) {
@@ -51,7 +51,9 @@ export class AudioManager {
                 if (!this.sfxLibrary[charName][actionName]) this.sfxLibrary[charName][actionName] = [];
                 this.sfxLibrary[charName][actionName].push(url);
 
-                if (!this.sfxCache[url]) this.sfxCache[url] = new Audio(url);
+                // Pre-create one pooled element per file so the browser fetches it
+                // up front and the first play has no decode/latency hitch.
+                if (!this.sfxPools[url]) this.sfxPools[url] = [new Audio(url)];
             }
         }
 
@@ -110,9 +112,25 @@ export class AudioManager {
                 } while (url === this.sfxLastPick[cooldownKey]);
                 this.sfxLastPick[cooldownKey] = url;
             }
-            const sfx = this.sfxCache[url].cloneNode();
+            const sfx = this.acquireSfx(url);
             sfx.volume = this.sfxVolume;
             sfx.play().catch(() => {});
         }
+    }
+
+    // Reusing finished audio elements instead of cloneNode()-ing a fresh one per
+    // shot keeps rapid-fire SFX from generating garbage-collection hitches.
+    acquireSfx(url) {
+        let pool = this.sfxPools[url];
+        if (!pool) pool = this.sfxPools[url] = [];
+        for (let i = 0; i < pool.length; i++) {
+            if (pool[i].paused) { pool[i].currentTime = 0; return pool[i]; }
+        }
+        if (pool.length < 4) {
+            const a = new Audio(url);
+            pool.push(a);
+            return a;
+        }
+        return pool[0];
     }
 }

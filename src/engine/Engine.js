@@ -11,6 +11,10 @@ export class Engine {
         this.camera.lookAt(0, 0, 0);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        // Cap the drawing buffer: on high-DPI screens the default pixel ratio makes
+        // the GPU rasterize up to 4x the pixels for identical geometry. 1.25 keeps
+        // edges clean while holding frame time steady (critical in split-screen).
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;

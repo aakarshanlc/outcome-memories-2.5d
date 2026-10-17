@@ -55,6 +55,11 @@ export function nearestFreeCell(cell, grid) {
     return null;
 }
 
+// Pathfinding runs repeatedly (killer repaths, survivor AI picks between 8
+// candidate goals): reuse the 2500-cell scratch buffers instead of reallocating.
+let prevScratch = null;
+let visitedScratch = null;
+
 export function computePath(sx, sz, gx, gz, grid) {
     const start = nearestFreeCell(worldToCell(sx, sz, grid), grid);
     const goal = nearestFreeCell(worldToCell(gx, gz, grid), grid);
@@ -64,8 +69,13 @@ export function computePath(sx, sz, gx, gz, grid) {
     const startIdx = start.r * size + start.c;
     const goalIdx = goal.r * size + goal.c;
 
-    const prev = new Int32Array(size * size).fill(-1);
-    const visited = new Uint8Array(size * size);
+    const cells = size * size;
+    if (!prevScratch || prevScratch.length !== cells) {
+        prevScratch = new Int32Array(cells);
+        visitedScratch = new Uint8Array(cells);
+    }
+    const prev = prevScratch.fill(-1);
+    const visited = visitedScratch.fill(0);
     const queue = [startIdx];
     visited[startIdx] = 1;
     let head = 0;

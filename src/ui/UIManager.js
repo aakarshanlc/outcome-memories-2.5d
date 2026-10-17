@@ -361,10 +361,10 @@ export class UIManager {
 
             document.getElementById('btn-cycle-surv-count').onclick = () => {
                 let count = this.gameManager.gameSetup.survivorCount;
-                count = (count % 3) + 1;
+                count = (count % 4) + 1;
                 this.gameManager.gameSetup.survivorCount = count;
 
-                this.gameManager.gameSetup.selectedSurvivors = ['Sonic', 'Tails', 'Knuckles'].slice(0, count);
+                this.gameManager.gameSetup.selectedSurvivors = ['Sonic', 'Tails', 'Knuckles', 'Blaze'].slice(0, count);
                 this.showScreen('setup');
             };
 

@@ -10,6 +10,7 @@ export class MapManager {
         this.config = null;
         this.mazeTimer = 0;
         this.navDirty = true;
+        this.gates = [];
     }
 
     loadMap(mapName) {
@@ -45,6 +46,8 @@ export class MapManager {
         if (this.config.jumpPadCount > 0) {
             this.spawnJumpPads(this.config.jumpPadCount);
         }
+
+        this.gates = this.obstacles.filter(o => o.slide);
     }
 
     generateMaze() {
@@ -127,7 +130,7 @@ export class MapManager {
     }
 
     update(players, killers, audio) {
-        const gates = this.obstacles.filter(o => o.slide);
+        const gates = this.gates;
         if (gates.length === 0) return;
 
         this.mazeTimer++;

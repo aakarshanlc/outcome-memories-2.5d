@@ -123,6 +123,11 @@ export class Player {
         this.cheeseBob = 0;
         this.cheeseMesh = null;
         this.cheeseHealRing = null;
+        this.solFlameTimer = 0;
+        this.solFlameHit = null;
+        this.flameAura = null;
+        this.fireBoostFrames = 0;
+        this.fireBoostMult = 1;
 
         if (charName === 'Cream') {
             const heal = this.config.abilities.heal;
@@ -151,6 +156,21 @@ export class Player {
             this.blockMesh.rotation.x = Math.PI / 2;
             this.blockMesh.visible = false;
             this.mesh.add(this.blockMesh);
+        }
+
+        if (charName === 'Blaze') {
+            this.flameAura = new THREE.Mesh(
+                new THREE.SphereGeometry(this.config.size + 4, 16, 12),
+                new THREE.MeshBasicMaterial({
+                    color: 0xff6600,
+                    transparent: true,
+                    opacity: 0.25,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending
+                })
+            );
+            this.flameAura.visible = false;
+            scene.add(this.flameAura);
         }
     }
 
@@ -203,6 +223,7 @@ export class Player {
             this.mesh.visible = false;
             if (this.cheeseMesh) this.cheeseMesh.visible = false;
             if (this.cheeseHealRing) this.cheeseHealRing.visible = false;
+            if (this.flameAura) this.flameAura.visible = false;
             if (this.healState !== 'idle') this.endHeal();
         }
     }
@@ -243,6 +264,7 @@ export class Player {
     destroy() {
         if (this.cheeseMesh) this.scene.remove(this.cheeseMesh);
         if (this.cheeseHealRing) this.scene.remove(this.cheeseHealRing);
+        if (this.flameAura) this.scene.remove(this.flameAura);
         if (this.gameManager) this.gameManager.ui.hideQte();
     }
 
@@ -370,6 +392,7 @@ export class Player {
         if (this.dashActive > 0) { currentSpeed *= 2.0; this.dashActive--; }
         if (this.hitSpeedBoost > 0) { currentSpeed *= 1.3; this.hitSpeedBoost--; }
         if (this.endlagTimer > 0) { currentSpeed *= (1 - this.endlagStrength); this.endlagTimer--; }
+        if (this.fireBoostFrames > 0) { currentSpeed *= this.fireBoostMult; this.fireBoostFrames--; }
 
         if (this.ability1Cooldown > 0) this.ability1Cooldown--;
         if (this.ability2Cooldown > 0) this.ability2Cooldown--;
@@ -652,6 +675,56 @@ export class Player {
             if (this.cheeseHealRing.visible) {
                 this.cheeseHealRing.position.x = this.cheeseMesh.position.x;
                 this.cheeseHealRing.position.z = this.cheeseMesh.position.z;
+            }
+        }
+
+        else if (this.characterName === 'Blaze') {
+            const fw = this.config.abilities.Firewall;
+            const sf = this.config.abilities.SolFlame;
+            const abilityEdge = this.controls.ability1 && !this.prevAbility1;
+            this.prevAbility1 = this.controls.ability1;
+
+            if (abilityEdge && this.ability1Cooldown <= 0 && gameManager.canPlaceFireWall()) {
+                this.ability1Cooldown = fw.cooldown;
+                const placeDist = this.size + fw.hitboxDepth / 2 + 2;
+                gameManager.spawnFireWall(
+                    this,
+                    this.mesh.position.x + Math.sin(this.mesh.rotation.y) * placeDist,
+                    this.mesh.position.z + Math.cos(this.mesh.rotation.y) * placeDist
+                );
+                gameManager.audio.playSfx('Blaze', 'firewall');
+            }
+
+            if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.solFlameTimer <= 0) {
+                this.solFlameTimer = sf.duration;
+                this.solFlameHit = new Set();
+                this.ability2Cooldown = sf.cooldown;
+                gameManager.audio.playSfx('Blaze', 'sol_flame');
+            }
+
+            if (this.solFlameTimer > 0) {
+                this.solFlameTimer--;
+                if (this.flameAura) {
+                    this.flameAura.visible = this.mesh.visible;
+                    this.flameAura.position.copy(this.mesh.position);
+                }
+                const auraRadius = this.config.size + 4;
+                for (const k of killers) {
+                    const kdx = k.mesh.position.x - this.mesh.position.x;
+                    const kdz = k.mesh.position.z - this.mesh.position.z;
+                    const reach = auraRadius + k.size;
+                    if (kdx * kdx + kdz * kdz > reach * reach) continue;
+                    if (!this.solFlameHit.has(k)) {
+                        this.solFlameHit.add(k);
+                        const kl = Math.hypot(kdx, kdz) || 1;
+                        k.mesh.position.x += (kdx / kl) * sf.knockback;
+                        k.mesh.position.z += (kdz / kl) * sf.knockback;
+                    }
+                    k.slowFrames = 8;
+                    k.slowMult = sf.speedDebuf;
+                }
+            } else if (this.flameAura) {
+                this.flameAura.visible = false;
             }
         }
 
