@@ -4191,7 +4191,6 @@ void main() {
 
                 <div class="main-menu-overlay">
                     <div class="menu-title-top">
-                        <div class="title-kicker">ASYMMETRIC HORROR · 1 VS ALL</div>
                         <h1>Outcome Memories <span class="title-accent">2.5D</span></h1>
                     </div>
 
@@ -4201,7 +4200,6 @@ void main() {
                         ${this.btn(`SETTINGS`,`btn-settings`)}
                         ${this.btn(`CREDITS`,`btn-credits`)}
                     </div>
-                    <div class="menu-footer">HOST THE MATCH WITH <code>npm start</code> FOR ONLINE ROOMS</div>
                 </div>
             `;else if(e===`online`)t=`
                 <div class="menu-screen" id="online-menu">
