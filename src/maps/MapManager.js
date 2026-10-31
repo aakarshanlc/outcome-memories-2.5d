@@ -2,11 +2,19 @@ import * as THREE from 'three';
 import { MapVariables } from '../config/MapVariables.js';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
 
+// One shared unit box geometry for every wall: walls just get scaled. Keeps
+// geometry memory flat no matter how many blocks a map uses.
+const wallGeo = new THREE.BoxGeometry(1, 1, 1);
+
+const SUNK_Y = -5;   // mesh center when flushed into the floor (top at y=0)
+const RAISED_Y = 5;  // mesh center when fully blocking (top at y=10)
+
 export class MapManager {
     constructor(scene) {
         this.scene = scene;
         this.obstacles = [];
         this.jumpPads = [];
+        this.crushers = [];
         this.config = null;
         this.mazeTimer = 0;
         this.navDirty = true;
@@ -18,29 +26,54 @@ export class MapManager {
         this.jumpPads.forEach(pad => this.scene.remove(pad.mesh));
         this.obstacles = [];
         this.jumpPads = [];
+        this.crushers = [];
         this.navDirty = true;
 
         this.config = MapVariables[mapName] || MapVariables['Open Field'];
 
         const floorGeo = new THREE.PlaneGeometry(200, 200);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         this.scene.add(floor);
+        this.floor = floor;
 
         this.addWall(-100, -100, 200, 5, true);
         this.addWall(-100, 95, 200, 5, true);
         this.addWall(-100, -100, 5, 200, true);
         this.addWall(95, -100, 5, 200, true);
 
-        if (mapName === 'Box Arena') {
-            this.addWall(0, 0, 20, 20);
-            this.addWall(40, 40, 20, 20);
-            this.addWall(-40, -40, 20, 20);
+        if (mapName === 'Open Field') {
+            // Sparse low cover, still very much an open field.
+            this.addWall(-72, -42, 30, 6);
+            this.addWall(42, -42, 30, 6);
+            this.addWall(-72, 36, 30, 6);
+            this.addWall(42, 36, 30, 6);
+            this.addWall(-9, -9, 18, 18);
+            this.addWall(-42, 0, 8, 8);
+            this.addWall(34, 0, 8, 8);
+        }
+        else if (mapName === 'Box Arena') {
+            // Symmetric arena: big central block, four corner blocks, four gates.
+            this.addWall(-15, -15, 30, 30);
+            this.addWall(-76, -76, 18, 18);
+            this.addWall(58, -76, 18, 18);
+            this.addWall(-76, 58, 18, 18);
+            this.addWall(58, 58, 18, 18);
+            this.addWall(-11, -72, 22, 6);
+            this.addWall(-11, 66, 22, 6);
+            this.addWall(-72, -11, 6, 22);
+            this.addWall(66, -11, 6, 22);
         }
         else if (mapName === 'Maze Mania') {
             this.generateMaze();
+        }
+        else if (mapName === 'Crusher Hall') {
+            this.addWall(-7, -7, 14, 14);
+            this.addWall(-84, -55, 14, 34);
+            this.addWall(70, 21, 14, 34);
+            this.spawnCrushers();
         }
 
         if (this.config.jumpPadCount > 0) {
@@ -48,6 +81,131 @@ export class MapManager {
         }
 
         this.gates = this.obstacles.filter(o => o.slide);
+    }
+
+    // ---- Crusher Hall gimmick ----
+    // Crushers cycle: sink flush with the floor (walk-over shortcut) -> rise
+    // again (crushing anyone standing inside) -> block -> warn -> sink.
+
+    spawnCrushers() {
+        const cfg = this.config.crusher;
+        if (!cfg) return;
+        const spots = [
+            [-45, -35], [0, -35], [45, -35],
+            [-45, 35], [0, 35], [45, 35]
+        ];
+        for (let i = 0; i < spots.length; i++) {
+            const [cx, cz] = spots[i];
+            const s = cfg.size;
+            const x = cx - s / 2;
+            const z = cz - s / 2;
+
+            const mat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, emissive: 0x000000 });
+            const mesh = new THREE.Mesh(wallGeo, mat);
+            mesh.scale.set(s, 10, s);
+            mesh.position.set(cx, SUNK_Y, cz);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            this.scene.add(mesh);
+
+            const obs = {
+                x, z, w: s, d: s, mesh,
+                isBorder: false, isMaze: false,
+                isCrusher: true, sunk: true
+            };
+            this.obstacles.push(obs);
+
+            const sunkTicks = Math.max(30, cfg.period - cfg.riseTicks - cfg.raisedTicks - cfg.warnTicks - cfg.sinkTicks);
+            this.crushers.push({
+                obs,
+                state: 'sunk',
+                // Stagger the cycle so the hall never slams all at once.
+                timer: sunkTicks - Math.floor(i * sunkTicks / spots.length),
+                sunkTicks
+            });
+        }
+        this.navDirty = true;
+    }
+
+    updateCrushers(players, audio) {
+        const cfg = this.config.crusher;
+        if (!cfg || this.crushers.length === 0) return;
+
+        for (const c of this.crushers) {
+            c.timer--;
+            const mesh = c.obs.mesh;
+            const mat = mesh.material;
+
+            if (c.state === 'sunk') {
+                if (c.timer <= 0) {
+                    c.state = 'rising';
+                    c.timer = cfg.riseTicks;
+                    this.crusherSlam(c, cfg, players, audio);
+                }
+            }
+            else if (c.state === 'rising') {
+                const t = 1 - Math.max(0, c.timer) / cfg.riseTicks;
+                mesh.position.y = SUNK_Y + (RAISED_Y - SUNK_Y) * t;
+                if (c.timer <= 0) {
+                    mesh.position.y = RAISED_Y;
+                    c.state = 'raised';
+                    c.timer = cfg.raisedTicks;
+                    c.obs.sunk = false;
+                    this.navDirty = true;
+                }
+            }
+            else if (c.state === 'raised') {
+                if (c.timer <= 0) {
+                    c.state = 'warn';
+                    c.timer = cfg.warnTicks;
+                }
+            }
+            else if (c.state === 'warn') {
+                // Flash red as a telegraph.
+                mat.emissive.setHex((c.timer >> 2) & 1 ? 0x881111 : 0x220000);
+                if (c.timer <= 0) {
+                    c.state = 'sinking';
+                    c.timer = cfg.sinkTicks;
+                }
+            }
+            else if (c.state === 'sinking') {
+                const t = 1 - Math.max(0, c.timer) / cfg.sinkTicks;
+                mesh.position.y = RAISED_Y + (SUNK_Y - RAISED_Y) * t;
+                mat.emissive.setHex(0x000000);
+                if (c.timer <= 0) {
+                    mesh.position.y = SUNK_Y;
+                    c.state = 'sunk';
+                    c.timer = c.sunkTicks;
+                    c.obs.sunk = true;
+                    this.navDirty = true;
+                }
+            }
+        }
+    }
+
+    // The instant a crusher starts rising: crush + launch anyone caught inside.
+    crusherSlam(c, cfg, players, audio) {
+        const obs = c.obs;
+        let slammed = false;
+        if (players) {
+            for (const p of players) {
+                if (p.health <= 0 || p.escaped) continue;
+                const px = p.mesh.position.x;
+                const pz = p.mesh.position.z;
+                if (px < obs.x || px > obs.x + obs.w || pz < obs.z || pz > obs.z + obs.d) continue;
+                if (p.mesh.position.y > 10) continue; // already airborne above it
+                p.takeDamage(cfg.damage, null);
+                if (p.health > 0) {
+                    p.vertVel = cfg.knockUp;
+                    slammed = true;
+                }
+            }
+        }
+        if (audio && this.config.sfx?.slam && (slammed || players?.some?.(p => p.health > 0 &&
+            Math.abs(p.mesh.position.x - (obs.x + obs.w / 2)) < 60 &&
+            Math.abs(p.mesh.position.z - (obs.z + obs.d / 2)) < 60))) {
+            audio.playSfx('Map', this.config.sfx.slam);
+        }
     }
 
     generateMaze() {
@@ -130,6 +288,8 @@ export class MapManager {
     }
 
     update(players, killers, audio) {
+        if (this.crushers.length > 0) this.updateCrushers(players, audio);
+
         const gates = this.gates;
         if (gates.length === 0) return;
 
@@ -202,7 +362,7 @@ export class MapManager {
     }
 
     spawnJumpPads(count) {
-        const innerWalls = this.obstacles.filter(w => !w.isBorder);
+        const innerWalls = this.obstacles.filter(w => !w.isBorder && !w.isCrusher);
         for (let i = 0; i < count; i++) {
             for (let attempt = 0; attempt < 60; attempt++) {
                 let px, pz;
@@ -248,7 +408,7 @@ export class MapManager {
 
     addJumpPad(x, z) {
         const geo = new THREE.CylinderGeometry(3, 3, 1, 16);
-        const mat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 });
+        const mat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, emissive: 0x2a2a2a });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, 0.5, z);
         mesh.castShadow = true;
@@ -257,10 +417,10 @@ export class MapManager {
         this.jumpPads.push({ x, z, size: 3, mesh });
     }
 
-    addWall(x, z, w, d, isBorder = false, color = 0x555555, isMaze = false) {
-        const geo = new THREE.BoxGeometry(w, 10, d);
-        const mat = new THREE.MeshStandardMaterial({ color: color });
-        const mesh = new THREE.Mesh(geo, mat);
+    addWall(x, z, w, d, isBorder = false, color = 0x4d4d4d, isMaze = false) {
+        const mat = new THREE.MeshStandardMaterial({ color });
+        const mesh = new THREE.Mesh(wallGeo, mat);
+        mesh.scale.set(w, 10, d);
         mesh.position.set(x + w/2, 5, z + d/2);
         mesh.castShadow = true;
         mesh.receiveShadow = true;

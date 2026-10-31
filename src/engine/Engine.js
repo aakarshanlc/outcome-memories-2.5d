@@ -3,8 +3,8 @@ import * as THREE from 'three';
 export class Engine {
     constructor() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a1a1a);
-        this.scene.fog = new THREE.Fog(0x1a1a1a, 50, 150);
+        this.scene.background = new THREE.Color(0x0b0b0d);
+        this.scene.fog = new THREE.Fog(0x0b0b0d, 40, 140);
 
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 70, 50);
@@ -18,12 +18,15 @@ export class Engine {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
+        // Moodier tonemapping: crushed highlights, deeper shadows.
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 0.92;
         document.body.appendChild(this.renderer.domElement);
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+        const ambient = new THREE.AmbientLight(0xbfc4d0, 0.32);
         this.scene.add(ambient);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const dirLight = new THREE.DirectionalLight(0xfff4ea, 0.7);
         dirLight.position.set(50, 100, 50);
         dirLight.castShadow = true;
 

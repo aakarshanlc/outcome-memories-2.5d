@@ -7,12 +7,15 @@ import { checkCircleBoxCollision } from '../engine/Collision.js';
 //   chew through its 30 HP with basic attacks (a 10-damage m1 takes 3 hits).
 // - While inside the zone the killer is slowed (speedDebuff).
 export class FireWall {
-    constructor(gameManager, owner, x, z) {
+    // visualOnly: a network client renders the host's firewall without applying
+    // any gameplay effects or touching the nav grid.
+    constructor(gameManager, owner, x, z, visualOnly = false) {
         this.gameManager = gameManager;
         this.owner = owner;
         const cfg = owner.config.abilities.Firewall;
 
         this.cfg = cfg;
+        this.visualOnly = visualOnly;
         this.w = cfg.hitboxWidth;
         this.d = cfg.hitboxDepth;
         this.zoneMargin = 3;
@@ -51,24 +54,26 @@ export class FireWall {
     update(players, killers) {
         this.timer--;
 
-        const cfg = this.cfg;
-        const m = this.zoneMargin;
-        const zx = this.obstacle.x - m;
-        const zz = this.obstacle.z - m;
-        const zw = this.w + m * 2;
-        const zd = this.d + m * 2;
+        if (!this.visualOnly) {
+            const cfg = this.cfg;
+            const m = this.zoneMargin;
+            const zx = this.obstacle.x - m;
+            const zz = this.obstacle.z - m;
+            const zw = this.w + m * 2;
+            const zd = this.d + m * 2;
 
-        for (const k of killers) {
-            if (checkCircleBoxCollision(k.mesh.position.x, k.mesh.position.z, k.size, zx, zz, zw, zd)) {
-                k.slowFrames = 2;
-                k.slowMult = cfg.speedDebuf;
+            for (const k of killers) {
+                if (checkCircleBoxCollision(k.mesh.position.x, k.mesh.position.z, k.size, zx, zz, zw, zd)) {
+                    k.slowFrames = 2;
+                    k.slowMult = cfg.speedDebuf;
+                }
             }
-        }
-        for (const p of players) {
-            if (p.health <= 0 || p.escaped) continue;
-            if (checkCircleBoxCollision(p.mesh.position.x, p.mesh.position.z, p.size, zx, zz, zw, zd)) {
-                p.fireBoostFrames = 2;
-                p.fireBoostMult = cfg.speedboost;
+            for (const p of players) {
+                if (p.health <= 0 || p.escaped) continue;
+                if (checkCircleBoxCollision(p.mesh.position.x, p.mesh.position.z, p.size, zx, zz, zw, zd)) {
+                    p.fireBoostFrames = 2;
+                    p.fireBoostMult = cfg.speedboost;
+                }
             }
         }
 
@@ -80,7 +85,7 @@ export class FireWall {
     }
 
     takeDamage(amount) {
-        if (this.destroyed) return;
+        if (this.destroyed || this.visualOnly) return;
         this.health -= amount;
         this.mesh.material.color.setHex(this.health > this.maxHealth / 2 ? 0xff5500 : 0xcc2200);
         if (this.health <= 0) this.destroy();
@@ -92,6 +97,6 @@ export class FireWall {
         this.gameManager.engine.scene.remove(this.mesh);
         this.mesh.geometry.dispose();
         this.mesh.material.dispose();
-        this.gameManager.mapManager.navDirty = true;
+        if (!this.visualOnly) this.gameManager.mapManager.navDirty = true;
     }
 }

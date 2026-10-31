@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { checkCircleBoxCollision } from '../engine/Collision.js';
+import { checkCircleBoxCollision, checkCircleCircleCollision } from '../engine/Collision.js';
 import { buildNavGrid, worldToCell, nearestFreeCell, computePath } from '../engine/NavGrid.js';
 import { KillerVariables } from '../config/KillerVariables.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
@@ -10,12 +10,55 @@ import tripwireTextureUrl from '../assets/models/Tripwire/player01.png';
 import x2011ModelUrl from '../assets/models/2011X/2011x.glb';
 import starvedModelUrl from '../assets/models/Starved/starved_eggman.glb';
 
+// Parsed models are cached and cloned on reuse: no re-download/re-parse on
+// rematch or when an online client spins up the same killer.
+const modelCache = new Map();
+
+function loadObjModel(url, textureUrl) {
+    if (modelCache.has(url)) return Promise.resolve(modelCache.get(url).clone(true));
+    const textureLoader = new THREE.TextureLoader();
+    const loader = new OBJLoader();
+    return new Promise((resolve, reject) => {
+        textureLoader.load(textureUrl, (texture) => {
+            texture.flipY = false;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            loader.load(url, (obj) => {
+                obj.traverse((node) => {
+                    if (node.isMesh) {
+                        node.material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
+                        node.castShadow = true;
+                    }
+                });
+                modelCache.set(url, obj);
+                resolve(obj.clone(true));
+            }, undefined, reject);
+        }, undefined, reject);
+    });
+}
+
+function loadGltfModel(url) {
+    if (modelCache.has(url)) return Promise.resolve(modelCache.get(url).clone(true));
+    const loader = new GLTFLoader();
+    return new Promise((resolve, reject) => {
+        loader.load(url, (gltf) => {
+            gltf.scene.traverse((node) => {
+                if (node.isMesh) node.castShadow = true;
+            });
+            modelCache.set(url, gltf.scene);
+            resolve(gltf.scene.clone(true));
+        }, undefined, reject);
+    });
+}
+
 export class Killer {
     constructor(scene, controls, color, type = 'Tripwire') {
         this.scene = scene;
         this.controls = controls;
         this.type = type;
         this.config = KillerVariables[type] || KillerVariables['Tripwire'];
+        // Tag used by survivor hit reactions (Knuckles' parry only answers
+        // attacks from entities carrying this flag).
+        this.isKiller = true;
 
         const geo = new THREE.ConeGeometry(4, 12, 6);
         const mat = new THREE.MeshStandardMaterial({ color: color, emissive: 0x550000 });
@@ -25,41 +68,15 @@ export class Killer {
         scene.add(this.mesh);
 
         if (type === 'Tripwire') {
-            const loader = new OBJLoader();
-            const textureLoader = new THREE.TextureLoader();
-
-            textureLoader.load(tripwireTextureUrl, (texture) => {
-                texture.flipY = false;
-                texture.colorSpace = THREE.SRGBColorSpace;
-
-                loader.load(tripwireModelUrl, (obj) => {
-                    obj.traverse((node) => {
-                        if (node.isMesh) {
-                            node.material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
-                            node.castShadow = true;
-                        }
-                    });
-
-                    const finalMesh = this.setupModel(obj, Math.PI / 2);
-                    this.swapMesh(finalMesh);
-                });
-            });
+            loadObjModel(tripwireModelUrl, tripwireTextureUrl)
+                .then(obj => this.swapMesh(this.setupModel(obj, Math.PI / 2)))
+                .catch(err => console.error('Failed to load Tripwire model', err));
         }
         else if (type === '2011X' || type === 'Starved') {
-            const loader = new GLTFLoader();
             const modelUrl = type === '2011X' ? x2011ModelUrl : starvedModelUrl;
-
-            loader.load(modelUrl, (gltf) => {
-                const model = gltf.scene;
-                model.traverse((node) => {
-                    if (node.isMesh) {
-                        node.castShadow = true;
-                    }
-                });
-
-                const finalMesh = this.setupModel(model, 0);
-                this.swapMesh(finalMesh);
-            });
+            loadGltfModel(modelUrl)
+                .then(model => this.swapMesh(this.setupModel(model, 0)))
+                .catch(err => console.error(`Failed to load ${type} model`, err));
         }
 
         this.maxSpeed = this.config.speed;
@@ -103,6 +120,10 @@ export class Killer {
         this.trickeryState = 'idle';
         this.trickeryTimer = 0;
         this.trickeryAngle = 0;
+
+        this.lungeState = 'idle';
+        this.lungeTimer = 0;
+        this.lungeDir = { x: 0, z: 1 };
 
         this.stunCount = 0;
         this.isRushing = false;
@@ -187,6 +208,10 @@ export class Killer {
         this.setGlow(0xffffff);
         this.velocity.set(0,0,0);
         this.currentSpeed = 1.0;
+        // A stunned killer drops whatever it was winding up.
+        this.lungeState = 'idle';
+        this.lungeTimer = 0;
+        if (this.grappleState === 'shooting') { this.grappleState = 'idle'; this.removeGrappleLine(); }
 
         if (this.type === '2011X' && this.config.rush && !this.isRushing) {
             this.stunCount++;
@@ -253,18 +278,20 @@ export class Killer {
 
         if (this.isAI) {
             let target = null;
-            let minDist = Infinity;
-            players.forEach(p => {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
-                    if (d < minDist && d <= (this.config.ai?.visionRange || 9999)) { minDist = d; target = p; }
-                }
-            });
+            let minDistSq = Infinity;
+            const visionSq = (this.config.ai?.visionRange || 9999) ** 2;
+            for (const p of players) {
+                if (p.health <= 0) continue;
+                const pdx = p.mesh.position.x - this.mesh.position.x;
+                const pdz = p.mesh.position.z - this.mesh.position.z;
+                const dSq = pdx * pdx + pdz * pdz;
+                if (dSq < minDistSq && dSq <= visionSq) { minDistSq = dSq; target = p; }
+            }
 
             if (target) {
                 let tdx = target.mesh.position.x - this.mesh.position.x;
                 let tdz = target.mesh.position.z - this.mesh.position.z;
-                let dist = Math.hypot(tdx, tdz);
+                let dist = Math.sqrt(minDistSq);
 
                 const attackRange = this.config.ai?.attackRange || 12;
                 this.controls.m1 = dist <= attackRange;
@@ -276,6 +303,11 @@ export class Killer {
                 if (this.type === '2011X' && this.config.abilities && !this.isRushing) {
                     this.controls.ability1 = (dist <= 60 && this.ability1Cooldown <= 0);
                     this.controls.ability2 = (dist <= 50 && this.ability2Cooldown <= 0);
+                }
+                if (this.type === 'Starved' && this.config.abilities && !this.isRushing) {
+                    const snareCfg = this.config.abilities.snare;
+                    this.controls.ability1 = (this.lungeState === 'idle' && this.ability1Cooldown <= 0 && dist <= 34 && dist > 10);
+                    this.controls.ability2 = (this.ability2Cooldown <= 0 && dist > 18 && dist <= snareCfg.range && this.hasLineOfSight(target, obstacles));
                 }
 
                 if (dist > attackRange) {
@@ -308,12 +340,22 @@ export class Killer {
 
         if (dx !== 0 && dz !== 0 && !this.isAI) { dx *= 0.707; dz *= 0.707; }
 
+        // Starved: start a pounce if asked (captures the direction now, the
+        // leap itself is locked to it).
+        if (this.type === 'Starved' && !this.isRushing) {
+            this.tryStartLunge(dx, dz, gameManager);
+        }
+        // During an active leap the direction is locked.
+        if (this.lungeState === 'active') { dx = this.lungeDir.x; dz = this.lungeDir.z; }
+
         let isMoving = (dx !== 0 || dz !== 0);
         if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02;
         else this.currentSpeed += (1.0 - this.currentSpeed) * 0.05;
 
         let currentSpeed = this.currentSpeed;
         if (this.isRushing) currentSpeed *= this.config.rush.speedMultiplier;
+        if (this.lungeState === 'active') currentSpeed *= this.config.abilities.lunge.speedMultiplier;
+        else if (this.lungeState === 'windup') currentSpeed *= 0.35;
         if (this.slowFrames > 0) { currentSpeed *= this.slowMult; this.slowFrames--; }
 
         let targetVx = dx * currentSpeed;
@@ -355,6 +397,10 @@ export class Killer {
                 this.updateTeleport(players, gameManager);
                 this.updateTrickery(players, gameManager);
             }
+            if (this.type === 'Starved' && this.config.abilities) {
+                this.stepLunge(players, gameManager);
+                this.updateSnare(players, obstacles, gameManager);
+            }
         }
 
         let isWindingUp = false;
@@ -366,15 +412,104 @@ export class Killer {
             if (this.teleportState === 'windup') isWindingUp = true;
             if (this.trickeryState === 'active') isWindingUp = true;
         }
+        if (this.type === 'Starved' && this.lungeState === 'windup') isWindingUp = true;
 
         if (isWindingUp) {
             const want = Math.floor(Date.now() / 100) % 2 === 0 ? 0xffffff : 0x550000;
             this.setGlow(want);
+        } else if (this.type === 'Starved' && this.lungeState === 'active') {
+            this.setGlow(0xff3300);
         } else {
             this.setGlow(0x550000);
         }
 
         this.resolveWallStuck(obstacles);
+    }
+
+    // ---- Starved: Pounce (ability 1) ----
+
+    tryStartLunge(dx, dz, gameManager) {
+        if (!this.controls.ability1 || this.ability1Cooldown > 0 || this.lungeState !== 'idle') return;
+        const cfg = this.config.abilities.lunge;
+        this.lungeState = 'windup';
+        this.lungeTimer = cfg.windup;
+        if (dx !== 0 || dz !== 0) {
+            const l = Math.hypot(dx, dz);
+            this.lungeDir = { x: dx / l, z: dz / l };
+        } else {
+            this.lungeDir = { x: Math.sin(this.mesh.rotation.y), z: Math.cos(this.mesh.rotation.y) };
+        }
+        this.ability1Cooldown = cfg.cooldown;
+        gameManager.audio.playSfx(this.type, cfg.sfx);
+    }
+
+    stepLunge(players, gameManager) {
+        if (this.lungeState === 'windup') {
+            this.lungeTimer--;
+            if (this.lungeTimer <= 0) {
+                this.lungeState = 'active';
+                this.lungeTimer = this.config.abilities.lunge.activeDuration;
+            }
+            return;
+        }
+        if (this.lungeState !== 'active') return;
+
+        const cfg = this.config.abilities.lunge;
+        const reach = this.size + 4;
+        const reachSq = reach * reach;
+        for (const p of players) {
+            if (p.health <= 0 || p.escaped) continue;
+            const pdx = p.mesh.position.x - this.mesh.position.x;
+            const pdz = p.mesh.position.z - this.mesh.position.z;
+            if (pdx * pdx + pdz * pdz > reachSq) continue;
+            p.takeDamage(cfg.damage, this);
+            if (p.health > 0) {
+                const kl = Math.hypot(pdx, pdz) || 1;
+                p.mesh.position.x += (pdx / kl) * cfg.knockback;
+                p.mesh.position.z += (pdz / kl) * cfg.knockback;
+                p.hitSpeedBoost = 30; // survivors get a short scramble boost after being launched
+            }
+            this.lungeState = 'idle';
+            this.lungeTimer = 0;
+            return;
+        }
+
+        this.lungeTimer--;
+        if (this.lungeTimer <= 0) this.lungeState = 'idle';
+    }
+
+    // ---- Starved: Snare Toss (ability 2) ----
+
+    updateSnare(players, obstacles, gameManager) {
+        const cfg = this.config.abilities.snare;
+        if (!cfg) return;
+        if (!this.controls.ability2 || this.ability2Cooldown > 0) return;
+
+        let target = null;
+        let minDistSq = cfg.range * cfg.range;
+        for (const p of players) {
+            if (p.health <= 0 || p.escaped) continue;
+            const pdx = p.mesh.position.x - this.mesh.position.x;
+            const pdz = p.mesh.position.z - this.mesh.position.z;
+            const dSq = pdx * pdx + pdz * pdz;
+            if (dSq < minDistSq && this.hasLineOfSight(p, obstacles)) {
+                minDistSq = dSq;
+                target = p;
+            }
+        }
+        if (!target) return;
+
+        const dx = target.mesh.position.x - this.mesh.position.x;
+        const dz = target.mesh.position.z - this.mesh.position.z;
+        const dist = Math.hypot(dx, dz) || 1;
+
+        gameManager.spawnProjectile(
+            this.mesh.position.x, this.mesh.position.z,
+            dx / dist, dz / dist, this,
+            { side: 'survivor', root: cfg.rootDuration, damage: cfg.damage, speed: cfg.projectileSpeed, color: 0x9be564 }
+        );
+        this.ability2Cooldown = cfg.cooldown;
+        gameManager.audio.playSfx(this.type, cfg.sfx);
     }
 
     hasLineOfSight(target, obstacles) {

@@ -12,6 +12,54 @@ import tailsModelUrl from '../assets/models/Tails/Tails.dae';
 import tailsTextureUrl from '../assets/models/Tails/PLAYER00.png';
 import gasterModelUrl from '../assets/models/Gaster/gaster.glb';
 
+// Reused every tick by ability code paths - never allocate vectors in update().
+const _dir = new THREE.Vector3();
+
+// Parsed models are cached here and cloned on reuse so restarts / online clients
+// don't re-download and re-parse the same Collada/GLTF files.
+const modelCache = new Map();
+
+function loadColladaModel(url, textureUrl) {
+    if (modelCache.has(url)) {
+        return Promise.resolve(modelCache.get(url).clone(true));
+    }
+    const textureLoader = new THREE.TextureLoader();
+    const loader = new ColladaLoader();
+    return new Promise((resolve, reject) => {
+        textureLoader.load(textureUrl, (texture) => {
+            texture.flipY = false;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            loader.load(url, (collada) => {
+                const model = collada.scene;
+                model.traverse((node) => {
+                    if (node.isMesh) {
+                        node.material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
+                        node.castShadow = true;
+                    }
+                });
+                modelCache.set(url, model);
+                resolve(model.clone(true));
+            }, undefined, reject);
+        }, undefined, reject);
+    });
+}
+
+function loadGltfModel(url) {
+    if (modelCache.has(url)) {
+        return Promise.resolve(modelCache.get(url).clone(true));
+    }
+    const loader = new GLTFLoader();
+    return new Promise((resolve, reject) => {
+        loader.load(url, (gltf) => {
+            gltf.scene.traverse((node) => {
+                if (node.isMesh) node.castShadow = true;
+            });
+            modelCache.set(url, gltf.scene);
+            resolve(gltf.scene.clone(true));
+        }, undefined, reject);
+    });
+}
+
 export class Player {
     constructor(scene, controls, color, charName = 'Sonic') {
         this.scene = scene;
@@ -33,34 +81,14 @@ export class Player {
             else if (charName === 'Tails') { modelUrl = tailsModelUrl; textureUrl = tailsTextureUrl; }
             else { modelUrl = knucklesModelUrl; textureUrl = knucklesTextureUrl; }
 
-            const loader = new ColladaLoader();
-            const textureLoader = new THREE.TextureLoader();
-
-            textureLoader.load(textureUrl, (texture) => {
-                texture.flipY = false;
-                texture.colorSpace = THREE.SRGBColorSpace;
-
-                loader.load(modelUrl, (collada) => {
-                    const model = collada.scene;
-                    model.traverse((node) => {
-                        if (node.isMesh) {
-                            node.material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
-                            node.castShadow = true;
-                        }
-                    });
-
-                    this.swapMesh(this.setupModel(model));
-                });
-            });
+            loadColladaModel(modelUrl, textureUrl)
+                .then(model => this.swapMesh(this.setupModel(model)))
+                .catch(err => console.error(`Failed to load ${charName} model`, err));
         }
         else if (charName === 'Gaster') {
-            const loader = new GLTFLoader();
-            loader.load(gasterModelUrl, (gltf) => {
-                gltf.scene.traverse((node) => {
-                    if (node.isMesh) node.castShadow = true;
-                });
-                this.swapMesh(this.setupModel(gltf.scene));
-            });
+            loadGltfModel(gasterModelUrl)
+                .then(model => this.swapMesh(this.setupModel(model)))
+                .catch(err => console.error('Failed to load Gaster model', err));
         }
 
         this.speed = this.config.speed;
@@ -75,6 +103,7 @@ export class Player {
         this.bleedTimer = 0;
         this.highlightTimer = 0;
         this.invertedControlsTimer = 0;
+        this.rootTimer = 0;
 
         this.ability1Cooldown = 0;
         this.ability2Cooldown = 0;
@@ -95,6 +124,7 @@ export class Player {
         this.flyChargeCooldown = 0;
         this.flyBoostTimer = 0;
         this.carryTarget = null;
+        this.isCarried = false;
         this.gunCharging = false;
         this.gunChargeTimer = 0;
         this.gasterTpState = 'idle';
@@ -113,7 +143,9 @@ export class Player {
         this.qteZoneStart = 0;
         this.qteCount = 0;
         this.prevAbility1 = false;
+        this.prevAbility2 = false;
         this.sonicWindup = 0;
+        this.sonicShieldTimer = 0;
         this.creamDashTimer = 0;
         this.dashDamageReduction = 0;
         this.dashDir = { x: 0, z: 1 };
@@ -213,7 +245,33 @@ export class Player {
 
     takeDamage(amount, attacker) {
         if (this.gameManager && this.gameManager.dev && this.gameManager.dev.godMode) return;
-        if (this.isBlocking) { this.triggerBlockSuccess(attacker); return; }
+        if (this.health <= 0 || this.escaped) return;
+        if (amount <= 0) return;
+
+        // Sonic's Insta-Shield: negates any real hit (not passive bleed ticks)
+        // while the window is up, then consumes itself.
+        if (this.characterName === 'Sonic' && this.sonicShieldTimer > 0 && attacker) {
+            this.sonicShieldTimer = 0;
+            this.hitSpeedBoost = this.config.abilities.shield.boostDuration;
+            if (this.gameManager) this.gameManager.audio.playSfx('Sonic', this.config.abilities.shield.sfx);
+            return;
+        }
+
+        // Knuckles' parry only answers direct killer hits: bleed / environment
+        // damage passes straight through and cannot trigger a free killer stun.
+        if (this.isBlocking && attacker && attacker.isKiller) {
+            const dx = attacker.mesh.position.x - this.mesh.position.x;
+            const dz = attacker.mesh.position.z - this.mesh.position.z;
+            const range = (this.config.abilities.parry.parryRange || 40) + attacker.size;
+            if (dx * dx + dz * dz <= range * range) {
+                this.triggerBlockSuccess(attacker);
+            } else {
+                // Blocked a hit from too far to counter: survive it, no stun.
+                this.triggerBlockedHit();
+            }
+            return;
+        }
+
         if (this.dashDamageReduction > 0) amount = Math.ceil(amount * (1 - this.dashDamageReduction));
         this.health -= amount;
         this.highlightTimer = 10;
@@ -221,6 +279,8 @@ export class Player {
         if (this.health <= 0) {
             this.health = 0;
             this.mesh.visible = false;
+            this.isCarried = false;
+            this.carryTarget = null;
             if (this.cheeseMesh) this.cheeseMesh.visible = false;
             if (this.cheeseHealRing) this.cheeseHealRing.visible = false;
             if (this.flameAura) this.flameAura.visible = false;
@@ -233,7 +293,9 @@ export class Player {
         if (players) {
             for (const p of players) {
                 if (p === this || p.health <= 0 || p.escaped) continue;
-                const d = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
+                const dx = p.mesh.position.x - this.mesh.position.x;
+                const dz = p.mesh.position.z - this.mesh.position.z;
+                const d = dx * dx + dz * dz;
                 if (d < bestDist) { bestDist = d; best = p; }
             }
         }
@@ -274,8 +336,17 @@ export class Player {
         if (this.blockMesh) this.blockMesh.visible = false;
         this.ability1Cooldown = this.config.abilities.parry.cooldown;
         this.dashActive = this.config.abilities.parry.speedBoostDuration;
-        if (killer) killer.stun(this.config.abilities.parry.stunDuration);
+        killer.stun(this.config.abilities.parry.stunDuration);
         this.health = Math.min(this.health + 10, Math.ceil(this.maxHealth * 1.5));
+    }
+
+    // Blocked a killer hit from outside counter range: the hit is absorbed but
+    // the parry is still spent.
+    triggerBlockedHit() {
+        this.isBlocking = false;
+        this.blockTimer = 0;
+        if (this.blockMesh) this.blockMesh.visible = false;
+        this.ability1Cooldown = this.config.abilities.parry.cooldown;
     }
 
     performBlink(distance, obstacles) {
@@ -357,6 +428,13 @@ export class Player {
             if (this.bleedTimer % 60 === 0) this.takeDamage(2, null);
         }
         if (this.highlightTimer > 0) this.highlightTimer--;
+        if (this.sonicShieldTimer > 0) this.sonicShieldTimer--;
+
+        // Edge detection once per tick, shared by every character's abilities.
+        const a1Edge = this.controls.ability1 && !this.prevAbility1;
+        const a2Edge = this.controls.ability2 && !this.prevAbility2;
+        this.prevAbility1 = this.controls.ability1;
+        this.prevAbility2 = this.controls.ability2;
 
         let up = this.controls.up;
         let down = this.controls.down;
@@ -373,9 +451,11 @@ export class Player {
 
         let want = 0x000000;
         if (this.highlightTimer > 0) want = 0xff0000;
-        if (this.creamDashTimer > 0) want = 0x00aaff;
-        if (this.characterName === 'Gaster' && this.gasterTpState === 'windup') want = 0xaa00ff;
-        if (this.invertedControlsTimer > 0) want = 0xff00ff;
+        else if (this.sonicShieldTimer > 0) want = 0x2288ff;
+        else if (this.creamDashTimer > 0) want = 0x00aaff;
+        else if (this.characterName === 'Gaster' && this.gasterTpState === 'windup') want = 0xaa00ff;
+        else if (this.invertedControlsTimer > 0) want = 0xff00ff;
+        else if (this.rootTimer > 0) want = 0x8899bb;
         if (want !== this.emissiveState) {
             this.setEmissive(want);
             this.emissiveState = want;
@@ -387,6 +467,13 @@ export class Player {
         if (left) dx -= 1;
         if (right) dx += 1;
         if (dx !== 0 && dz !== 0) { dx *= 0.707; dz *= 0.707; }
+
+        // Rooted (Starved's snare): planted in place until the timer expires.
+        if (this.rootTimer > 0) {
+            this.rootTimer--;
+            dx = 0;
+            dz = 0;
+        }
 
         let currentSpeed = this.speed;
         if (this.dashActive > 0) { currentSpeed *= 2.0; this.dashActive--; }
@@ -401,6 +488,8 @@ export class Player {
         if (this.flyChargeCooldown > 0) this.flyChargeCooldown--;
 
         if (this.characterName === 'Sonic') {
+            // Dash: triggered on key press (was re-triggering while the key was
+            // held down the moment the cooldown expired).
             if (this.sonicWindup > 0) {
                 this.sonicWindup--;
                 if (this.sonicWindup <= 0) {
@@ -409,8 +498,15 @@ export class Player {
                     this.applyEndlag(this.config.abilities.dash);
                     gameManager.audio.playSfx('Sonic', this.config.abilities.dash.sfx);
                 }
-            } else if (this.controls.ability1 && this.ability1Cooldown <= 0) {
+            } else if (a1Edge && this.ability1Cooldown <= 0) {
                 this.sonicWindup = this.config.abilities.dash.windup;
+            }
+
+            // Insta-Shield (Ab2): brief window that eats the next hit.
+            if (a2Edge && this.ability2Cooldown <= 0 && this.sonicShieldTimer <= 0) {
+                this.sonicShieldTimer = this.config.abilities.shield.window;
+                this.ability2Cooldown = this.config.abilities.shield.cooldown;
+                gameManager.audio.playSfx('Sonic', this.config.abilities.shield.sfx);
             }
         }
         else if (this.characterName === 'Knuckles') {
@@ -418,7 +514,7 @@ export class Player {
                 this.blockTimer--;
                 if (this.blockTimer <= 0) { this.isBlocking = false; if (this.blockMesh) this.blockMesh.visible = false; }
             }
-            if (this.controls.ability1 && this.ability1Cooldown <= 0 && !this.isBlocking) {
+            if (a1Edge && this.ability1Cooldown <= 0 && !this.isBlocking) {
                 this.isBlocking = true;
                 this.blockTimer = this.config.abilities.parry.duration;
                 this.ability1Cooldown = this.config.abilities.parry.cooldown;
@@ -426,7 +522,7 @@ export class Player {
                 if (this.blockMesh) this.blockMesh.visible = true;
                 gameManager.audio.playSfx('Knuckles', this.config.abilities.parry.sfx);
             }
-            if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.punchState === 'idle') {
+            if (a2Edge && this.ability2Cooldown <= 0 && this.punchState === 'idle') {
                 this.punchState = 'windup';
                 this.punchTimer = this.config.abilities.punch.windupDuration;
                 this.ability2Cooldown = this.config.abilities.punch.cooldown;
@@ -442,17 +538,18 @@ export class Player {
             }
             if (this.punchState === 'punching') {
                 currentSpeed *= this.config.abilities.punch.multiplier;
-                const dir = new THREE.Vector3(dx, 0, dz);
-                if(dir.lengthSq() === 0) dir.set(0,0,1); else dir.normalize();
-                const hx = this.mesh.position.x + dir.x * 8;
-                const hz = this.mesh.position.z + dir.z * 8;
+                _dir.set(dx, 0, dz);
+                if (_dir.lengthSq() === 0) _dir.set(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y));
+                else _dir.normalize();
+                const hx = this.mesh.position.x + _dir.x * 8;
+                const hz = this.mesh.position.z + _dir.z * 8;
 
                 const hw = this.config.abilities.punch.hitboxWidth || 15;
                 const hd = this.config.abilities.punch.hitboxDepth || 15;
                 gameManager.spawnHitbox(hx, hz, 0, 5, this, 'knuckles_punch', 0, null, 'box', hw, hd);
 
                 this.punchTimer--;
-                if(this.punchTimer <= 0) this.punchState = 'idle';
+                if (this.punchTimer <= 0) this.punchState = 'idle';
             }
         }
         else if (this.characterName === 'Tails') {
@@ -460,18 +557,20 @@ export class Player {
                 if (!this.gunCharging) {
                     this.gunCharging = true;
                     this.gunChargeTimer = 0;
-                    this.applyEndlag(this.config.abilities.gun);
                 }
-                this.gunChargeTimer++;
+                if (this.gunChargeTimer < this.config.abilities.gun.maxCharge) this.gunChargeTimer++;
                 currentSpeed *= 0.5;
             } else if (this.gunCharging) {
                 const chargeRatio = Math.min(this.gunChargeTimer / this.config.abilities.gun.maxCharge, 1);
                 const finalStun = this.config.abilities.gun.stunDuration + (chargeRatio * 120);
-                const dir = new THREE.Vector3(dx, 0, dz);
-                if(dir.lengthSq() === 0) dir.set(0,0,1); else dir.normalize();
-                gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, dir.x, dir.z, this, finalStun, this.config.abilities.gun.projectileSpeed);
+                _dir.set(dx, 0, dz);
+                if (_dir.lengthSq() === 0) _dir.set(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y));
+                else _dir.normalize();
+                gameManager.spawnProjectile(this.mesh.position.x, this.mesh.position.z, _dir.x, _dir.z, this, finalStun, this.config.abilities.gun.projectileSpeed);
                 this.ability1Cooldown = this.config.abilities.gun.cooldown;
                 this.gunCharging = false;
+                // Endlag applies once, on release (was re-applied every charge tick).
+                this.applyEndlag(this.config.abilities.gun);
                 gameManager.audio.playSfx('Tails', this.config.abilities.gun.sfx);
             }
 
@@ -487,10 +586,12 @@ export class Player {
 
                 if (players) {
                     for (let p of players) {
-                        if (p !== this && p.health > 0 && p.mesh.position.y <= 6.1) {
-                            let dist = Math.hypot(p.mesh.position.x - this.mesh.position.x, p.mesh.position.z - this.mesh.position.z);
-                            if (dist < this.size + p.size) {
+                        if (p !== this && p.health > 0 && !p.isCarried && p.mesh.position.y <= 6.1) {
+                            const dx2 = p.mesh.position.x - this.mesh.position.x;
+                            const dz2 = p.mesh.position.z - this.mesh.position.z;
+                            if (dx2 * dx2 + dz2 * dz2 < (this.size + p.size) * (this.size + p.size)) {
                                 this.carryTarget = p;
+                                p.isCarried = true;
                                 break;
                             }
                         }
@@ -508,7 +609,7 @@ export class Player {
                 currentSpeed *= this.config.abilities.fly.multiplier;
             }
 
-            if (this.carryTarget && this.carryTarget.health > 0) {
+            if (this.carryTarget && this.carryTarget.health > 0 && !this.carryTarget.escaped) {
                 this.carryTarget.mesh.position.x = this.mesh.position.x;
                 this.carryTarget.mesh.position.z = this.mesh.position.z;
                 this.carryTarget.mesh.position.y = this.mesh.position.y;
@@ -516,9 +617,11 @@ export class Player {
                 this.carryTarget.vertVel = this.vertVel;
 
                 if (this.mesh.position.y <= 6.1 && this.vertVel <= 0) {
+                    this.carryTarget.isCarried = false;
                     this.carryTarget = null;
                 }
             } else {
+                if (this.carryTarget) this.carryTarget.isCarried = false;
                 this.carryTarget = null;
             }
         }
@@ -533,7 +636,7 @@ export class Player {
                     }
                     this.gasterTpState = 'idle';
                 }
-            } else if (this.controls.ability1 && this.ability1Cooldown <= 0) {
+            } else if (a1Edge && this.ability1Cooldown <= 0) {
                 this.gasterTpState = 'windup';
                 this.gasterTpTimer = blink.windup;
             }
@@ -541,8 +644,6 @@ export class Player {
 
         else if (this.characterName === 'Cream') {
             const heal = this.config.abilities.heal;
-            const abilityEdge = this.controls.ability1 && !this.prevAbility1;
-            this.prevAbility1 = this.controls.ability1;
 
             const dash = this.config.abilities.dash;
             if (this.creamDashTimer > 0) {
@@ -567,7 +668,7 @@ export class Player {
                     }
                 }
             }
-            if (this.controls.ability2 && this.ability2Cooldown <= 0 && this.creamDashTimer <= 0) {
+            if (a2Edge && this.ability2Cooldown <= 0 && this.creamDashTimer <= 0) {
                 this.dashActive = dash.duration;
                 this.creamDashTimer = dash.duration;
                 this.dashDamageReduction = dash.dmgReduction;
@@ -581,7 +682,7 @@ export class Player {
             }
 
             if (this.healState === 'idle') {
-                if (abilityEdge && this.ability1Cooldown <= 0) {
+                if (a1Edge && this.ability1Cooldown <= 0) {
                     this.healTarget = this.findHealTarget(players);
                     this.healState = 'active';
                     this.healTotalGranted = heal.baseDuration;
@@ -625,7 +726,7 @@ export class Player {
                         const progress = 1 - this.qteTimer / heal.qteWindow;
                         gameManager.ui.showQte(progress, this.qteZoneStart, heal.qteZoneWidth, this.healStreak >= 2);
                         let qteResult = null;
-                        if (abilityEdge) {
+                        if (a1Edge) {
                             qteResult = progress >= this.qteZoneStart && progress <= this.qteZoneStart + heal.qteZoneWidth;
                         } else if (this.qteTimer <= 0) {
                             qteResult = false;
@@ -681,10 +782,8 @@ export class Player {
         else if (this.characterName === 'Blaze') {
             const fw = this.config.abilities.Firewall;
             const sf = this.config.abilities.SolFlame;
-            const abilityEdge = this.controls.ability1 && !this.prevAbility1;
-            this.prevAbility1 = this.controls.ability1;
 
-            if (abilityEdge && this.ability1Cooldown <= 0 && gameManager.canPlaceFireWall()) {
+            if (a1Edge && this.ability1Cooldown <= 0 && gameManager.canPlaceFireWall()) {
                 this.ability1Cooldown = fw.cooldown;
                 const placeDist = this.size + fw.hitboxDepth / 2 + 2;
                 gameManager.spawnFireWall(
@@ -778,15 +877,20 @@ export class Player {
         if (!collideZ) this.mesh.position.z = nextZ;
         else this.velocity.z = 0;
 
-        let gravity = 0.15;
-        if (gameManager && gameManager.dev && gameManager.dev.moonGravity) {
-            gravity *= gameManager.devPanel.cfg.gravMult;
-        }
-        this.vertVel -= gravity;
-        this.mesh.position.y += this.vertVel;
+        // A carried survivor's vertical motion is driven entirely by Tails.
+        if (!this.isCarried) {
+            let gravity = 0.15;
+            if (gameManager && gameManager.dev && gameManager.dev.moonGravity) {
+                gravity *= gameManager.devPanel.cfg.gravMult;
+            }
+            this.vertVel -= gravity;
+            this.mesh.position.y += this.vertVel;
 
-        if (this.mesh.position.y <= groundHeight) {
-            this.mesh.position.y = groundHeight;
+            if (this.mesh.position.y <= groundHeight) {
+                this.mesh.position.y = groundHeight;
+                this.vertVel = 0;
+            }
+        } else {
             this.vertVel = 0;
         }
 

@@ -4,7 +4,10 @@ export const SurvivorVariables = {
         maxHealth: 100,
         size: 3,
         abilities: {
-            dash: { cooldown: 480, duration: 30, multiplier: 3.0, windup: 15, endlag: 12, endlagStrength: 0.5, sfx: 'dash' }
+            dash: { cooldown: 480, duration: 30, multiplier: 3.0, windup: 15, endlag: 12, endlagStrength: 0.5, sfx: 'dash' },
+            // Insta-Shield: tap Ab2 for a short window that completely negates the
+            // next incoming hit and gives a brief burst of speed. No endlag punish.
+            shield: { cooldown: 360, window: 24, speedBoost: 1.35, boostDuration: 30, sfx: 'dash' }
         }
     },
     'Tails': {
@@ -21,7 +24,7 @@ export const SurvivorVariables = {
         maxHealth: 125,
         size: 3,
         abilities: {
-            parry: { cooldown: 600, duration: 60, stunDuration: 90, speedBoostDuration: 120, endlag: 30, endlagStrength: 0.5, sfx: 'parry' },
+            parry: { cooldown: 600, duration: 60, stunDuration: 90, speedBoostDuration: 120, endlag: 30, endlagStrength: 0.5, parryRange: 40, sfx: 'parry' },
             punch: { cooldown: 1080, windupDuration: 30, activeDuration: 10, multiplier: 3.0, stunDuration: 75, knockback: 15, hitboxWidth: 15, hitboxDepth: 15, sfx: 'punch' }
         }
     },
@@ -30,7 +33,7 @@ export const SurvivorVariables = {
         maxHealth: 80,
         size: 3,
         abilities: {
-            blink: { cooldown: 1, windup: 30, distance: 48 }
+            blink: { cooldown: 240, windup: 30, distance: 48 }
         }
     },
     'Cream': {

@@ -37,7 +37,31 @@ export const KillerVariables = {
         speed: 1.2,
         size: 6,
         m1: { cooldown: 60, windup: 30, duration: 10, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'starved_m1', sfx: 'm1' },
-        projectile: { speed: 3.5, damage: 4, stunDuration: 12 },
+        abilities: {
+            // Pounce: telegraphed leap forward. Anything caught in the impact box
+            // takes a heavy hit and gets launched away.
+            lunge: {
+                cooldown: 480,
+                windup: 24,
+                activeDuration: 22,
+                speedMultiplier: 3.4,
+                damage: 15,
+                hitboxWidth: 22,
+                hitboxDepth: 26,
+                knockback: 18,
+                sfx: 'bomb_throw'
+            },
+            // Snare Toss: hurls a trap at the nearest visible survivor. A trapped
+            // survivor is rooted in place for a short time.
+            snare: {
+                cooldown: 420,
+                range: 80,
+                projectileSpeed: 4.5,
+                rootDuration: 75,
+                damage: 5,
+                sfx: 'grapple'
+            }
+        },
         ai: { attackRange: 14, visionRange: 9999 }
     }
 };

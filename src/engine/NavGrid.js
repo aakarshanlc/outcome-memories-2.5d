@@ -11,6 +11,7 @@ export function buildNavGrid(obstacles, inflate = 3.5, cell = 4, min = -100, siz
     if (grid) return grid;
     const blocked = new Uint8Array(size * size);
     for (let obs of obstacles) {
+        if (obs.sunk) continue; // Crushers flushed into the floor are walkable
         const c0 = Math.max(0, Math.floor((obs.x - inflate - min) / cell));
         const c1 = Math.min(size - 1, Math.floor((obs.x + obs.w + inflate - min) / cell));
         const r0 = Math.max(0, Math.floor((obs.z - inflate - min) / cell));

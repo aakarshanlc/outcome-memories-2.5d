@@ -17,8 +17,17 @@ function getHitboxGeo(shape, radius, width, depth) {
     return geo;
 }
 
+// One shared wireframe material for every hitbox; opacity is per-mesh only if
+// cloned, so each hitbox gets its own material instance from a shared prototype
+// (cheap: materials are tiny, geometries are the expensive part).
+function makeHitboxMat() {
+    return new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.5 });
+}
+
 export class Hitbox {
-    constructor(gameManager, scene, x, z, radius, duration, owner, type, damage = 0, data = null, shape = 'sphere', width = 0, depth = 0) {
+    // visualOnly: spawned by a network client purely to render a host-authoritative
+    // hitbox - collision logic never runs against it.
+    constructor(gameManager, scene, x, z, radius, duration, owner, type, damage = 0, data = null, shape = 'sphere', width = 0, depth = 0, visualOnly = false) {
         this.scene = scene;
         this.x = x; this.z = z;
         this.radius = radius;
@@ -27,9 +36,10 @@ export class Hitbox {
         this.duration = duration; this.maxDuration = duration;
         this.owner = owner; this.type = type; this.damage = damage; this.data = data;
         this.shape = shape;
+        this.visualOnly = visualOnly;
         this.hasHit = new Set();
 
-        const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.5 });
+        const mat = makeHitboxMat();
         const geo = getHitboxGeo(shape, radius, width, depth);
 
         this.mesh = new THREE.Mesh(geo, mat);
