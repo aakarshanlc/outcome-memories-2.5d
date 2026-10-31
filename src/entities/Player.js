@@ -144,6 +144,10 @@ export class Player {
         this.qteCount = 0;
         this.prevAbility1 = false;
         this.prevAbility2 = false;
+        // Input buffer: presses land up to half a second before a cooldown
+        // ends still fire the moment the ability is ready.
+        this.ab1Buf = 0;
+        this.ab2Buf = 0;
         this.sonicWindup = 0;
         this.sonicShieldTimer = 0;
         this.creamDashTimer = 0;
@@ -431,10 +435,20 @@ export class Player {
         if (this.sonicShieldTimer > 0) this.sonicShieldTimer--;
 
         // Edge detection once per tick, shared by every character's abilities.
-        const a1Edge = this.controls.ability1 && !this.prevAbility1;
-        const a2Edge = this.controls.ability2 && !this.prevAbility2;
+        const fresh1 = this.controls.ability1 && !this.prevAbility1;
+        const fresh2 = this.controls.ability2 && !this.prevAbility2;
+        if (fresh1) this.ab1Buf = 30;
+        else if (this.ab1Buf > 0) this.ab1Buf--;
+        if (fresh2) this.ab2Buf = 30;
+        else if (this.ab2Buf > 0) this.ab2Buf--;
         this.prevAbility1 = this.controls.ability1;
         this.prevAbility2 = this.controls.ability2;
+        // Buffered edge: a press made up to 0.5s before the cooldown ends still
+        // counts. Every fire site is cooldown-gated, so the buffer can never
+        // double-fire; holding a key still never auto-repeats (the buffer only
+        // lives 30 ticks after the press).
+        const a1Edge = fresh1 || this.ab1Buf > 0;
+        const a2Edge = fresh2 || this.ab2Buf > 0;
 
         let up = this.controls.up;
         let down = this.controls.down;
@@ -726,7 +740,9 @@ export class Player {
                         const progress = 1 - this.qteTimer / heal.qteWindow;
                         gameManager.ui.showQte(progress, this.qteZoneStart, heal.qteZoneWidth, this.healStreak >= 2);
                         let qteResult = null;
-                        if (a1Edge) {
+                        // QTE reacts to a FRESH press only: a buffered press
+                        // from before the window opened must not auto-evaluate.
+                        if (fresh1) {
                             qteResult = progress >= this.qteZoneStart && progress <= this.qteZoneStart + heal.qteZoneWidth;
                         } else if (this.qteTimer <= 0) {
                             qteResult = false;
@@ -897,7 +913,13 @@ export class Player {
         this.resolveWallStuck(obstacles);
 
         if (this.velocity.lengthSq() > 0.1) {
-            this.mesh.rotation.y = Math.atan2(this.velocity.x, this.velocity.z);
+            // Ease into the new heading along the shortest arc instead of
+            // snapping: turning reads smooth, and tiny velocity jitter can no
+            // longer flicker the model around to the opposite direction.
+            const targetRot = Math.atan2(this.velocity.x, this.velocity.z);
+            let rotDelta = targetRot - this.mesh.rotation.y;
+            rotDelta = Math.atan2(Math.sin(rotDelta), Math.cos(rotDelta));
+            this.mesh.rotation.y += rotDelta * 0.35;
         }
     }
 }

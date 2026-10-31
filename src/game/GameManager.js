@@ -25,8 +25,10 @@ const TICK_MS = 1000 / 60;
 // Shared empty gamepad state so menu frames don't allocate.
 const emptyGamepadStates = {};
 
-// Snapshot cadence for online guests (every 3rd tick = 20Hz).
-const SNAP_EVERY = 3;
+// Snapshot cadence for online guests (every 2nd tick = 30Hz). Slightly more
+// traffic than 20Hz, but combined with a shorter interp buffer it removes the
+// visible sliding-remote-players lag on WebRTC/WS equally.
+const SNAP_EVERY = 2;
 
 // Player visual-flag bits in snapshots.
 const FL_HL = 1, FL_ROOT = 2, FL_INV = 4, FL_SHIELD = 8, FL_DASH = 16,
@@ -43,6 +45,9 @@ import tripwireTextureUrl from '../assets/models/Tripwire/player01.png';
 import x2011ModelUrl from '../assets/models/2011X/2011x.glb';
 import starvedModelUrl from '../assets/models/Starved/starved_eggman.glb';
 import gasterModelUrl from '../assets/models/Gaster/gaster.glb';
+
+// One shared scratch vector for punch knockback (hot path during 2011X flurry hits).
+const _kb = new THREE.Vector3();
 
 const CRUSHER_STATES = ['sunk', 'rising', 'raised', 'warn', 'sinking'];
 
@@ -163,6 +168,14 @@ export class GameManager {
         };
         window.addEventListener('click', startAudio);
         window.addEventListener('keydown', startAudio);
+
+        // Background starvation watchdog: requestAnimationFrame stops when the
+        // tab is hidden OR when the browser tab holding this game is switched
+        // away from - without ever firing visibilitychange. An online host must
+        // keep simulating (and streaming snapshots) regardless, so a cheap
+        // interval detects a stalled rAF and catches the 60Hz tick up itself.
+        this._bgTimer = null;
+        this._bgLast = 0;
     }
 
     setupInput() {
@@ -205,25 +218,74 @@ export class GameManager {
 
     // Polled from the fixed 60Hz tick instead of its own rAF loop: one input
     // sampling point, consistent timing, and zero work while not playing.
+    // Pad state objects are preallocated and reused - no per-tick garbage.
     pollGamepads() {
         const pads = navigator.getGamepads();
+        if (!this._padStates) {
+            this._padStates = [];
+            for (let i = 0; i < 4; i++) {
+                this._padStates[i] = {
+                    up: false, down: false, left: false, right: false,
+                    m1: false, ability1: false, ability2: false
+                };
+            }
+            this._padStatesObj = {};
+        }
         let any = false;
-        const states = {};
-        for (let i = 0; i < pads.length; i++) {
+        const states = this._padStatesObj;
+        for (let i = 0; i < pads.length && i < 4; i++) {
             const pad = pads[i];
-            if (!pad) continue;
+            const st = this._padStates[i];
+            if (!pad) { delete states[`gp:${i}`]; continue; }
             any = true;
-            states[`gp:${i}`] = {
-                up: pad.buttons[12]?.pressed || pad.axes[1] < -0.5,
-                down: pad.buttons[13]?.pressed || pad.axes[1] > 0.5,
-                left: pad.buttons[14]?.pressed || pad.axes[0] < -0.5,
-                right: pad.buttons[15]?.pressed || pad.axes[0] > 0.5,
-                m1: pad.buttons[0]?.pressed,
-                ability1: pad.buttons[1]?.pressed,
-                ability2: pad.buttons[2]?.pressed
-            };
+            st.up = pad.buttons[12]?.pressed || pad.axes[1] < -0.5;
+            st.down = pad.buttons[13]?.pressed || pad.axes[1] > 0.5;
+            st.left = pad.buttons[14]?.pressed || pad.axes[0] < -0.5;
+            st.right = pad.buttons[15]?.pressed || pad.axes[0] > 0.5;
+            st.m1 = pad.buttons[0]?.pressed;
+            st.ability1 = pad.buttons[1]?.pressed;
+            st.ability2 = pad.buttons[2]?.pressed;
+            states[`gp:${i}`] = st;
         }
         this.gamepadStates = any ? states : emptyGamepadStates;
+    }
+
+    readLocalInput(obj, schemeId) {
+        const binding = this.inputBindings[schemeId];
+        const onKeyboard = !binding || binding.startsWith('kb');
+        const scheme = onKeyboard ? this.controls.getScheme(schemeId) : null;
+        const gp = onKeyboard ? null : this.gamepadStates[binding];
+        obj.up = (scheme && this.keys[scheme.up]) || (gp ? gp.up : false);
+        obj.down = (scheme && this.keys[scheme.down]) || (gp ? gp.down : false);
+        obj.left = (scheme && this.keys[scheme.left]) || (gp ? gp.left : false);
+        obj.right = (scheme && this.keys[scheme.right]) || (gp ? gp.right : false);
+        obj.ability1 = (scheme && this.keys[scheme.ability1]) || (gp ? gp.ability1 : false);
+        obj.ability2 = (scheme && this.keys[scheme.ability2]) || (gp ? gp.ability2 : false);
+        obj.m1 = (scheme && this.keys[scheme.m1]) || (gp ? gp.m1 : false);
+    }
+
+    applyRemoteInput(obj, netId) {
+        const mask = this.netInputs.get(netId) || 0;
+        obj.up = !!(mask & 1);
+        obj.down = !!(mask & 2);
+        obj.left = !!(mask & 4);
+        obj.right = !!(mask & 8);
+        obj.ability1 = !!(mask & 16);
+        obj.ability2 = !!(mask & 32);
+        obj.m1 = !!(mask & 64);
+    }
+
+    // Fills the reused buffer with living, unescaped survivors (no allocation).
+    collectAlive(out) {
+        out.length = 0;
+        for (const p of this.players) {
+            if (p.health > 0 && !p.escaped) out.push(p);
+        }
+        return out;
+    }
+
+    updateNavPathVizIfNeeded() {
+        if (this.dev.showNavPath || this.navLine) this.updateNavPathViz();
     }
 
     saveInputBindings() {
@@ -328,7 +390,7 @@ export class GameManager {
         net.onDisconnect = () => {
             if (this.mode === 'online') {
                 this.leaveOnline();
-                this.ui.showToast && this.ui.showToast('Disconnected from server');
+                this.ui.showToast && this.ui.showToast('Connection lost');
             }
         };
     }
@@ -339,8 +401,42 @@ export class GameManager {
         }
     }
 
+    // Every connected player should own a survivor slot on their own machine:
+    // seat unclaimed players automatically (host first, then join order) and
+    // grow the survivor count if needed, so each browser gets its own camera.
+    autoSeatPlayers() {
+        const s = this.gameSetup;
+        const claimed = new Set();
+        if (s.killerPlayerId) claimed.add(s.killerPlayerId);
+        let seated = 0;
+        for (let i = 0; i < 4; i++) {
+            if (s.assignments[i]) {
+                claimed.add(s.assignments[i]);
+                if (i < s.survivorCount) seated++;
+            }
+        }
+        const unseated = this.roster.filter(p => p && p.id && !claimed.has(p.id));
+        if (unseated.length === 0) return;
+
+        const needed = Math.min(4, seated + unseated.length);
+        if (needed > s.survivorCount) {
+            s.survivorCount = needed;
+            for (let i = s.survivorCount; i < 4; i++) s.assignments[i] = null;
+        }
+        for (const p of unseated) {
+            for (let i = 0; i < s.survivorCount; i++) {
+                if (!s.assignments[i]) {
+                    s.assignments[i] = p.id;
+                    break;
+                }
+            }
+        }
+        this.pushLobby();
+    }
+
     hostStartGame() {
         if (this.mode !== 'online' || !this.isHost) return;
+        this.autoSeatPlayers();
         // A claimed killer slot disables AI; an empty slot falls back to AI.
         if (this.gameSetup.killerPlayerId) this.gameSetup.killerIsAI = false;
         else this.gameSetup.killerIsAI = true;
@@ -525,6 +621,7 @@ export class GameManager {
 
             const player = new Player(this.engine.scene, controlsObj, pColor, charName);
             player.gameManager = this;
+            player.uiColor = pColor;
             const pSpawn = this.findSafeSpawn(this.mapManager.obstacles, -90, -50);
             player.mesh.position.set(pSpawn.x, 6, pSpawn.z);
             player.netId = kind === 'remote' ? netId : null;
@@ -532,24 +629,22 @@ export class GameManager {
             if (kind === 'local') player.controlId = localPool.shift() || null;
             else player.controlId = null;
 
-            // Client: only my own entity is simulated-by-snapshot; label it YOU.
+            // Online: my own slot is the entity this browser controls.
             const isMine = online && netId === myId && kind === 'local';
-            if (clientMode) {
-                if (isMine) {
-                    player.controlId = 'p1';
-                    this.myEntity = player;
-                }
+            if (isMine) {
+                if (clientMode) player.controlId = 'p1'; // guests always read the P1 scheme
+                this.myEntity = player;
             }
             this.players.push(player);
 
-            if (!clientMode || isMine) {
+            // Online (host or guest): each browser renders exactly one camera -
+            // no splitscreen. The focus entity is resolved after the killer block.
+            if (!online && !clientMode) {
                 viewportTargets.push({
                     entity: player,
                     color: pColor,
                     kind: 'survivor',
-                    label: clientMode
-                        ? `${charName} · YOU`
-                        : `${charName} · ${player.controlId ? player.controlId.toUpperCase() : (netId ? (this.rosterName(netId) || 'NET') : '?')}`
+                    label: `${charName} · ${player.controlId ? player.controlId.toUpperCase() : '?'}`
                 });
             }
         }
@@ -581,26 +676,33 @@ export class GameManager {
             this.killer.controlId = killerId;
         }
         this.killers.push(this.killer);
+        this.killer.uiColor = killerColor;
 
         const killerIsMine = killerKind === 'local' && online && setup.killerPlayerId === myId;
-        if (clientMode && (killerIsMine || (killerKind !== 'ai' && setup.killerPlayerId === myId))) {
-            this.myEntity = this.killer;
-        }
+        if (online && killerIsMine) this.myEntity = this.killer;
 
-        if (!clientMode) {
+        if (!online) {
             viewportTargets.push({
                 entity: this.killer,
                 color: killerColor,
                 kind: 'killer',
                 label: `${this.killer.type} · KILLER${killerKind === 'ai' ? ' (AI)' : ''}`
             });
-        } else if (this.myEntity === this.killer) {
+        }
+
+        // Online: one viewport per browser, focused on my own entity (spectate
+        // fallback if I somehow hold no role).
+        if (online) {
+            const focus = this.myEntity || this.players[0] || this.killer;
+            const focusName = focus.characterName || focus.type || '?';
+            const isMine = focus === this.myEntity;
             viewportTargets.push({
-                entity: this.killer,
-                color: killerColor,
-                kind: 'killer',
-                label: `${this.killer.type} · YOU`
+                entity: focus,
+                color: focus.uiColor || (focus === this.killer ? killerColor : 0x0064ff),
+                kind: focus === this.killer ? 'killer' : 'survivor',
+                label: `${focusName} · ${isMine ? 'YOU' : 'SPECTATE'}`
             });
+            if (!isMine) this.myEntity = null;
         }
         this.viewports.build(viewportTargets);
 
@@ -621,6 +723,7 @@ export class GameManager {
         this.ringTimer = 15 * 60;
 
         this.lastSnapTime = performance.now();
+        this.startBgWatchdog();
 
         if (clientMode) {
             // Guest: the host drives phases, timers and music via snapshots.
@@ -662,7 +765,26 @@ export class GameManager {
         return wall;
     }
 
+    startBgWatchdog() {
+        if (this._bgTimer) { this._bgLast = performance.now(); return; }
+        this._bgLast = performance.now();
+        this._bgTimer = setInterval(() => {
+            const now = performance.now();
+            // rAF fired recently - the normal loop owns the tick.
+            if (now - this.lastLoopTime < 250) { this._bgLast = now; return; }
+            let owed = Math.floor((now - this._bgLast) / TICK_MS);
+            if (owed > 90) owed = 90; // cap bursts after long stalls
+            for (let i = 0; i < owed; i++) this.tick();
+            this._bgLast = now;
+        }, 50);
+    }
+
+    stopBgWatchdog() {
+        if (this._bgTimer) { clearInterval(this._bgTimer); this._bgTimer = null; }
+    }
+
     stopGameCleanup() {
+        this.stopBgWatchdog();
         this.state = 'MENU';
         this.healthBars.clear();
         this.viewports.destroy();
@@ -1018,7 +1140,7 @@ export class GameManager {
         // drawing the scene (and its shadow pass) entirely while they're up.
         if (this.state !== 'PLAYING') return;
 
-        this.updateNavPathViz();
+        this.updateNavPathVizIfNeeded();
         this.healthBars.update(this.players, this.viewports);
         this.fpsFrames += renders;
         while (renders-- > 0) {
@@ -1080,40 +1202,25 @@ export class GameManager {
                 if (!w.update(this.players, this.killers) || w.destroyed) this.fireWalls.splice(i, 1);
             }
 
-            // Fire walls are physical blockers for the killer only: survivors walk
-            // through their own flames, the killer has to path around or burn through.
-            let killerObstacles = this.mapManager.obstacles;
+            // Killer collision list: map obstacles minus the killer-only doors
+            // (sliding gates have no collision for the killer), plus fire walls -
+            // which are physical blockers for the killer only: survivors walk
+            // through their own flames, the killer has to path around or burn
+            // through. Built into a reused buffer: zero per-tick allocation.
+            let killerObstacles = this.mapManager.killerObstacles;
             if (this.fireWalls.length > 0) {
-                killerObstacles = killerObstacles.concat(this.fireWalls.map(w => w.obstacle));
+                const buf = this._kObsBuf || (this._kObsBuf = []);
+                buf.length = 0;
+                for (let i = 0; i < killerObstacles.length; i++) buf.push(killerObstacles[i]);
+                for (let i = 0; i < this.fireWalls.length; i++) buf.push(this.fireWalls[i].obstacle);
+                killerObstacles = buf;
             }
 
-            const readLocalInput = (obj, schemeId) => {
-                const binding = this.inputBindings[schemeId];
-                const onKeyboard = !binding || binding.startsWith('kb');
-                const scheme = onKeyboard ? this.controls.getScheme(schemeId) : null;
-                const gp = onKeyboard ? null : this.gamepadStates[binding];
-                obj.up = (scheme && this.keys[scheme.up]) || (gp ? gp.up : false);
-                obj.down = (scheme && this.keys[scheme.down]) || (gp ? gp.down : false);
-                obj.left = (scheme && this.keys[scheme.left]) || (gp ? gp.left : false);
-                obj.right = (scheme && this.keys[scheme.right]) || (gp ? gp.right : false);
-                obj.ability1 = (scheme && this.keys[scheme.ability1]) || (gp ? gp.ability1 : false);
-                obj.ability2 = (scheme && this.keys[scheme.ability2]) || (gp ? gp.ability2 : false);
-                obj.m1 = (scheme && this.keys[scheme.m1]) || (gp ? gp.m1 : false);
-            };
-            const applyRemoteInput = (obj, netId) => {
-                const mask = this.netInputs.get(netId) || 0;
-                obj.up = !!(mask & 1);
-                obj.down = !!(mask & 2);
-                obj.left = !!(mask & 4);
-                obj.right = !!(mask & 8);
-                obj.ability1 = !!(mask & 16);
-                obj.ability2 = !!(mask & 32);
-                obj.m1 = !!(mask & 64);
-            };
+            const killerAlive = this.collectAlive(this._aliveBuf || (this._aliveBuf = []));
 
             this.players.forEach(p => {
-                if (p.remote && p.netId) applyRemoteInput(p.controls, p.netId);
-                else if (p.controlId) readLocalInput(p.controls, p.controlId);
+                if (p.remote && p.netId) this.applyRemoteInput(p.controls, p.netId);
+                else if (p.controlId) this.readLocalInput(p.controls, p.controlId);
 
                 if (this.dev.survivorAI && p.controlId !== 'p1') this.updateSurvivorAI(p);
 
@@ -1122,10 +1229,10 @@ export class GameManager {
 
             this.killers.forEach(k => {
                 if (!k.isAI) {
-                    if (k.remote && k.netId) applyRemoteInput(k.controls, k.netId);
-                    else if (k.controlId) readLocalInput(k.controls, k.controlId);
+                    if (k.remote && k.netId) this.applyRemoteInput(k.controls, k.netId);
+                    else if (k.controlId) this.readLocalInput(k.controls, k.controlId);
                 }
-                k.update(killerObstacles, this.players.filter(p => p.health > 0 && !p.escaped), this);
+                k.update(killerObstacles, killerAlive, this);
             });
 
             for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -1178,12 +1285,12 @@ export class GameManager {
 
                             if (hit) {
                                 k.stun(h.owner.config.abilities?.punch?.stunDuration || 60);
-                                const kbVec = new THREE.Vector3(k.mesh.position.x - h.x, 0, k.mesh.position.z - h.z);
-                                if (kbVec.lengthSq() === 0) kbVec.set(0, 0, 1);
-                                kbVec.normalize();
+                                _kb.set(k.mesh.position.x - h.x, 0, k.mesh.position.z - h.z);
+                                if (_kb.lengthSq() === 0) _kb.set(0, 0, 1);
+                                _kb.normalize();
                                 const knockbackForce = h.owner.config.abilities?.punch?.knockback || 15;
-                                k.mesh.position.x += kbVec.x * knockbackForce;
-                                k.mesh.position.z += kbVec.z * knockbackForce;
+                                k.mesh.position.x += _kb.x * knockbackForce;
+                                k.mesh.position.z += _kb.z * knockbackForce;
                                 h.hasHit.add(k);
                             }
                         }
@@ -1395,8 +1502,9 @@ export class GameManager {
     clientTick() {
         this.pollGamepads();
 
-        // Send local input at 30Hz.
-        if (this.net && this.net.connected && this.frameCount % 2 === 0) {
+        // Send local input every tick (60Hz): ability presses are edge-triggered,
+        // so a downsampled input stream could drop a whole tap between frames.
+        if (this.net && this.net.connected) {
             this.net.sendInput(this.buildInputMask());
         }
 
@@ -1515,10 +1623,10 @@ export class GameManager {
         if (!snap) return;
         const prev = this.prevSnap || snap;
 
-        // Render ~90ms in the past and lerp between the two newest snapshots.
+        // Render ~75ms in the past and lerp between the two newest snapshots.
         const now = performance.now();
         const span = Math.max(1, this.snapCurTime - this.snapPrevTime);
-        let alpha = (now - 90 - this.snapPrevTime) / span;
+        let alpha = (now - 75 - this.snapPrevTime) / span;
         alpha = alpha < 0 ? 0 : (alpha > 1 ? 1 : alpha);
 
         for (let i = 0; i < this.players.length; i++) {

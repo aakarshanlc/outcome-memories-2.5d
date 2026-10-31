@@ -1,3 +1,153 @@
+import { SurvivorVariables } from '../config/SurvivorVariables.js';
+import { KillerVariables } from '../config/KillerVariables.js';
+
+// Ability cooldowns shown in the guide are read live from these configs, so
+// the numbers can never drift from the actual game balance.
+const sec = (ticks) => {
+    const s = ticks / 60;
+    return (Math.round(s * 10) / 10) + 's';
+};
+
+const SURVIVOR_GUIDES = {
+    Sonic: {
+        role: 'Speedster · hardest to catch',
+        lore: 'Fastest thing alive. Sonic bullies the killer with pure speed - bait attacks, waste the killer\'s time, then dash away before they can land a hit.',
+        abilities: (c) => [
+            { key: 'AB1', name: 'Spin Dash',
+              desc: `Wind up briefly, then burst forward at triple speed for ${sec(c.dash.duration)}.`,
+              use: 'Hold a direction and tap it to disengage a chase, cross a dangerous open area, or reach the escape ring. The short windup means dont use it point-blank in the killers face.',
+              cd: `Cooldown ${sec(c.dash.cooldown)} after the dash ends` },
+            { key: 'AB2', name: 'Insta-Shield',
+              desc: `Tap for a ${sec(c.shield.window)} window that completely negates the next hit you take, plus a short speed burst on a successful block.`,
+              use: 'Time it against telegraphed attacks: a killers swing windup, a grapple connecting, or a bomb landing. It eats the hit AND its side effects - but passive bleed damage still gets through.',
+              cd: `Cooldown ${sec(c.shield.cooldown)}` }
+        ]
+    },
+    Tails: {
+        role: 'Support · ranged stun + carries',
+        lore: 'The teams utility brain. Tails locks down the killer from range and ferries slower teammates over danger with his twin tails.',
+        abilities: (c) => [
+            { key: 'AB1', name: 'Charged Taser',
+              desc: `Hold to charge (you slow down), release to fire a projectile. Base stun ${sec(c.gun.stunDuration)}, up to ~3s fully charged.`,
+              use: 'Pre-charge around corners or when the killer commits to a lunge. A fully charged shot can interrupt an ability mid-use. Your movement is halved while charging - never charge in the open.',
+              cd: `Cooldown ${sec(c.gun.cooldown)} after firing` },
+            { key: 'AB2', name: 'Flight',
+              desc: `${c.fly.maxCharges} charges of vertical boost; each also lets you carry a touching survivor in the air. Full recharge ${sec(c.fly.cooldown)}, ${sec(c.fly.chargeCooldown)} between charges.`,
+              use: 'Fly over walls, crushers and the killer to break line of sight. Bump a teammate to carry them to safety - or drop them INTO the escape ring during the final phase.',
+              cd: `${c.fly.maxCharges} charges · ${sec(c.fly.cooldown)} full recharge` }
+        ]
+    },
+    Knuckles: {
+        role: 'Brawler · counter and crowd control',
+        lore: 'The only survivor who can stand his ground. Knuckles parries killers out of their attacks and punches them into next week - briefly.',
+        abilities: (c) => [
+            { key: 'AB1', name: 'Guard Parry',
+              desc: `Brace for ${sec(c.parry.duration)}: a killers strike inside melee range is fully negated - they are stunned ${sec(c.parry.stunDuration)} and you heal a little.`,
+              use: 'Read the killers windup and brace right before it lands. Bleed and distant chip damage pass straight through the guard. A whiffed parry leaves you slowed and vulnerable.',
+              cd: `Cooldown ${sec(c.parry.cooldown)}` },
+            { key: 'AB2', name: 'Meteor Punch',
+              desc: `Short windup, then a lunging punch that stuns the killer ${sec(c.punch.stunDuration)} and knocks them back hard.`,
+              use: 'Punish an over-committed chase, buy distance for a teammate, or interrupt a grapple/throw. Long cooldown - make it count.',
+              cd: `Cooldown ${sec(c.punch.cooldown)}` }
+        ]
+    },
+    Cream: {
+        role: 'Healer · fragile but clutch',
+        lore: 'A tiny angel with a giant heart (and a giant piece of cheese). Cream keeps the team alive through QTE-powered healing streams.',
+        abilities: (c) => [
+            { key: 'AB1', name: 'Cheese Healing',
+              desc: `Sends Cheese to the nearest survivor, healing everyone nearby every ${sec(c.heal.tickInterval)} for ${sec(c.heal.baseDuration)} (up to ${sec(c.heal.maxDuration)} with perfect QTEs). Hit the green zone on each QTE to extend it.`,
+              use: `Start healing right AFTER the killer disengages - taking damage over ${c.heal.dmgCancelThreshold} damage cancels it and adds a big ${sec(c.heal.hitPenalty)} penalty. Cheese follows your target, so you can keep a moving teammate topped up.`,
+              cd: `Cooldown ${sec(c.heal.cooldown)}` },
+            { key: 'AB2', name: 'Ram Dash',
+              desc: `Dash for ${sec(c.dash.duration)} with ${Math.round(c.dash.dmgReduction * 100)}% damage reduction; colliding with the killer launches them away.`,
+              use: 'Your only escape. Use it to knock the killer off a wounded teammate or to force space when cornered.',
+              cd: `Cooldown ${sec(c.dash.cooldown)}` }
+        ]
+    },
+    Blaze: {
+        role: 'Zoner · area control',
+        lore: 'The princess of the Sol Empire fights fire with fire - walls of it. Blaze reshapes the arena to protect her team.',
+        abilities: (c) => [
+            { key: 'AB1', name: 'Fire Wall',
+              desc: `Places a burning wall (up to 3 at once) that blocks the killer, damages them if they chew through its ${c.Firewall.health} HP, slows them inside, and speeds up survivors.`,
+              use: 'Drop it in chokepoints, doorways, or between the killer and a downed teammate. You and allies run straight through - the killer cannot. Watch the killer chew through: 3 basic attacks and its gone.',
+              cd: `Cooldown ${sec(c.Firewall.cooldown)} per wall` },
+            { key: 'AB2', name: 'Sol Flame',
+              desc: `Ignite a flame aura for ${sec(c.SolFlame.duration)}: the first touch launches the killer back and slows them.`,
+              use: 'Counter aggressive lunges and grapples - the knockback cancels their momentum. Also great as a last-second escape when the killer is on top of you.',
+              cd: `Cooldown ${sec(c.SolFlame.cooldown)}` }
+        ]
+    },
+    Gaster: {
+        role: 'Ghost · hit-and-run (secret unlock)',
+        lore: 'A shattered scientist who slipped between worlds. Gaster phases through the worst situations - literally.',
+        abilities: (c) => [
+            { key: 'AB1', name: 'Blink',
+              desc: `After a ${sec(c.blink.windup)} channel, teleport up to ${c.blink.distance} units forward - the game picks the farthest safe spot, so you never land inside a wall.`,
+              use: 'Blink over maze walls, crusher blocks or straight out of a corner. The windup cancels if you take damage, so blink BEFORE the killer reaches you, not while theyre hitting you.',
+              cd: `Cooldown ${sec(c.blink.cooldown)} on a successful blink` }
+        ]
+    }
+};
+
+const KILLER_GUIDES = {
+    Tripwire: {
+        role: 'Trapper · mid-range control',
+        lore: 'A huntsman who wires the arena to his will. Tripwire pulls survivors out of position and bombs their escape routes.',
+        abilities: (c) => [
+            { key: 'M1', name: 'Slash',
+              desc: `Wide melee swing: ${c.m1.damage} damage, ${sec(c.m1.cooldown)} cooldown.`,
+              use: 'Your bread and butter - swing when a survivor is inside the wind-up range, not before.' },
+            { key: 'AB1', name: 'Grapple',
+              desc: `Fires a hook up to ${c.abilities.grapple.range} units in line of sight. On hit: ${c.abilities.grapple.damage} damage, then it DRAGS the survivor to you.`,
+              use: 'Punish survivors crossing open ground and yank them off the escape ring. It fails on walls - dont waste it through cover.',
+              cd: `Cooldown ${sec(c.abilities.grapple.cooldown)}` },
+            { key: 'AB2', name: 'Bomb',
+              desc: `Place a bomb (press again after 3s to throw it at the nearest survivor). Impact ${c.abilities.bomb.impactDamage} / proximity ${c.abilities.bomb.proximityDamage} damage in a ${c.abilities.bomb.explodeRadius} radius.`,
+              use: 'Plant one on a common route, then throw a second at fleeing survivors - they either eat the throw or run into the trap.',
+              cd: `Cooldown ${sec(c.abilities.bomb.cooldown)}` }
+        ]
+    },
+    '2011X': {
+        role: 'Relentless · anti-stun rusher',
+        lore: 'A corrupted executable that does not stop. 2011X turns being stunned into fuel - every stun brings the rush closer.',
+        abilities: (c) => [
+            { key: 'M1', name: 'Flurry',
+              desc: `6 rapid hits of ${c.m1.damage} damage each with bleed (${sec(c.m1.bleedDuration)} of blood loss).`,
+              use: 'Hold survivors in place with your abilities, then let the flurry rip - individual hits are small but the bleed adds up.' },
+            { key: 'AB1', name: 'Blink Teleport',
+              desc: `After a ${sec(c.abilities.teleport.windup)} channel, reappear beside a random survivor - a bloody shockwave marks your arrival.`,
+              use: 'Close impossible distances, especially against survivors camping the far side of the map. Cancel-prone: start it behind cover.',
+              cd: `Cooldown ${sec(c.abilities.teleport.cooldown)}` },
+            { key: 'AB2', name: "God's Trickery",
+              desc: `Sends a train of spectral hitboxes marching forward for ${sec(c.abilities.gods_trickery.duration)} - anything touched has their controls INVERTED for ${sec(c.abilities.gods_trickery.invertDuration)}.`,
+              use: 'Fire it down long lanes and through ring chokepoints. An inverted survivor runs the wrong way - that free hit is yours.',
+              cd: `Cooldown ${sec(c.abilities.gods_trickery.cooldown)}` },
+            { key: 'PASSIVE', name: 'Rush',
+              desc: `Survivors stunning you ${c.rush.stunThreshold} times triggers a ${sec(c.rush.duration)} rage: ${c.rush.speedMultiplier}× speed.`,
+              use: 'Getting looped by stuns is fine - the rage makes you uncatchable. Save m1 pressure for after it pops.' }
+        ]
+    },
+    Starved: {
+        role: 'Ambusher · burst and lockdown',
+        lore: 'A hollow-eyed hunter who starves for his prey. Starved explodes out of stillness - and his traps leave survivors rooted in terror.',
+        abilities: (c) => [
+            { key: 'M1', name: 'Claw',
+              desc: `Wide heavy swing: ${c.m1.damage} damage, ${sec(c.m1.cooldown)} cooldown.`,
+              use: 'Pair with Snare: rooted survivors eat every swing.' },
+            { key: 'AB1', name: 'Pounce',
+              desc: `Telegraphed ${sec(c.abilities.lunge.windup)} crouch, then a violent leap: ${c.abilities.lunge.damage} damage plus a huge knockback to whatever it hits.`,
+              use: 'Launch over pallets of space or cut off a fleeing survivor. The windup screams - use it when theyre committed to a straight line, not in a juke-fight.',
+              cd: `Cooldown ${sec(c.abilities.lunge.cooldown)}` },
+            { key: 'AB2', name: 'Snare Toss',
+              desc: `Hurls a trap up to ${c.abilities.snare.range} units (line of sight). A hit survivor is ROOTED in place for ${sec(c.abilities.snare.rootDuration)} and takes ${c.abilities.snare.damage} damage.`,
+              use: 'Open with it: root a survivor in the open, then walk up for free hits. Also great to lock the ring carrier during the escape phase.',
+              cd: `Cooldown ${sec(c.abilities.snare.cooldown)}` }
+        ]
+    }
+};
+
 export class UIManager {
     constructor(gameManager) {
         this.gameManager = gameManager;
@@ -12,6 +162,9 @@ export class UIManager {
         this._pipCache = { a1: null, a2: null, hp: null, char: null };
         this._toastEl = null;
         this._toastTimer = null;
+        this.infoOverlay = null;
+        this.infoTab = 'survivors';
+        this.buildInfoButton();
 
         window.addEventListener('gamepadconnected', () => this.refreshDeviceDropdowns());
         window.addEventListener('gamepaddisconnected', () => this.refreshDeviceDropdowns());
@@ -25,6 +178,7 @@ export class UIManager {
 
     initHUD() {
         this.hideAll();
+        this.setInfoButton(false);
         const gm = this.gameManager;
         this.hudEntity = (gm.mode === 'online' && gm.myEntity) || gm.players[0] || null;
         this._pipCache = { a1: null, a2: null, hp: null, char: null };
@@ -118,6 +272,7 @@ export class UIManager {
 
     showLoadingScreen() {
         this.hideAll();
+        this.setInfoButton(false);
         this.root.innerHTML = `
             <div class="menu-screen loading-screen">
                 <div class="loading-mark"></div>
@@ -129,6 +284,7 @@ export class UIManager {
 
     showGameOver(title, subtitle, summary = []) {
         this.hideAll();
+        this.setInfoButton(true);
         const gm = this.gameManager;
         const online = gm.mode === 'online' && gm.net && gm.net.roomCode;
         const color = /ESCAPE[SD]/.test(title) ? '#3ddc6b' : '#ff4444';
@@ -215,6 +371,102 @@ export class UIManager {
         this._toastTimer = setTimeout(() => {
             if (this._toastEl) this._toastEl.classList.remove('visible');
         }, 3500);
+    }
+
+    // ================= FIELD GUIDE (info button) =================
+
+    buildInfoButton() {
+        const btn = document.createElement('button');
+        btn.id = 'info-btn';
+        btn.innerHTML = 'i';
+        btn.title = 'Field guide: survivors & killers';
+        btn.onclick = () => this.toggleInfoOverlay();
+        document.body.appendChild(btn);
+        this.infoBtn = btn;
+
+        const ov = document.createElement('div');
+        ov.id = 'info-overlay';
+        ov.style.display = 'none';
+        ov.addEventListener('click', (e) => { if (e.target === ov) this.hideInfoOverlay(); });
+        document.body.appendChild(ov);
+        this.infoOverlay = ov;
+    }
+
+    setInfoButton(visible) {
+        if (this.infoBtn) this.infoBtn.style.display = visible ? 'flex' : 'none';
+        if (!visible) this.hideInfoOverlay();
+    }
+
+    toggleInfoOverlay() {
+        if (this.infoOverlay && this.infoOverlay.style.display === 'flex') this.hideInfoOverlay();
+        else this.showInfoOverlay();
+    }
+
+    hideInfoOverlay() {
+        if (this.infoOverlay) this.infoOverlay.style.display = 'none';
+    }
+
+    showInfoOverlay() {
+        const keys = this.gameManager.controls.schemes.p1;
+        const keyLabel = (k) => (k === ' ' ? 'SPACE' : k).toUpperCase();
+        const binding = { AB1: keyLabel(keys.ability1), AB2: keyLabel(keys.ability2), M1: keyLabel(keys.m1), PASSIVE: 'PASSIVE' };
+
+        const tabs = `<div class="info-tabs">
+            <button class="info-tab ${this.infoTab === 'survivors' ? 'active' : ''}" data-tab="survivors">SURVIVORS</button>
+            <button class="info-tab ${this.infoTab === 'killers' ? 'active' : ''}" data-tab="killers">KILLERS</button>
+        </div>`;
+
+        const cards = [];
+        if (this.infoTab === 'survivors') {
+            for (const [name, g] of Object.entries(SURVIVOR_GUIDES)) {
+                // Survivor configs nest everything under .abilities.
+                cards.push(this.infoCardHtml(name, g, SurvivorVariables[name].abilities, binding));
+            }
+        } else {
+            for (const [name, g] of Object.entries(KILLER_GUIDES)) {
+                cards.push(this.infoCardHtml(name, g, KillerVariables[name], binding));
+            }
+        }
+
+        this.infoOverlay.innerHTML = `
+            <div class="info-panel">
+                <div class="info-head">
+                    <h1>FIELD GUIDE</h1>
+                    <button id="info-close" class="btn-copy">CLOSE ✕</button>
+                </div>
+                ${tabs}
+                <div class="info-grid">${cards.join('')}</div>
+            </div>
+        `;
+        this.infoOverlay.style.display = 'flex';
+        document.getElementById('info-close').onclick = () => this.hideInfoOverlay();
+        this.infoOverlay.querySelectorAll('.info-tab').forEach(t => {
+            t.onclick = () => { this.infoTab = t.dataset.tab; this.showInfoOverlay(); };
+        });
+    }
+
+    infoCardHtml(name, guide, config, binding) {
+        const rows = guide.abilities(config).map(a => `
+            <div class="info-ability">
+                <div class="ability-head">
+                    <span class="ability-key">${binding[a.key] || a.key}</span>
+                    <span class="ability-name">${a.name}</span>
+                </div>
+                <div class="ability-desc">${a.desc}</div>
+                <div class="ability-use"><b>USE IT:</b> ${a.use}</div>
+                ${a.cd ? `<div class="ability-cd">${a.cd}</div>` : ''}
+            </div>
+        `).join('');
+        return `
+            <div class="info-card panel">
+                <div class="info-card-head">
+                    <span class="info-name">${name.toUpperCase()}</span>
+                    <span class="info-role">${guide.role}</span>
+                </div>
+                <div class="info-lore">${guide.lore}</div>
+                ${rows}
+            </div>
+        `;
     }
 
     // ================= SCREENS =================
@@ -388,6 +640,7 @@ export class UIManager {
         this.root.innerHTML = html;
         this.activeScreen = screenName;
         this.setupEventListeners();
+        this.setInfoButton(true);
 
         const videoEl = document.getElementById('menu-video');
 
@@ -625,7 +878,7 @@ export class UIManager {
                     gm.pushLobby();
                     this.showScreen('lobby');
                 } catch (err) {
-                    setStatus(`${err.message} — is the game server running? (npm run server)`, true);
+                    setStatus(err.message, true);
                 }
             };
 

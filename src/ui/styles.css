@@ -842,6 +842,200 @@ h3 {
     transform: translateX(-50%) translateY(0);
 }
 
+/* ================= FIELD GUIDE (info button) ================= */
+
+#info-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 11000;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid #34343d;
+    border-bottom: 3px solid var(--accent);
+    background: linear-gradient(180deg, rgba(24, 24, 28, 0.95), rgba(12, 12, 14, 0.95));
+    color: var(--text);
+    font: italic 700 22px Georgia, serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+#info-btn:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 18px rgba(232, 40, 60, 0.35);
+    transform: scale(1.06);
+}
+
+#info-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 11500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 3, 4, 0.9);
+    backdrop-filter: blur(4px);
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.info-panel {
+    width: min(1060px, 96vw);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-1);
+    border: 1px solid var(--panel-border);
+    border-top: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 20px 24px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+}
+
+.info-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.info-head h1 {
+    font-size: 24px;
+    letter-spacing: 6px;
+    margin: 0;
+}
+
+.info-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.info-tab {
+    background: #131316;
+    color: var(--text-dim);
+    border: 1px solid #34343d;
+    border-radius: 2px;
+    font: 700 12px var(--mono);
+    letter-spacing: 3px;
+    padding: 9px 22px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.info-tab:hover { color: #fff; border-color: #55555e; }
+
+.info-tab.active {
+    color: #fff;
+    background: rgba(232, 40, 60, 0.16);
+    border-color: var(--accent);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.info-card {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-bottom: 1px solid #26262c;
+    padding-bottom: 8px;
+}
+
+.info-name {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+}
+
+.info-role {
+    font: 700 11px var(--mono);
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    text-transform: uppercase;
+}
+
+.info-lore {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+    line-height: 1.45;
+}
+
+.info-ability {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 2px solid #34343d;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ability-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ability-key {
+    font: 700 10px var(--mono);
+    letter-spacing: 1px;
+    color: #fff;
+    background: #24242b;
+    border: 1px solid #3d3d46;
+    border-radius: 2px;
+    padding: 2px 7px;
+    min-width: 44px;
+    text-align: center;
+}
+
+.ability-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.ability-desc {
+    font-size: 12.5px;
+    color: #c9c9cf;
+    line-height: 1.4;
+}
+
+.ability-use {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+.ability-use b {
+    color: var(--accent);
+    letter-spacing: 1px;
+    font-size: 11px;
+}
+
+.ability-cd {
+    font: 700 11px var(--mono);
+    letter-spacing: 0.5px;
+    color: #7f8894;
+}
+
 /* ================= LOADING ================= */
 
 .loading-screen {

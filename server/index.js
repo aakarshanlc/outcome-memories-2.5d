@@ -15,7 +15,7 @@ import { WebSocketServer } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(__dirname, '..', 'dist');
-const PORT = Number(process.env.PORT) || 8788;
+const PORT = Number(process.env.PORT) || 9000;
 // Keep in sync with `base` in vite.config.js: the build emits asset URLs under
 // this prefix, so strip it when the server hosts the game at the root.
 const BASE = '/outcome-memories-2.5d/';

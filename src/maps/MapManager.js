@@ -6,6 +6,10 @@ import { checkCircleBoxCollision } from '../engine/Collision.js';
 // geometry memory flat no matter how many blocks a map uses.
 const wallGeo = new THREE.BoxGeometry(1, 1, 1);
 
+// Shared jump-pad assets: pads are identical apart from placement.
+const padGeo = new THREE.CylinderGeometry(3, 3, 1, 16);
+const padMat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, emissive: 0x2a2a2a });
+
 const SUNK_Y = -5;   // mesh center when flushed into the floor (top at y=0)
 const RAISED_Y = 5;  // mesh center when fully blocking (top at y=10)
 
@@ -19,6 +23,10 @@ export class MapManager {
         this.mazeTimer = 0;
         this.navDirty = true;
         this.gates = [];
+        // Obstacles the KILLER collides with: everything except sliding gates.
+        // Gates are killer-only doors - the killer walks straight through them,
+        // survivors still bounce off (and get shoved by) them.
+        this.killerObstacles = [];
     }
 
     loadMap(mapName) {
@@ -81,6 +89,9 @@ export class MapManager {
         }
 
         this.gates = this.obstacles.filter(o => o.slide);
+        this.killerObstacles = this.gates.length
+            ? this.obstacles.filter(o => !o.slide)
+            : this.obstacles;
     }
 
     // ---- Crusher Hall gimmick ----
@@ -283,7 +294,7 @@ export class MapManager {
                 speed: Math.PI / 180,
                 phase: Math.random() * Math.PI * 2
             };
-            obs.mesh.material.color.setHex(0xcc7722);
+            obs.mesh.material.color.setHex(0x7d838c); // plain steel door, not a hazard colour
         }
     }
 
@@ -313,7 +324,8 @@ export class MapManager {
             if (delta !== 0) this.navDirty = true;
 
             this.pushBodies(obs, delta, players);
-            this.pushBodies(obs, delta, killers);
+            // Note: never push killers - gates are killer-only doors, so the
+            // killer's own collision list (killerObstacles) skips them entirely.
 
             if (Math.abs(t) > 0.995) {
                 if (!s.atExtreme) {
@@ -407,9 +419,7 @@ export class MapManager {
     }
 
     addJumpPad(x, z) {
-        const geo = new THREE.CylinderGeometry(3, 3, 1, 16);
-        const mat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, emissive: 0x2a2a2a });
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = new THREE.Mesh(padGeo, padMat);
         mesh.position.set(x, 0.5, z);
         mesh.castShadow = true;
         this.scene.add(mesh);

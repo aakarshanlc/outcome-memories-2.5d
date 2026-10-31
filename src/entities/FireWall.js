@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
 
+// One shared unit box: each wall is scaled to its footprint.
+const wallGeo = new THREE.BoxGeometry(1, 1, 1);
+
 // Blaze's Firewall (ability 1): a placed wall of flame.
 // - Survivors pass through it freely and get a short speed boost inside its zone.
 // - It is a physical obstacle for the killer only — he must path around it or
@@ -29,14 +32,14 @@ export class FireWall {
         this.z = Math.max(-95 + this.d / 2, Math.min(95 - this.d / 2, z));
 
         // Same 10-tall / y=5 geometry as map walls so wallTopY collision math matches.
-        const geo = new THREE.BoxGeometry(this.w, 10, this.d);
         const mat = new THREE.MeshBasicMaterial({
             color: 0xff5500,
             transparent: true,
             opacity: 0.5,
             depthWrite: false
         });
-        this.mesh = new THREE.Mesh(geo, mat);
+        this.mesh = new THREE.Mesh(wallGeo, mat);
+        this.mesh.scale.set(this.w, 10, this.d);
         this.mesh.position.set(this.x, 5, this.z);
         gameManager.engine.scene.add(this.mesh);
 
@@ -95,7 +98,7 @@ export class FireWall {
         if (this.destroyed) return;
         this.destroyed = true;
         this.gameManager.engine.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
+        // Geometry is shared across walls - only the material is per-instance.
         this.mesh.material.dispose();
         if (!this.visualOnly) this.gameManager.mapManager.navDirty = true;
     }

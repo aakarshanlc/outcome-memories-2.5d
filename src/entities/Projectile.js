@@ -1,6 +1,18 @@
 import * as THREE from 'three';
 import { checkCircleCircleCollision } from '../engine/Collision.js';
 
+// Shared projectile assets: one sphere geometry, one material per color.
+const projGeo = new THREE.SphereGeometry(1.5, 8, 8);
+const matCache = new Map();
+function getProjMat(color) {
+    let m = matCache.get(color);
+    if (!m) {
+        m = new THREE.MeshBasicMaterial({ color });
+        matCache.set(color, m);
+    }
+    return m;
+}
+
 // Projectiles are either survivor-fired (Tails' gun: stuns the killer) or
 // killer-fired (Starved's snare: damages and roots the survivor). opts:
 //   side:   'killer' (hits killers) | 'survivor' (hits survivors)
@@ -22,9 +34,7 @@ export class Projectile {
         this.active = true;
         this.age = 0;
 
-        const geo = new THREE.SphereGeometry(1.5, 8, 8);
-        const mat = new THREE.MeshBasicMaterial({ color: opts.color || 0xffff00 });
-        this.mesh = new THREE.Mesh(geo, mat);
+        this.mesh = new THREE.Mesh(projGeo, getProjMat(opts.color || 0xffff00));
         this.mesh.position.set(x, 8, z);
         scene.add(this.mesh);
     }
@@ -70,7 +80,6 @@ export class Projectile {
         if (!this.active) return;
         this.active = false;
         this.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
+        // Geometry/material are shared or cached - nothing to dispose.
     }
 }

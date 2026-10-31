@@ -349,7 +349,9 @@ export class Killer {
         if (this.lungeState === 'active') { dx = this.lungeDir.x; dz = this.lungeDir.z; }
 
         let isMoving = (dx !== 0 || dz !== 0);
-        if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.02;
+        // Ramp to full speed in ~0.4s instead of ~0.8s: the old 0.02 lerp made
+        // every direction change feel bogged-down and mushy.
+        if (isMoving) this.currentSpeed += (this.maxSpeed - this.currentSpeed) * 0.045;
         else this.currentSpeed += (1.0 - this.currentSpeed) * 0.05;
 
         let currentSpeed = this.currentSpeed;
@@ -380,7 +382,13 @@ export class Killer {
         if (!collideX) this.mesh.position.x = nextX; else this.velocity.x = 0;
         if (!collideZ) this.mesh.position.z = nextZ; else this.velocity.z = 0;
 
-        if (this.velocity.lengthSq() > 0.1) this.mesh.rotation.y = Math.atan2(this.velocity.x, this.velocity.z);
+        if (this.velocity.lengthSq() > 0.1) {
+            // Eased shortest-arc turn: no angular snapping when reversing.
+            const targetRot = Math.atan2(this.velocity.x, this.velocity.z);
+            let rotDelta = targetRot - this.mesh.rotation.y;
+            rotDelta = Math.atan2(Math.sin(rotDelta), Math.cos(rotDelta));
+            this.mesh.rotation.y += rotDelta * 0.3;
+        }
 
         if (this.m1Cooldown > 0) this.m1Cooldown--;
         if (this.ability1Cooldown > 0) this.ability1Cooldown--;
