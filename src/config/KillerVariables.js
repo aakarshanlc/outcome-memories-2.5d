@@ -1,10 +1,10 @@
 export const KillerVariables = {
     'Tripwire': {
-        speed: 1.2,
+        speed: 1.15,
         size: 4,
         m1: { cooldown: 60, windup: 30, duration: 10, damage: 10, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1', sfx: 'm1' },
         abilities: {
-            grapple: { cooldown: 360, range: 60, projectileSpeed: 4, damage: 10, dragDuration: 30, dragSpeed: 2, sfx: 'grapple' },
+            grapple: { cooldown: 360, range: 60, projectileSpeed: 3.5, damage: 8, dragDuration: 30, dragSpeed: 2, sfx: 'grapple' },
             bomb: {
                 cooldown: 300,
                 throwRange: 60,
@@ -25,7 +25,7 @@ export const KillerVariables = {
     '2011X': {
         speed: 1.3,
         size: 4,
-        m1: { cooldown: 30, windup: 30, attackDuration: 12, hitCount: 6, damage: 5, hitboxWidth: 10, hitboxDepth: 15, hitboxType: 'killer_m1_2011x', applyBleed: true, bleedDuration: 180, sfx: 'killer_m1', hitSfx: 'killer_m1_hit' },
+        m1: { cooldown: 30, windup: 30, attackDuration: 12, hitCount: 6, damage: 4, hitboxWidth: 10, hitboxDepth: 15, hitboxType: 'killer_m1_2011x', applyBleed: true, bleedDuration: 180, sfx: 'killer_m1', hitSfx: 'killer_m1_hit' },
         abilities: {
             teleport: { cooldown: 720, windup: 120, arriveRadius: 20, bleedDuration: 90, sfx: 'teleport' },
             gods_trickery: { cooldown: 1000, duration: 60, hitboxCount: 6, hitboxSpacing: 3, hitboxWidth: 10, hitboxDepth: 10, invertDuration: 120, sfx: 'trickery' }
@@ -40,10 +40,10 @@ export const KillerVariables = {
         abilities: {
             lunge: { //wso copy dashslop lowk
                 cooldown: 480,
-                windup: 18,
+                windup: 30,
                 activeDuration: 24,
                 speedMultiplier: 4,
-                damage: 30,
+                damage: 24,
                 hitboxWidth: 25,
                 hitboxDepth: 30,
                 knockback: 15,
