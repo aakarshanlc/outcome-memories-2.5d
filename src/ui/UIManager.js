@@ -1,3 +1,4 @@
+import { GFX_PRESETS, GFX_RESOLUTION_STEPS } from '../engine/Engine.js';
 import { SurvivorVariables } from '../config/SurvivorVariables.js';
 import { KillerVariables } from '../config/KillerVariables.js';
 
@@ -534,6 +535,7 @@ export class UIManager {
             const schemes = this.gameManager.controls.schemes;
             const audio = this.gameManager.audio;
             const showHit = this.gameManager.settings.showHitboxes ? "checked" : "";
+            const gfx = this.gameManager.engine.gfx;
             html = `
                 <div class="menu-screen" id="settings-menu" style="justify-content: flex-start; padding-top: 30px; overflow-y: auto;">
                     <h1>SETTINGS</h1>
@@ -557,6 +559,17 @@ export class UIManager {
                                 <input type="checkbox" id="hitbox-toggle" ${showHit} style="width: 20px; height: 20px;">
                                 Show Hitboxes
                             </label>
+                        </div>
+
+                        <div class="settings-col panel">
+                            <h3>GRAPHICS</h3>
+                            <div class="control-row"><span>Preset</span>${this.btn(gfx.preset.toUpperCase(), 'gfx-preset', true)}</div>
+                            <div class="control-row"><span>Shadows</span>${this.btn(gfx.shadows ? 'ON' : 'OFF', 'gfx-shadows', true)}</div>
+                            <div class="control-row"><span>Resolution</span>${this.btn(Math.round(gfx.resolution * 100) + '%', 'gfx-resolution', true)}</div>
+                            <div class="control-row"><span>Antialias</span>${this.btn(gfx.antialias ? 'ON' : 'OFF', 'gfx-antialias', true)}</div>
+                            <div style="width: 92%; margin-top: 8px; font-size: 12px; color: var(--text-dim); text-align: center;">
+                                Pick <b>LOW</b> on weaker machines: no shadows, 60% resolution, no antialiasing. Changes apply instantly.
+                            </div>
                         </div>
                     </div>
 
@@ -983,6 +996,40 @@ export class UIManager {
                 this.gameManager.settings.showHitboxes = e.target.checked;
                 localStorage.setItem('om_show_hitboxes', e.target.checked);
             };
+
+            // ---- Graphics: Engine owns the gfx object and applies it live ----
+            const gfx = this.gameManager.engine.gfx;
+            const gfxBtns = {
+                preset: document.getElementById('gfx-preset'),
+                shadows: document.getElementById('gfx-shadows'),
+                resolution: document.getElementById('gfx-resolution'),
+                antialias: document.getElementById('gfx-antialias')
+            };
+            const syncGfxLabels = () => {
+                gfxBtns.preset.innerText = gfx.preset.toUpperCase();
+                gfxBtns.preset.dataset.text = gfx.preset.toUpperCase();
+                gfxBtns.shadows.innerText = gfx.shadows ? 'ON' : 'OFF';
+                gfxBtns.resolution.innerText = Math.round(gfx.resolution * 100) + '%';
+                gfxBtns.antialias.innerText = gfx.antialias ? 'ON' : 'OFF';
+            };
+            if (gfxBtns.preset) {
+                gfxBtns.preset.onclick = () => {
+                    const order = ['low', 'medium', 'high'];
+                    const next = order[(order.indexOf(gfx.preset) + 1) % order.length];
+                    Object.assign(gfx, GFX_PRESETS[next]);
+                    this.gameManager.engine.applyGraphics();
+                    syncGfxLabels();
+                };
+                gfxBtns.shadows.onclick = () => { gfx.shadows = !gfx.shadows; gfx.preset = 'custom'; this.gameManager.engine.applyGraphics(); syncGfxLabels(); };
+                gfxBtns.resolution.onclick = () => {
+                    const i = GFX_RESOLUTION_STEPS.indexOf(gfx.resolution);
+                    gfx.resolution = GFX_RESOLUTION_STEPS[(i + 1) % GFX_RESOLUTION_STEPS.length];
+                    gfx.preset = 'custom';
+                    this.gameManager.engine.applyGraphics();
+                    syncGfxLabels();
+                };
+                gfxBtns.antialias.onclick = () => { gfx.antialias = !gfx.antialias; gfx.preset = 'custom'; this.gameManager.engine.applyGraphics(); syncGfxLabels(); };
+            }
 
             document.querySelectorAll('select.device-select').forEach(sel => {
                 sel.onchange = () => {

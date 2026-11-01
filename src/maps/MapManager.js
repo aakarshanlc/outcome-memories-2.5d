@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MapVariables } from '../config/MapVariables.js';
 import { checkCircleBoxCollision } from '../engine/Collision.js';
 
@@ -27,11 +28,19 @@ export class MapManager {
         // Gates are killer-only doors - the killer walks straight through them,
         // survivors still bounce off (and get shoved by) them.
         this.killerObstacles = [];
+        // One merged mesh per wall colour (see buildStaticWalls).
+        this.mergedWalls = [];
     }
 
     loadMap(mapName) {
         this.obstacles.forEach(obs => this.scene.remove(obs.mesh));
         this.jumpPads.forEach(pad => this.scene.remove(pad.mesh));
+        for (const m of this.mergedWalls) {
+            this.scene.remove(m);
+            m.geometry.dispose();
+            m.material.dispose();
+        }
+        this.mergedWalls = [];
         this.obstacles = [];
         this.jumpPads = [];
         this.crushers = [];
@@ -88,10 +97,54 @@ export class MapManager {
             this.spawnJumpPads(this.config.jumpPadCount);
         }
 
+        this.buildStaticWalls();
+
         this.gates = this.obstacles.filter(o => o.slide);
         this.killerObstacles = this.gates.length
             ? this.obstacles.filter(o => !o.slide)
             : this.obstacles;
+    }
+
+    // Collapse every static wall into one mesh per colour. The scene used to
+    // hold a mesh AND a material per block (~75 materials for ~9k triangles,
+    // submitted once per split-screen viewport), so the renderer was draw-call
+    // bound: this is the single biggest render-side win. Crushers and sliding
+    // gates keep their own mesh (they move / recolour). Obstacles also keep
+    // their original mesh object - just detached from the scene - because
+    // collision code reads obs.mesh.position.y for the wall top.
+    buildStaticWalls() {
+        const groups = new Map();
+        for (const obs of this.obstacles) {
+            if (obs.isCrusher || obs.slide || !obs.mesh) continue;
+            const color = obs.mesh.material.color.getHex();
+            let list = groups.get(color);
+            if (!list) { list = []; groups.set(color, list); }
+            list.push(obs);
+        }
+
+        for (const [color, list] of groups) {
+            if (list.length < 2) continue;
+            const parts = list.map(obs => {
+                const g = wallGeo.clone();
+                g.scale(obs.mesh.scale.x, obs.mesh.scale.y, obs.mesh.scale.z);
+                g.translate(obs.mesh.position.x, obs.mesh.position.y, obs.mesh.position.z);
+                return g;
+            });
+            const merged = mergeGeometries(parts, false);
+            parts.forEach(p => p.dispose());
+            if (!merged) continue;
+
+            const mesh = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color }));
+            mesh.castShadow = false;   // characters are the only casters now
+            mesh.receiveShadow = true;
+            this.scene.add(mesh);
+            this.mergedWalls.push(mesh);
+
+            for (const obs of list) {
+                this.scene.remove(obs.mesh);      // detached, position kept
+                obs.mesh.material.dispose();
+            }
+        }
     }
 
     // ---- Crusher Hall gimmick ----
@@ -115,7 +168,7 @@ export class MapManager {
             const mesh = new THREE.Mesh(wallGeo, mat);
             mesh.scale.set(s, 10, s);
             mesh.position.set(cx, SUNK_Y, cz);
-            mesh.castShadow = true;
+            mesh.castShadow = false; // map geometry never casts - characters do
             mesh.receiveShadow = true;
             this.scene.add(mesh);
 
@@ -421,7 +474,7 @@ export class MapManager {
     addJumpPad(x, z) {
         const mesh = new THREE.Mesh(padGeo, padMat);
         mesh.position.set(x, 0.5, z);
-        mesh.castShadow = true;
+        mesh.castShadow = false; // map prop - keep the shadow pass to characters
         this.scene.add(mesh);
 
         this.jumpPads.push({ x, z, size: 3, mesh });
@@ -432,7 +485,7 @@ export class MapManager {
         const mesh = new THREE.Mesh(wallGeo, mat);
         mesh.scale.set(w, 10, d);
         mesh.position.set(x + w/2, 5, z + d/2);
-        mesh.castShadow = true;
+        mesh.castShadow = false; // walls receive shadows but don't cast them
         mesh.receiveShadow = true;
         this.scene.add(mesh);
 
