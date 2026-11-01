@@ -17,9 +17,6 @@ export const MapVariables = {
         padCooldown: 180,
         sfx: { jumpPad: 'jump_pad', blockSink: 'block_sink' }
     },
-    // New map: a hall of rhythmic crushers. Each crusher sinks flush with the
-    // floor (creating a walk-over shortcut) and rises again on a cycle - anyone
-    // caught inside when it rises gets crushed and launched.
     'Crusher Hall': {
         jumpPadCount: 2,
         padBoost: 2.2,
@@ -31,9 +28,8 @@ export const MapVariables = {
             raisedTicks: 90,
             warnTicks: 40,
             sinkTicks: 20,
-            // sunkTicks is implied by the rest of the period
             damage: 15,
-            knockUp: 2.6
+            knockUp: 4
         },
         sfx: { jumpPad: 'jump_pad', blockSink: 'block_sink', slam: 'block_sink' }
     }

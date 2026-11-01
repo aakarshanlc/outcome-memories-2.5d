@@ -1,6 +1,6 @@
 export const KillerVariables = {
     'Tripwire': {
-        speed: 1.3,
+        speed: 1.2,
         size: 4,
         m1: { cooldown: 60, windup: 30, duration: 10, damage: 10, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'killer_m1', sfx: 'm1' },
         abilities: {
@@ -10,7 +10,7 @@ export const KillerVariables = {
                 throwRange: 60,
                 throwSpeed: 2,
                 launchSpeed: 2.5,
-                explodeRadius: 15,
+                explodeRadius: 35,
                 impactDamage: 20,
                 aoeDamage: 10,
                 proximityDamage: 15,
@@ -23,7 +23,7 @@ export const KillerVariables = {
         ai: { attackRange: 14, visionRange: 9999 }
     },
     '2011X': {
-        speed: 1.2,
+        speed: 1.3,
         size: 4,
         m1: { cooldown: 30, windup: 30, attackDuration: 12, hitCount: 6, damage: 5, hitboxWidth: 10, hitboxDepth: 15, hitboxType: 'killer_m1_2011x', applyBleed: true, bleedDuration: 180, sfx: 'killer_m1', hitSfx: 'killer_m1_hit' },
         abilities: {
@@ -36,29 +36,25 @@ export const KillerVariables = {
     'Starved': {
         speed: 1.2,
         size: 6,
-        m1: { cooldown: 60, windup: 30, duration: 10, damage: 5, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'starved_m1', sfx: 'm1' },
+        m1: { cooldown: 60, windup: 30, duration: 10, damage: 10, hitboxWidth: 20, hitboxDepth: 20, hitboxType: 'starved_m1', sfx: 'm1' },
         abilities: {
-            // Pounce: telegraphed leap forward. Anything caught in the impact box
-            // takes a heavy hit and gets launched away.
-            lunge: {
+            lunge: { //wso copy dashslop lowk
                 cooldown: 480,
-                windup: 24,
-                activeDuration: 22,
-                speedMultiplier: 3.4,
-                damage: 15,
-                hitboxWidth: 22,
-                hitboxDepth: 26,
-                knockback: 18,
+                windup: 18,
+                activeDuration: 24,
+                speedMultiplier: 4,
+                damage: 30,
+                hitboxWidth: 25,
+                hitboxDepth: 30,
+                knockback: 15,
                 sfx: 'bomb_throw'
             },
-            // Snare Toss: hurls a trap at the nearest visible survivor. A trapped
-            // survivor is rooted in place for a short time.
             snare: {
-                cooldown: 420,
+                cooldown: 390,
                 range: 80,
-                projectileSpeed: 4.5,
-                rootDuration: 75,
-                damage: 5,
+                projectileSpeed: 4.75,
+                rootDuration: 60,
+                damage: 3,
                 sfx: 'grapple'
             }
         },

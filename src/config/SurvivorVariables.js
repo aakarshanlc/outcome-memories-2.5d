@@ -4,10 +4,8 @@ export const SurvivorVariables = {
         maxHealth: 100,
         size: 3,
         abilities: {
-            dash: { cooldown: 480, duration: 30, multiplier: 3.0, windup: 15, endlag: 12, endlagStrength: 0.5, sfx: 'dash' },
-            // Insta-Shield: tap Ab2 for a short window that completely negates the
-            // next incoming hit and gives a brief burst of speed. No endlag punish.
-            shield: { cooldown: 360, window: 24, speedBoost: 1.35, boostDuration: 30, sfx: 'dash' }
+            dash: { cooldown: 480, duration: 42, multiplier: 3.0, windup: 15, endlag: 12, endlagStrength: 0.5, sfx: 'dash' },
+            shield: { cooldown: 360, window: 30, speedBoost: 1.35, boostDuration: 30, sfx: 'dash' }
         }
     },
     'Tails': {
@@ -16,16 +14,16 @@ export const SurvivorVariables = {
         size: 3,
         abilities: {
             gun: { cooldown: 600, stunDuration: 60, projectileSpeed: 3.5, maxCharge: 120, endlag: 30, endlagStrength: 0.5, sfx: 'gun_fire' },
-            fly: { cooldown: 540, maxCharges: 3, chargeCooldown: 30, boost: 2.3, duration: 30, multiplier: 1.7, sfx: 'fly' }
+            fly: { cooldown: 540, maxCharges: 3, chargeCooldown: 30, boost: 1.5, duration: 30, multiplier: 1.25, sfx: 'fly' }
         }
     },
     'Knuckles': {
         speed: 0.9,
-        maxHealth: 125,
+        maxHealth: 120,
         size: 3,
         abilities: {
-            parry: { cooldown: 600, duration: 60, stunDuration: 90, speedBoostDuration: 120, endlag: 30, endlagStrength: 0.5, parryRange: 40, sfx: 'parry' },
-            punch: { cooldown: 1080, windupDuration: 30, activeDuration: 10, multiplier: 3.0, stunDuration: 75, knockback: 15, hitboxWidth: 15, hitboxDepth: 15, sfx: 'punch' }
+            parry: { cooldown: 600, duration: 60, stunDuration: 90, speedBoostDuration: 70, endlag: 30, endlagStrength: 0.5, parryRange: 40, sfx: 'parry' },
+            punch: { cooldown: 1080, windupDuration: 42, activeDuration: 10, multiplier: 3.0, stunDuration: 60, knockback: 15, hitboxWidth: 15, hitboxDepth: 15, sfx: 'punch' }
         }
     },
     'Gaster': {
@@ -51,11 +49,11 @@ export const SurvivorVariables = {
                 baseDuration: 180,
                 maxDuration: 420,
                 qteBonus: 90,
-                healRadius: 14,
+                healRadius: 18,
                 cheeseSpeed: 2.2,
                 cheeseSize: 1.2,
-                cheeseFollowOffset: 5,
-                cheeseCatchupDist: 30,
+                cheeseFollowOffset: 8,
+                cheeseCatchupDist: 36,
                 qteWindow: 60,
                 qteGap: 60,
                 qteZoneWidth: 0.3,
@@ -66,7 +64,7 @@ export const SurvivorVariables = {
             dash: {
                 cooldown: 480,
                 duration: 45,
-                knockback: 12,
+                knockback: 20,
                 dmgReduction: 0.75,
                 endlag: 15,
                 endlagStrength: 0.2
@@ -80,16 +78,16 @@ export const SurvivorVariables = {
         abilities: {
             Firewall: {
                 cooldown: 360,
-                duration: 240,
+                duration: 120,
                 speedDebuf: 0.8,
                 speedboost: 1.2,
                 health: 30,
-                hitboxWidth: 20,
-                hitboxDepth: 20,
+                hitboxWidth: 12,
+                hitboxDepth: 12,
             },
             SolFlame: {
                 cooldown: 480,
-                duration: 30,
+                duration: 60,
                 speedDebuf: 0.9,
                 knockback: 10,
             }
