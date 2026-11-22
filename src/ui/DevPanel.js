@@ -330,43 +330,49 @@ export class DevPanel {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                width: 340px;
-                max-height: 90vh;
+                width: 348px;
+                max-height: 88vh;
                 overflow-y: auto;
-                background: #060606;
-                border: 2px solid #d9d9d9;
-                border-radius: 6px;
-                padding: 16px 18px 20px;
+                background:
+                    radial-gradient(400px 200px at 10% 0%, rgba(255, 47, 71, 0.1), transparent 60%),
+                    linear-gradient(180deg, #12121a, #07070a);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 14px;
+                padding: 16px 16px 18px;
                 z-index: 10000;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                color: #eee;
+                color: #f3f2f6;
                 pointer-events: auto;
                 user-select: none;
+                box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8);
             }
 
             #dev-panel-title {
-                font-family: Georgia, 'Times New Roman', serif;
-                font-weight: bold;
-                font-style: italic;
-                font-size: 26px;
+                font-family: var(--mono, Consolas, monospace);
+                font-weight: 700;
+                font-size: 12px;
                 text-align: center;
-                letter-spacing: 1px;
+                letter-spacing: 6px;
+                text-transform: uppercase;
                 color: #fff;
-                margin-bottom: 2px;
+                margin-bottom: 3px;
             }
 
             #dev-panel-subtitle {
                 text-align: center;
-                font-size: 11px;
-                color: #777;
+                font-family: var(--mono, Consolas, monospace);
+                font-size: 9px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                color: #605e6c;
                 margin-bottom: 12px;
                 padding-bottom: 12px;
-                border-bottom: 1px solid #333;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.075);
             }
 
             #dev-panel .dev-section {
-                border-bottom: 1px solid #333;
-                padding: 10px 0 14px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+                padding: 12px 0 14px;
             }
             #dev-panel .dev-section:last-child {
                 border-bottom: none;
@@ -374,30 +380,37 @@ export class DevPanel {
             }
 
             #dev-panel .dev-header {
-                text-align: center;
-                font-size: 15px;
-                font-weight: 600;
-                color: #fff;
-                text-transform: capitalize;
-                margin-bottom: 10px;
+                font-family: var(--mono, Consolas, monospace);
+                font-size: 9px;
+                font-weight: 700;
+                letter-spacing: 2.6px;
+                color: #ff2f47;
+                text-transform: uppercase;
+                margin-bottom: 9px;
             }
 
             #dev-panel .dev-row {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
+                gap: 10px;
                 width: 100%;
                 box-sizing: border-box;
-                background: transparent;
-                border: 1px solid #555;
-                border-radius: 4px;
-                color: #eee;
-                text-align: center;
-                padding: 8px 12px;
-                margin: 6px 0;
-                font-size: 13px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.09);
+                border-radius: 7px;
+                color: #e8e7ee;
+                text-align: left;
+                padding: 7px 10px;
+                margin: 5px 0;
+                font-size: 12px;
                 font-family: inherit;
                 cursor: pointer;
+                transition: border-color 0.15s, background 0.15s;
+            }
+            #dev-panel .dev-row:hover {
+                border-color: rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.05);
             }
 
             #dev-panel .dev-toggle-row span,
@@ -407,97 +420,131 @@ export class DevPanel {
 
             #dev-panel .dev-btn {
                 justify-content: center;
-                text-transform: capitalize;
+                text-transform: uppercase;
+                letter-spacing: 1.4px;
+                font-size: 10px;
+                font-weight: 700;
+                font-family: var(--mono, Consolas, monospace);
             }
             #dev-panel .dev-btn:hover {
-                background: #1a1a1a;
-                border-color: #fff;
+                background: rgba(255, 47, 71, 0.1);
+                border-color: rgba(255, 47, 71, 0.5);
+                color: #fff;
             }
 
             #dev-panel input[type="checkbox"] {
-                width: 15px;
-                height: 15px;
+                -webkit-appearance: none;
+                appearance: none;
+                position: relative;
+                width: 34px;
+                height: 19px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.09);
+                border: 1px solid rgba(255, 255, 255, 0.16);
                 cursor: pointer;
-                accent-color: #d9d9d9;
                 flex-shrink: 0;
+                margin: 0;
+                transition: background 0.16s, border-color 0.16s;
+            }
+            #dev-panel input[type="checkbox"]::after {
+                content: '';
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                width: 13px;
+                height: 13px;
+                border-radius: 50%;
+                background: #a9a8b4;
+                transition: transform 0.16s, background 0.16s;
+            }
+            #dev-panel input[type="checkbox"]:checked {
+                background: rgba(255, 47, 71, 0.85);
+                border-color: rgba(255, 130, 142, 0.7);
+                box-shadow: 0 0 14px rgba(255, 47, 71, 0.35);
+            }
+            #dev-panel input[type="checkbox"]:checked::after {
+                transform: translateX(15px);
+                background: #fff;
             }
 
             #dev-panel .dev-input-row input {
-                width: 70px;
-                background: #111;
-                border: 1px solid #555;
-                border-radius: 4px;
-                color: #eee;
-                font-family: inherit;
-                font-size: 13px;
-                padding: 4px 6px;
+                width: 66px;
+                background: rgba(6, 6, 10, 0.9);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 6px;
+                color: #fff;
+                font-family: var(--mono, Consolas, monospace);
+                font-size: 11px;
+                padding: 5px 7px;
                 text-align: right;
                 flex-shrink: 0;
             }
             #dev-panel .dev-input-row input:focus {
                 outline: none;
-                border-color: #fff;
+                border-color: rgba(255, 47, 71, 0.7);
             }
 
             #dev-panel .dev-select-row select {
                 width: 140px;
-                background: #111;
-                border: 1px solid #555;
-                border-radius: 4px;
+                background: rgba(6, 6, 10, 0.9);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 6px;
                 color: #eee;
                 font-family: inherit;
-                font-size: 12px;
-                padding: 4px 6px;
+                font-size: 11px;
+                padding: 5px 7px;
                 flex-shrink: 0;
             }
             #dev-panel .dev-select-row select:focus {
                 outline: none;
-                border-color: #fff;
+                border-color: rgba(255, 47, 71, 0.7);
             }
 
             #dev-panel::-webkit-scrollbar { width: 8px; }
-            #dev-panel::-webkit-scrollbar-track { background: #111; }
-            #dev-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+            #dev-panel::-webkit-scrollbar-track { background: transparent; }
+            #dev-panel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 999px; }
 
             #gp-tester {
                 position: fixed;
                 top: 12px;
                 right: 12px;
-                width: 240px;
+                width: 244px;
                 max-height: 70vh;
                 overflow-y: auto;
-                background: rgba(6, 6, 6, 0.94);
-                border: 2px solid #d9d9d9;
-                border-radius: 6px;
-                padding: 10px 12px;
+                background: rgba(8, 8, 12, 0.95);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 12px;
+                padding: 12px 14px;
                 z-index: 10001;
-                font-family: Consolas, monospace;
-                font-size: 11px;
-                color: #eee;
+                font-family: var(--mono, Consolas, monospace);
+                font-size: 10px;
+                color: #f3f2f6;
                 pointer-events: none;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
             }
             #gp-tester .gp-title {
                 text-align: center;
-                font-weight: bold;
-                letter-spacing: 1px;
+                font-weight: 700;
+                letter-spacing: 3px;
                 margin-bottom: 8px;
                 color: #fff;
             }
             #gp-tester .gp-empty {
                 text-align: center;
-                color: #777;
+                color: #605e6c;
             }
             #gp-tester .gp-pad {
-                border-top: 1px solid #333;
-                padding: 6px 0;
+                border-top: 1px solid rgba(255, 255, 255, 0.085);
+                padding: 7px 0;
             }
             #gp-tester .gp-slot {
-                color: #0f0;
-                margin-bottom: 4px;
+                color: #4be08d;
+                margin-bottom: 5px;
+                letter-spacing: 0.6px;
             }
             #gp-tester .gp-id {
-                color: #777;
-                font-size: 10px;
+                color: #605e6c;
+                font-size: 9px;
             }
             #gp-tester .gp-btns {
                 display: flex;
@@ -506,23 +553,24 @@ export class DevPanel {
                 margin-bottom: 4px;
             }
             #gp-tester .gp-b {
-                width: 16px;
-                height: 16px;
-                line-height: 16px;
+                width: 17px;
+                height: 17px;
+                line-height: 17px;
                 text-align: center;
-                border: 1px solid #444;
-                border-radius: 3px;
-                color: #555;
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 4px;
+                color: #605e6c;
                 font-size: 9px;
             }
             #gp-tester .gp-b.on {
-                background: #0f0;
-                border-color: #0f0;
-                color: #000;
-                font-weight: bold;
+                background: #ff2f47;
+                border-color: #ff2f47;
+                color: #fff;
+                font-weight: 700;
+                box-shadow: 0 0 10px rgba(255, 47, 71, 0.6);
             }
             #gp-tester .gp-axes {
-                color: #aaa;
+                color: #9d9ba7;
             }
         `;
         document.head.appendChild(style);

@@ -149,6 +149,22 @@ const KILLER_GUIDES = {
     }
 };
 
+// Per-character signal colours used by the field guide cards.
+const SURVIVOR_ACCENTS = {
+    Sonic: '#4da3ff',
+    Tails: '#ffbe5c',
+    Knuckles: '#ff5f6d',
+    Cream: '#ff9ecb',
+    Blaze: '#ff7a45',
+    Gaster: '#a48bff'
+};
+
+const KILLER_ACCENTS = {
+    Tripwire: '#ff4d5e',
+    '2011X': '#9a6bff',
+    Starved: '#ff9d4d'
+};
+
 export class UIManager {
     constructor(gameManager) {
         this.gameManager = gameManager;
@@ -166,13 +182,81 @@ export class UIManager {
         this.infoOverlay = null;
         this.infoTab = 'survivors';
         this.buildInfoButton();
+        this.buildBackdrop();
 
         window.addEventListener('gamepadconnected', () => this.refreshDeviceDropdowns());
         window.addEventListener('gamepaddisconnected', () => this.refreshDeviceDropdowns());
     }
 
-    btn(text, id, small = false) {
-        return `<button class="button-49 ${small ? 'btn-sm' : ''}" id="${id}" role="button" data-text="${text}">${text}</button>`;
+    btn(text, id, small = false, variant = '') {
+        const cls = `button-49 ${small ? 'btn-sm' : ''} ${variant ? 'is-' + variant : ''}`.replace(/\s+/g, ' ').trim();
+        return `<button class="${cls}" id="${id}" role="button" data-text="${text}">${text}</button>`;
+    }
+
+    navBtn(label, attrs = '', active = false, extra = '') {
+        const cls = ['nav-item', extra, active ? 'is-active' : ''].filter(Boolean).join(' ');
+        const attr = attrs ? ' ' + attrs : '';
+        return `<button type="button" class="${cls}"${attr} data-text="${label}">${label}</button>`;
+    }
+
+    shell({ id = '', nav = '', main = '', navFoot = '', menu = false }) {
+        // A lone nav entry (Back / Leave Room) reads better pinned under the
+        // brand than floating in the middle of an empty rail.
+        const single = (nav.match(/nav-item/g) || []).length === 1;
+        return `
+            <div class="ui-screen has-backdrop"${id ? ` id="${id}"` : ''}>
+                <div class="ui-frame${menu ? ' is-menu' : ''}">
+                    <aside class="ui-nav">
+                        <div class="nav-brand">
+                            <span class="nav-brand-kicker">Outcome Memories</span>
+                            <span class="nav-brand-title">2.5D</span>
+                        </div>
+                        <nav class="nav-list${single ? ' is-single' : ''}">${nav}</nav>
+                        ${navFoot ? `<div class="nav-foot">${navFoot}</div>` : ''}
+                    </aside>
+                    <section class="ui-main">${main}</section>
+                </div>
+            </div>`;
+    }
+
+    // One looping menu film sits behind every menu screen, so switching
+    // screens never reloads or tears down the video.
+    buildBackdrop() {
+        const existing = document.getElementById('ui-backdrop');
+        if (existing) { this.backdrop = existing; return; }
+        const el = document.createElement('div');
+        el.id = 'ui-backdrop';
+        el.innerHTML = `<video id="menu-video" class="menu-bg-video" autoplay loop muted playsinline><source src="./backgrounds/menu-animation.mp4" type="video/mp4"></video>`;
+        document.body.appendChild(el);
+        this.backdrop = el;
+    }
+
+    setBackdrop(visible) {
+        if (!this.backdrop) return;
+        this.backdrop.style.display = visible ? 'block' : 'none';
+        const video = this.backdrop.querySelector('video');
+        if (video && visible && video.paused) video.play().catch(() => {});
+    }
+
+    wireTabs() {
+        this.root.querySelectorAll('.nav-item[data-screen]').forEach(el => {
+            if (!el.onclick) el.onclick = () => this.showScreen(el.dataset.screen);
+        });
+        this.root.querySelectorAll('.nav-item[data-tab]').forEach(el => {
+            el.onclick = () => this.activateTab(el);
+        });
+    }
+
+    // Tabs swap panes in place; nothing scrolls away, so every tab stays reachable.
+    activateTab(el) {
+        const screen = el.closest('.ui-screen');
+        if (!screen) return;
+        screen.querySelectorAll('.nav-item[data-tab]').forEach(other => {
+            other.classList.toggle('is-active', other === el);
+        });
+        screen.querySelectorAll('.tab-panel').forEach(panel => {
+            panel.classList.toggle('is-active', panel.dataset.panel === el.dataset.tab);
+        });
     }
 
     // ================= HUD =================
@@ -185,19 +269,35 @@ export class UIManager {
         this._pipCache = { a1: null, a2: null, hp: null, char: null };
 
         const charName = this.hudEntity ? (this.hudEntity.characterName || this.hudEntity.type || '') : '';
+        const isKiller = !!(gm.killers && gm.killers.includes(this.hudEntity));
         this.root.innerHTML = `
             <div id="hud">
                 <div id="hud-top">
-                    <div id="phase-text"></div>
+                    <div class="hud-phase-chip">
+                        <span class="hud-phase-dot"></span>
+                        <span id="phase-text"></span>
+                    </div>
                     <div id="timer-text"></div>
                 </div>
                 ${this.hudEntity ? `
                 <div id="hud-bottom">
-                    <div id="hud-char">${charName.toUpperCase()}</div>
-                    <div class="hud-pip" id="pip-a1"><div class="pip-fill"></div><span class="pip-label">AB1</span></div>
-                    <div class="hud-pip" id="pip-a2"><div class="pip-fill"></div><span class="pip-label">AB2</span></div>
+                    <div class="hud-id">
+                        <span class="hud-id-kicker">${isKiller ? 'HUNTER' : 'SURVIVOR'}</span>
+                        <span id="hud-char">${charName.toUpperCase() || '—'}</span>
+                    </div>
+                    <div class="hud-pip" id="pip-a1">
+                        <div class="pip-fill"></div>
+                        <span class="pip-key">AB1</span>
+                        <span class="pip-label">READY</span>
+                    </div>
+                    <div class="hud-pip" id="pip-a2">
+                        <div class="pip-fill"></div>
+                        <span class="pip-key">AB2</span>
+                        <span class="pip-label">READY</span>
+                    </div>
                     ${typeof this.hudEntity.health === 'number' ? `
                     <div id="hud-hp">
+                        <span class="hud-hp-caption">VITALS</span>
                         <div id="hud-hp-fill"></div>
                         <span id="hud-hp-text"></span>
                     </div>` : ''}
@@ -214,12 +314,12 @@ export class UIManager {
         if (key !== this.lastHudKey) {
             this.lastHudKey = key;
             const phaseText = isRush ? 'RUSH' : phase;
-            const phaseColor = isRush ? '#ff2b2b' : '#e8e8e8';
+            const phaseColor = isRush ? '#ff5468' : '#b9b8c3';
 
             const phaseEl = this.root.querySelector('#phase-text');
             const timerEl = this.root.querySelector('#timer-text');
             if (phaseEl) { phaseEl.style.color = phaseColor; phaseEl.innerText = phaseText; }
-            if (timerEl) { timerEl.style.color = isRush ? '#ff2b2b' : '#ffffff'; timerEl.innerText = `${timerText}s`; }
+            if (timerEl) { timerEl.style.color = isRush ? '#ff5468' : '#ffffff'; timerEl.innerText = `${timerText}s`; }
             const hudTop = this.root.querySelector('#hud-top');
             if (hudTop) hudTop.classList.toggle('is-rush', !!isRush);
         }
@@ -246,8 +346,7 @@ export class UIManager {
             }
             const label = pip.querySelector('.pip-label');
             if (label) {
-                const base = id === '#pip-a1' ? 'AB1' : 'AB2';
-                label.textContent = ready ? base : secs > 99 ? `${secs}s` : `${secs}`;
+                label.textContent = ready ? 'READY' : secs > 99 ? `${secs}s` : `${secs}`;
             }
         };
         setPip('#pip-a1', e.ability1Cooldown || 0);
@@ -275,10 +374,11 @@ export class UIManager {
         this.hideAll();
         this.setInfoButton(false);
         this.root.innerHTML = `
-            <div class="menu-screen loading-screen">
+            <div class="ui-screen loading-screen">
                 <div class="loading-mark"></div>
                 <h1 class="loading-title">LOADING</h1>
-                <div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>
+                <div class="loading-bar"><div class="loading-fill"></div></div>
+                <div class="loading-note">Preparing the arena</div>
             </div>
         `;
     }
@@ -288,21 +388,27 @@ export class UIManager {
         this.setInfoButton(true);
         const gm = this.gameManager;
         const online = gm.mode === 'online' && gm.net && gm.net.roomCode;
-        const color = /ESCAPE[SD]/.test(title) ? '#3ddc6b' : '#ff4444';
+        const color = /ESCAPE[SD]/.test(title) ? 'var(--ui-jade)' : 'var(--ui-red)';
         const statusText = { escaped: 'ESCAPED', died: 'DIED', 'too slow': 'TOO SLOW' };
-        const statusColor = { escaped: '#3ddc6b', died: '#ff4444', 'too slow': '#ffd24a' };
+        const statusColor = { escaped: 'var(--ui-jade)', died: 'var(--ui-red)', 'too slow': 'var(--ui-amber)' };
         const rows = summary.map(s =>
-            `<div style="color:${statusColor[s.status] || '#fff'};">${s.label} — ${statusText[s.status] || s.status}</div>`
+            `<div class="result-row">
+                <span class="result-label">${s.label}</span>
+                <span class="result-status" style="color:${statusColor[s.status] || '#fff'};">${statusText[s.status] || s.status}</span>
+            </div>`
         ).join('');
         this.root.innerHTML = `
-            <div class="menu-screen gameover-screen">
-                <h1 class="gameover-title" style="color: ${color};">${title}</h1>
-                <h2>${subtitle}</h2>
-                ${rows ? `<div class="gameover-summary">${rows}</div>` : ''}
-                <div class="btn-row">
+            <div class="ui-screen gameover-screen">
+                <div class="verdict">
+                    <span class="verdict-kicker">Match complete</span>
+                    <h1 class="verdict-title" style="color: ${color};">${title}</h1>
+                    <p class="verdict-sub">${subtitle}</p>
+                </div>
+                ${rows ? `<div class="ui-panel result-list">${rows}</div>` : ''}
+                <div class="ui-actions">
                     ${online
-                        ? this.btn('BACK TO LOBBY', 'btn-game-over')
-                        : this.btn('BACK TO MENU', 'btn-game-over')}
+                        ? this.btn('BACK TO LOBBY', 'btn-game-over', false, 'is-primary')
+                        : this.btn('BACK TO MENU', 'btn-game-over', false, 'is-primary')}
                 </div>
             </div>
         `;
@@ -324,11 +430,12 @@ export class UIManager {
         const gm = this.gameManager;
         el.innerHTML = `
             <div class="pause-card">
+                <span class="ui-eyebrow">${kind === 'host' ? 'Match frozen' : 'Sync hold'}</span>
                 <h1>${kind === 'host' ? 'PAUSED' : 'WAITING FOR HOST'}</h1>
                 <p>${kind === 'host' ? 'The match is frozen for everyone.' : 'The host paused the match.'}</p>
                 <div class="btn-row">
-                    ${kind === 'host' ? this.btn('RESUME', 'btn-pause-resume') : ''}
-                    ${this.btn('LEAVE ROOM', 'btn-pause-leave', true)}
+                    ${kind === 'host' ? this.btn('RESUME', 'btn-pause-resume', false, 'is-primary') : ''}
+                    ${this.btn('LEAVE ROOM', 'btn-pause-leave', true, 'is-ghost')}
                 </div>
             </div>
         `;
@@ -421,18 +528,21 @@ export class UIManager {
         if (this.infoTab === 'survivors') {
             for (const [name, g] of Object.entries(SURVIVOR_GUIDES)) {
                 // Survivor configs nest everything under .abilities.
-                cards.push(this.infoCardHtml(name, g, SurvivorVariables[name].abilities, binding));
+                cards.push(this.infoCardHtml(name, g, SurvivorVariables[name].abilities, binding, SURVIVOR_ACCENTS[name]));
             }
         } else {
             for (const [name, g] of Object.entries(KILLER_GUIDES)) {
-                cards.push(this.infoCardHtml(name, g, KillerVariables[name], binding));
+                cards.push(this.infoCardHtml(name, g, KillerVariables[name], binding, KILLER_ACCENTS[name]));
             }
         }
 
         this.infoOverlay.innerHTML = `
             <div class="info-panel">
                 <div class="info-head">
-                    <h1>FIELD GUIDE</h1>
+                    <div>
+                        <span class="ui-eyebrow">Dossier</span>
+                        <h1>FIELD GUIDE</h1>
+                    </div>
                     <button id="info-close" class="btn-copy">CLOSE ✕</button>
                 </div>
                 ${tabs}
@@ -446,7 +556,7 @@ export class UIManager {
         });
     }
 
-    infoCardHtml(name, guide, config, binding) {
+    infoCardHtml(name, guide, config, binding, accent = '#ff2f47') {
         const rows = guide.abilities(config).map(a => `
             <div class="info-ability">
                 <div class="ability-head">
@@ -454,12 +564,12 @@ export class UIManager {
                     <span class="ability-name">${a.name}</span>
                 </div>
                 <div class="ability-desc">${a.desc}</div>
-                <div class="ability-use"><b>USE IT:</b> ${a.use}</div>
+                <div class="ability-use"><b>USE IT</b>${a.use}</div>
                 ${a.cd ? `<div class="ability-cd">${a.cd}</div>` : ''}
             </div>
         `).join('');
         return `
-            <div class="info-card panel">
+            <div class="info-card" style="--char: ${accent};">
                 <div class="info-card-head">
                     <span class="info-name">${name.toUpperCase()}</span>
                     <span class="info-role">${guide.role}</span>
@@ -478,55 +588,58 @@ export class UIManager {
         let html = '';
 
         if (screenName === 'main') {
-            html = `
-                <video id="menu-video" autoplay loop muted playsinline class="menu-bg-video">
-                    <source src="./backgrounds/menu-animation.mp4" type="video/mp4">
-                </video>
-
-                <div class="main-menu-overlay">
-                    <div class="menu-title-top">
-                        <h1>Outcome Memories <span class="title-accent">2.5D</span></h1>
+            html = this.shell({
+                menu: true,
+                nav: `
+                    ${this.navBtn('Play Local', 'id="btn-play"', true)}
+                    ${this.navBtn('Online Play', 'id="btn-online"')}
+                    ${this.navBtn('Settings', 'id="btn-settings"')}
+                    ${this.navBtn('Credits', 'id="btn-credits"')}
+                `,
+                navFoot: `<span class="nav-meta">Couch co-op · 1–4 players</span>`,
+                main: `
+                    <div class="menu-hints">
+                        <span><b>&#9650;&#9660;</b>Navigate</span>
+                        <span><b>&#9679;</b>Confirm</span>
                     </div>
-
-                    <div class="menu-buttons-left">
-                        ${this.btn('PLAY LOCAL', 'btn-play')}
-                        ${this.btn('ONLINE PLAY', 'btn-online')}
-                        ${this.btn('SETTINGS', 'btn-settings')}
-                        ${this.btn('CREDITS', 'btn-credits')}
-                    </div>
-                </div>
-            `;
+                `
+            });
         }
         else if (screenName === 'online') {
-            html = `
-                <div class="menu-screen" id="online-menu">
-                    <h1>ONLINE PLAY</h1>
-                    <h2>Create a room and share the code, or join a friend's room.</h2>
-
-                    <div class="panel online-panel">
-                        <label class="field-label" for="player-name">YOUR NAME</label>
-                        <input type="text" id="player-name" maxlength="16" class="text-input" value="${this.gameManager.playerName}">
-
-                        <div class="online-actions">
-                            <div class="online-col">
-                                <h3>HOST</h3>
-                                ${this.btn('CREATE ROOM', 'btn-create-room')}
+            const gm = this.gameManager;
+            html = this.shell({
+                id: 'online-menu',
+                nav: this.navBtn('Back', 'id="btn-online-back"', false, 'nav-back'),
+                main: `
+                    <div class="ui-main-head">
+                        <span class="ui-eyebrow">Multiplayer</span>
+                        <h1 class="ui-main-title">Online Play</h1>
+                        <p class="ui-main-sub">Host the match from this browser, or enter a 4-letter code to drop into a friend's room.</p>
+                    </div>
+                    <div class="ui-body">
+                        <div class="row-list">
+                            <div class="row">
+                                <span class="row-label">Your Name</span>
+                                <span class="row-fill"></span>
+                                <input type="text" id="player-name" maxlength="16" class="row-input" value="${gm.playerName}">
                             </div>
-                            <div class="online-divider">OR</div>
-                            <div class="online-col">
-                                <h3>JOIN</h3>
-                                <input type="text" id="join-code" maxlength="4" class="text-input code-input" placeholder="CODE" autocomplete="off">
-                                ${this.btn('JOIN ROOM', 'btn-join-room')}
+                            <div class="row">
+                                <span class="row-label">Host a Room</span>
+                                <span class="row-note">This machine runs the match</span>
+                                <span class="row-fill"></span>
+                                <button class="row-btn" id="btn-create-room" data-text="CREATE ROOM">Create Room</button>
+                            </div>
+                            <div class="row">
+                                <span class="row-label">Join With Code</span>
+                                <span class="row-fill"></span>
+                                <input type="text" id="join-code" maxlength="4" class="row-input code-input" placeholder="CODE" autocomplete="off">
+                                <button class="row-btn" id="btn-join-room" data-text="JOIN ROOM">Join</button>
                             </div>
                         </div>
                         <div id="net-status" class="net-status"></div>
                     </div>
-
-                    <div class="btn-row">
-                        ${this.btn('BACK', 'btn-online-back')}
-                    </div>
-                </div>
-            `;
+                `
+            });
         }
         else if (screenName === 'lobby') {
             html = this.buildLobbyHtml();
@@ -534,124 +647,193 @@ export class UIManager {
         else if (screenName === 'settings') {
             const schemes = this.gameManager.controls.schemes;
             const audio = this.gameManager.audio;
-            const showHit = this.gameManager.settings.showHitboxes ? "checked" : "";
+            const showHit = this.gameManager.settings.showHitboxes ? 'checked' : '';
             const gfx = this.gameManager.engine.gfx;
-            html = `
-                <div class="menu-screen" id="settings-menu" style="justify-content: flex-start; padding-top: 30px; overflow-y: auto;">
-                    <h1>SETTINGS</h1>
+            const gfxRow = (label, id, value) => `
+                <div class="row">
+                    <span class="row-label">${label}</span>
+                    <span class="row-fill"></span>
+                    <button class="row-btn is-cycle" id="${id}" data-text="${value}">${value}</button>
+                </div>`;
 
-                    <div class="settings-grid">
-                        <div class="settings-col panel">
-                            <h3>AUDIO</h3>
-                            <div style="width: 100%;">
-                                <label>Music Volume: <span id="music-val">${Math.round(audio.musicVolume*100)}</span>%</label>
-                                <input type="range" id="music-slider" min="0" max="100" value="${audio.musicVolume*100}">
-                            </div>
-                            <div style="width: 100%; margin-top: 15px;">
-                                <label>SFX Volume: <span id="sfx-val">${Math.round(audio.sfxVolume*100)}</span>%</label>
-                                <input type="range" id="sfx-slider" min="0" max="100" value="${audio.sfxVolume*100}">
-                            </div>
-                        </div>
-
-                        <div class="settings-col panel">
-                            <h3>VISUALS</h3>
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px;">
-                                <input type="checkbox" id="hitbox-toggle" ${showHit} style="width: 20px; height: 20px;">
-                                Show Hitboxes
-                            </label>
-                        </div>
-
-                        <div class="settings-col panel">
-                            <h3>GRAPHICS</h3>
-                            <div class="control-row"><span>Preset</span>${this.btn(gfx.preset.toUpperCase(), 'gfx-preset', true)}</div>
-                            <div class="control-row"><span>Shadows</span>${this.btn(gfx.shadows ? 'ON' : 'OFF', 'gfx-shadows', true)}</div>
-                            <div class="control-row"><span>Resolution</span>${this.btn(Math.round(gfx.resolution * 100) + '%', 'gfx-resolution', true)}</div>
-                            <div class="control-row"><span>Antialias</span>${this.btn(gfx.antialias ? 'ON' : 'OFF', 'gfx-antialias', true)}</div>
-                            <div style="width: 92%; margin-top: 8px; font-size: 12px; color: var(--text-dim); text-align: center;">
-                                Pick <b>LOW</b> on weaker machines: no shadows, 60% resolution, no antialiasing. Changes apply instantly.
-                            </div>
-                        </div>
+            html = this.shell({
+                id: 'settings-menu',
+                nav: `
+                    ${this.navBtn('Audio', 'data-tab="audio"', true)}
+                    ${this.navBtn('Display', 'data-tab="display"')}
+                    ${this.navBtn('Graphics', 'data-tab="graphics"')}
+                    ${this.navBtn('Controls', 'data-tab="controls"')}
+                `,
+                navFoot: this.navBtn('Back', 'id="btn-settings-back"', false, 'nav-back'),
+                main: `
+                    <div class="ui-main-head">
+                        <span class="ui-eyebrow">System</span>
+                        <h1 class="ui-main-title">Options</h1>
                     </div>
+                    <div class="ui-body">
+                        <section class="tab-panel is-active" data-panel="audio">
+                            <div class="row-list">
+                                <div class="row">
+                                    <span class="row-label">Music</span>
+                                    <span class="row-fill"></span>
+                                    <input type="range" id="music-slider" class="row-range" min="0" max="100" value="${audio.musicVolume * 100}">
+                                    <span class="row-num"><span id="music-val">${Math.round(audio.musicVolume * 100)}</span>%</span>
+                                </div>
+                                <div class="row">
+                                    <span class="row-label">Effects</span>
+                                    <span class="row-fill"></span>
+                                    <input type="range" id="sfx-slider" class="row-range" min="0" max="100" value="${audio.sfxVolume * 100}">
+                                    <span class="row-num"><span id="sfx-val">${Math.round(audio.sfxVolume * 100)}</span>%</span>
+                                </div>
+                            </div>
+                        </section>
 
-                    <div class="controls-grid">
-                        <div class="control-box"><h3>P1</h3>${this.generateDeviceDropdown('p1')}${this.generateControlButtons('p1', schemes.p1)}</div>
-                        <div class="control-box"><h3>P2</h3>${this.generateDeviceDropdown('p2')}${this.generateControlButtons('p2', schemes.p2)}</div>
-                        <div class="control-box"><h3>P3</h3>${this.generateDeviceDropdown('p3')}${this.generateControlButtons('p3', schemes.p3)}</div>
-                        <div class="control-box"><h3>P4</h3>${this.generateDeviceDropdown('p4')}${this.generateControlButtons('p4', schemes.p4)}</div>
-                    </div>
+                        <section class="tab-panel" data-panel="display">
+                            <div class="row-list">
+                                <div class="row">
+                                    <span class="row-label">Show Hitboxes</span>
+                                    <span class="row-note">Every collision volume in the arena</span>
+                                    <span class="row-fill"></span>
+                                    <label class="seg">
+                                        <input type="checkbox" id="hitbox-toggle" ${showHit}>
+                                        <span class="seg-on">On</span>
+                                        <span class="seg-off">Off</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </section>
 
-                    <div class="btn-row" style="margin-top: 30px;">
-                        ${this.btn('BACK', 'btn-settings-back')}
+                        <section class="tab-panel" data-panel="graphics">
+                            <div class="row-list">
+                                ${gfxRow('Preset', 'gfx-preset', gfx.preset.toUpperCase())}
+                                ${gfxRow('Shadows', 'gfx-shadows', gfx.shadows ? 'On' : 'Off')}
+                                ${gfxRow('Resolution', 'gfx-resolution', Math.round(gfx.resolution * 100) + '%')}
+                                ${gfxRow('Anti Aliasing', 'gfx-antialias', gfx.antialias ? 'On' : 'Off')}
+                            </div>
+                        </section>
+
+                        <section class="tab-panel" data-panel="controls">
+                            <div class="control-grid">
+                                <div class="control-box"><h3>Player 1</h3>${this.generateDeviceDropdown('p1')}${this.generateControlButtons('p1', schemes.p1)}</div>
+                                <div class="control-box"><h3>Player 2</h3>${this.generateDeviceDropdown('p2')}${this.generateControlButtons('p2', schemes.p2)}</div>
+                                <div class="control-box"><h3>Player 3</h3>${this.generateDeviceDropdown('p3')}${this.generateControlButtons('p3', schemes.p3)}</div>
+                                <div class="control-box"><h3>Player 4</h3>${this.generateDeviceDropdown('p4')}${this.generateControlButtons('p4', schemes.p4)}</div>
+                            </div>
+                        </section>
                     </div>
-                </div>
-            `;
+                `
+            });
         }
         else if (screenName === 'credits') {
-            html = `
-                <div class="menu-screen" id="credits-menu">
-                    <h1>CREDITS</h1>
-                    <div class="credit-text">Game Design & Development:</div>
-                    <div class="credit-name">Aakercum, Jelani(goons to x), Jeff and DJ</div>
-                    <div class="credit-text">Based on "Outcome Memories"</div>
-                    <br><br>
-                    <div class="btn-row">${this.btn('BACK', 'btn-credits-back')}</div>
-                </div>
-            `;
+            html = this.shell({
+                id: 'credits-menu',
+                nav: this.navBtn('Back', 'id="btn-credits-back"', false, 'nav-back'),
+                main: `
+                    <div class="ui-main-head">
+                        <span class="ui-eyebrow">The people behind it</span>
+                        <h1 class="ui-main-title">Credits</h1>
+                    </div>
+                    <div class="ui-body">
+                        <div class="row-list">
+                            <div class="row">
+                                <span class="row-label">Game Design &amp; Development</span>
+                                <span class="row-fill"></span>
+                                <span class="row-text">Aakercum, Jelani (goons to x), Jeff and DJ</span>
+                            </div>
+                            <div class="row">
+                                <span class="row-label">Based On</span>
+                                <span class="row-fill"></span>
+                                <span class="row-text">&ldquo;Outcome Memories&rdquo;</span>
+                            </div>
+                        </div>
+                        <p class="credits-foot">Thank you for playing.</p>
+                    </div>
+                `
+            });
         }
         else if (screenName === 'setup') {
-            const aiChecked = this.gameManager.gameSetup.killerIsAI;
-            const survCount = this.gameManager.gameSetup.survivorCount;
+            const s = this.gameManager.gameSetup;
+            const aiChecked = s.killerIsAI;
 
             let survHtml = '';
-            for(let i=0; i<survCount; i++) {
+            for (let i = 0; i < s.survivorCount; i++) {
+                const name = s.selectedSurvivors[i];
                 survHtml += `
-                    <div class="setup-item panel">
-                        <h3>SURVIVOR ${i+1}</h3>
-                        ${this.btn(`Change (${this.gameManager.gameSetup.selectedSurvivors[i]})`, `btn-cycle-surv-${i}`, true)}
-                    </div>
-                `;
+                    <div class="row">
+                        <span class="row-label">Survivor ${i + 1}</span>
+                        <span class="row-fill"></span>
+                        <button class="row-btn is-cycle" id="btn-cycle-surv-${i}" data-text="${name}">${name}</button>
+                    </div>`;
             }
 
-            html = `
-                <div class="menu-screen" id="setup-menu" style="justify-content: center; padding-top: 30px; overflow-y: auto;">
-                    <h1>GAME SETUP</h1>
-                    <div class="setup-grid">
-                        <div class="setup-item panel">
-                            <h3>SURVIVOR COUNT</h3>
-                            ${this.btn(`Change (${survCount})`, 'btn-cycle-surv-count', true)}
-                        </div>
-                        ${survHtml}
-                        <div class="setup-item panel">
-                            <h3>KILLER TYPE</h3>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                ${this.btn('Change Type', 'btn-cycle-killer', true)}
-                                <button id="btn-toggle-ai" class="toggle-btn ${aiChecked ? 'on' : ''}" data-text="AI">AI<br><span id="ai-status">${aiChecked ? 'ON' : 'OFF'}</span></button>
+            html = this.shell({
+                id: 'setup-menu',
+                nav: `
+                    ${this.navBtn('Roster', 'data-tab="roster"', true)}
+                    ${this.navBtn('Hunter', 'data-tab="hunter"')}
+                    ${this.navBtn('Arena', 'data-tab="arena"')}
+                `,
+                navFoot: this.navBtn('Back', 'id="btn-setup-back"', false, 'nav-back'),
+                main: `
+                    <div class="ui-main-head">
+                        <span class="ui-eyebrow">Local Match</span>
+                        <h1 class="ui-main-title">Game Setup</h1>
+                        <p class="ui-main-sub">Choose the roster, the hunter and the arena. Everyone on this machine shares the screen.</p>
+                    </div>
+                    <div class="ui-body">
+                        <section class="tab-panel is-active" data-panel="roster">
+                            <div class="row-list">
+                                <div class="row">
+                                    <span class="row-label">Survivors</span>
+                                    <span class="row-fill"></span>
+                                    <button class="row-btn is-cycle" id="btn-cycle-surv-count" data-text="${s.survivorCount}">${s.survivorCount}</button>
+                                </div>
+                                ${survHtml}
                             </div>
-                            <p>Type: <span id="killer-name">${this.gameManager.gameSetup.selectedKillerType}</span></p>
-                        </div>
-                        <div class="setup-item panel" id="killer-player-box" style="${aiChecked ? 'display: none;' : ''}">
-                            <h3>KILLER PLAYER</h3>
-                            ${this.btn('Change Player', 'btn-cycle-killer-player', true)}
-                            <p><span id="killer-player">P${this.gameManager.gameSetup.killerPlayer}</span></p>
-                        </div>
-                        <div class="setup-item panel">
-                            <h3>MAP</h3>
-                            ${this.btn('Change Map', 'btn-cycle-map', true)}
-                            <p><span id="map-name">${this.gameManager.gameSetup.selectedMap}</span></p>
-                        </div>
-                    </div>
-                    <div class="btn-row" style="margin-top: 20px;">
-                        ${this.btn('START GAME', 'btn-start-game')}
-                        ${this.btn('BACK', 'btn-setup-back')}
-                    </div>
-                </div>
-            `;
-        }
+                        </section>
 
+                        <section class="tab-panel" data-panel="hunter">
+                            <div class="row-list">
+                                <div class="row">
+                                    <span class="row-label">Hunter</span>
+                                    <span class="row-fill"></span>
+                                    <button class="row-btn is-cycle" id="btn-cycle-killer" data-text="${s.selectedKillerType}"><span id="killer-name">${s.selectedKillerType}</span></button>
+                                </div>
+                                <div class="row">
+                                    <span class="row-label">AI Controlled</span>
+                                    <span class="row-fill"></span>
+                                    <button id="btn-toggle-ai" class="toggle-btn ${aiChecked ? 'on' : ''}" data-text="AI"><span id="ai-status">${aiChecked ? 'ON' : 'OFF'}</span></button>
+                                </div>
+                                <div class="row" id="killer-player-box" style="${aiChecked ? 'display: none;' : ''}">
+                                    <span class="row-label">Killer Player</span>
+                                    <span class="row-fill"></span>
+                                    <button class="row-btn is-cycle" id="btn-cycle-killer-player" data-text="P${s.killerPlayer}"><span id="killer-player">P${s.killerPlayer}</span></button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="tab-panel" data-panel="arena">
+                            <div class="row-list">
+                                <div class="row">
+                                    <span class="row-label">Map</span>
+                                    <span class="row-fill"></span>
+                                    <button class="row-btn is-cycle" id="btn-cycle-map" data-text="${s.selectedMap}"><span id="map-name">${s.selectedMap}</span></button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="ui-main-foot">
+                        <button class="bar-btn" id="btn-start-game" data-text="START GAME">Start Match</button>
+                    </div>
+                `
+            });
+        }
         this.root.innerHTML = html;
         this.activeScreen = screenName;
         this.setupEventListeners();
         this.setInfoButton(true);
+        this.setBackdrop(true);
+        this.wireTabs();
 
         const videoEl = document.getElementById('menu-video');
 
@@ -688,96 +870,113 @@ export class UIManager {
         const mySurvivorSlot = s.assignments.slice(0, s.survivorCount).indexOf(myId);
         const iAmKiller = s.killerPlayerId === myId;
 
-        const slotCards = [];
+        const slotRows = [];
         for (let i = 0; i < s.survivorCount; i++) {
             const owner = s.assignments[i];
             const mine = owner === myId;
             const ownerLabel = owner ? nameOf(owner) : 'HOST (local)';
-            slotCards.push(`
-                <div class="panel slot-card ${mine ? 'slot-mine' : ''}">
-                    <div class="slot-head">SLOT ${i + 1}</div>
-                    <div class="slot-char">${s.selectedSurvivors[i]}</div>
-                    <div class="slot-owner">${ownerLabel}</div>
-                    ${isHost
-                        ? `<button class="button-49 btn-sm" id="host-cycle-char-${i}" data-text="CHANGE">CHANGE</button>`
-                        : (mine ? `<button class="button-49 btn-sm" id="guest-cycle-char" data-text="CHANGE">CHANGE</button>` : '')}
-                </div>
-            `);
+            const change = isHost
+                ? `<button class="row-btn" id="host-cycle-char-${i}" data-text="CHANGE">Change</button>`
+                : (mine ? `<button class="row-btn" id="guest-cycle-char" data-text="CHANGE">Change</button>` : '');
+            slotRows.push(`
+                <div class="row${mine ? ' row-mine' : ''}">
+                    <span class="row-label">Survivor ${i + 1}</span>
+                    <span class="row-note">${ownerLabel}</span>
+                    <span class="row-fill"></span>
+                    <span class="row-text">${s.selectedSurvivors[i]}</span>
+                    ${change}
+                </div>`);
         }
 
-        const killerCard = `
-            <div class="panel slot-card slot-killer ${iAmKiller ? 'slot-mine' : ''}">
-                <div class="slot-head">KILLER</div>
-                <div class="slot-char">${s.selectedKillerType}</div>
-                <div class="slot-owner">${s.killerPlayerId ? nameOf(s.killerPlayerId) : 'AI'}</div>
-                ${isHost ? `<button class="button-49 btn-sm" id="host-cycle-killer" data-text="CHANGE">CHANGE</button>` : ''}
-            </div>
-        `;
+        const killerRow = `
+            <div class="row${iAmKiller ? ' row-mine' : ''}">
+                <span class="row-label">Killer</span>
+                <span class="row-note">${s.killerPlayerId ? nameOf(s.killerPlayerId) : 'AI'}</span>
+                <span class="row-fill"></span>
+                <span class="row-text">${s.selectedKillerType}</span>
+                ${isHost ? `<button class="row-btn" id="host-cycle-killer" data-text="CHANGE">Change</button>` : ''}
+            </div>`;
 
         const roleButtons = !isHost ? `
-            <div class="btn-row">
-                <button class="button-49 btn-sm ${!iAmKiller ? 'active-chip' : ''}" id="role-survivor" data-text="PLAY SURVIVOR">PLAY SURVIVOR</button>
-                <button class="button-49 btn-sm ${iAmKiller ? 'active-chip' : ''}" id="role-killer" data-text="PLAY KILLER">PLAY KILLER</button>
+            <div class="ui-actions">
+                <button class="chip ${!iAmKiller ? 'is-on' : ''}" id="role-survivor" data-text="PLAY SURVIVOR">Play Survivor</button>
+                <button class="chip ${iAmKiller ? 'is-on' : ''}" id="role-killer" data-text="PLAY KILLER">Play Killer</button>
             </div>
             <p class="lobby-status">${mySurvivorSlot >= 0 || iAmKiller
                 ? `You are ${iAmKiller ? 'the KILLER' : 'survivor slot ' + (mySurvivorSlot + 1)}`
                 : 'Pick a role...'}</p>
         ` : '';
 
-        const hostControls = isHost ? `
-            <div class="setup-grid lobby-host-grid">
-                <div class="setup-item panel">
-                    <h3>SURVIVORS</h3>
-                    <button class="button-49 btn-sm" id="lobby-count" data-text="CHANGE (${s.survivorCount})">CHANGE (${s.survivorCount})</button>
-                </div>
-                <div class="setup-item panel">
-                    <h3>MAP</h3>
-                    <button class="button-49 btn-sm" id="lobby-map" data-text="CHANGE">CHANGE</button>
-                    <p id="lobby-map-name">${s.selectedMap}</p>
-                </div>
+        const hostRows = isHost ? `
+            <div class="row">
+                <span class="row-label">Survivor Slots</span>
+                <span class="row-fill"></span>
+                <span class="row-text">${s.survivorCount}</span>
+                <button class="row-btn" id="lobby-count" data-text="CHANGE">Change</button>
+            </div>
+            <div class="row">
+                <span class="row-label">Map</span>
+                <span class="row-fill"></span>
+                <span class="row-text" id="lobby-map-name">${s.selectedMap}</span>
+                <button class="row-btn" id="lobby-map" data-text="CHANGE">Change</button>
             </div>
         ` : `
-            <div class="panel lobby-summary">
-                <div>Map: <strong>${s.selectedMap}</strong></div>
-                <div>Survivors: <strong>${s.survivorCount}</strong></div>
-                <div>Killer: <strong>${s.selectedKillerType}${s.killerPlayerId ? '' : ' (AI)'}</strong></div>
+            <div class="row">
+                <span class="row-label">Map</span>
+                <span class="row-fill"></span>
+                <span class="row-text">${s.selectedMap}</span>
+            </div>
+            <div class="row">
+                <span class="row-label">Survivors</span>
+                <span class="row-fill"></span>
+                <span class="row-text">${s.survivorCount}</span>
             </div>
         `;
 
-        return `
-            <div class="menu-screen" id="lobby-menu">
-                <div class="lobby-head">
-                    <h1>ROOM LOBBY</h1>
-                    <div class="room-code-box">
-                        <span class="room-code-label">ROOM CODE</span>
-                        <span class="room-code" id="room-code">${code}</span>
-                        <button class="btn-copy" id="btn-copy-code">COPY</button>
+        return this.shell({
+            id: 'lobby-menu',
+            nav: this.navBtn('Leave Room', 'id="btn-lobby-leave"', false, 'nav-back'),
+            navFoot: `
+                <span class="nav-foot-label">Room Code</span>
+                <div class="room-code-line">
+                    <span class="room-code" id="room-code">${code}</span>
+                    <button class="btn-copy" id="btn-copy-code">COPY</button>
+                </div>
+            `,
+            main: `
+                <div class="ui-main-head">
+                    <span class="ui-eyebrow">Pre-match</span>
+                    <h1 class="ui-main-title">Room Lobby</h1>
+                    <p class="ui-main-sub">${isHost
+                        ? 'Assign roles and characters, then start the match when everyone is ready.'
+                        : 'Pick a role and a character. The host starts the match.'}</p>
+                </div>
+                <div class="ui-body">
+                    <div class="row-list">
+                        <div class="row">
+                            <span class="row-label">Players</span>
+                            <span class="row-fill"></span>
+                            <span class="row-text">${roster.length}/4</span>
+                        </div>
+                        <div class="row">
+                            <span class="row-label">In Room</span>
+                            <span class="row-fill"></span>
+                            <span class="row-text">${roster.map(p => p.name + (p.id === myId ? ' · you' : '')).join(' · ') || '—'}</span>
+                        </div>
+                        ${slotRows.join('')}
+                        ${killerRow}
+                        ${hostRows}
                     </div>
+                    ${roleButtons}
                 </div>
-
-                <div class="roster panel">
-                    <h3>PLAYERS (${roster.length}/4)</h3>
-                    <div class="roster-list">
-                        ${roster.map(p => `<div class="roster-item ${p.id === myId ? 'roster-me' : ''}">${p.name}${p.id === myId ? ' · you' : ''}${p.id === (gm.net && gm.net.hostId) ? '' : ''}</div>`).join('')}
-                    </div>
+                <div class="ui-main-foot">
+                    ${isHost
+                        ? `<button class="bar-btn" id="btn-lobby-start" data-text="START MATCH">Start Match</button>`
+                        : `<p class="lobby-status">Waiting for the host to start…</p>`}
                 </div>
-
-                <div class="slot-grid">
-                    ${slotCards.join('')}
-                    ${killerCard}
-                </div>
-
-                ${roleButtons}
-                ${hostControls}
-
-                <div class="btn-row">
-                    ${isHost ? this.btn('START MATCH', 'btn-lobby-start') : '<p class="lobby-status">Waiting for the host to start...</p>'}
-                    ${this.btn('LEAVE', 'btn-lobby-leave', true)}
-                </div>
-            </div>
-        `;
+            `
+        });
     }
-
     deviceOptionHtml(current) {
         const options = this.gameManager.getDeviceOptions();
         let opts = options.map(o =>
@@ -821,6 +1020,7 @@ export class UIManager {
     }
 
     hideAll() {
+        this.setBackdrop(false);
         this.root.innerHTML = '';
         this.hudElement = null;
         this.hudEntity = null;
@@ -847,7 +1047,7 @@ export class UIManager {
         const zone = el.querySelector('#qte-zone');
         zone.style.left = (zoneStart * 100) + '%';
         zone.style.width = (zoneWidth * 100) + '%';
-        zone.style.background = combo ? '#ffd24a' : '#3ddc6b';
+        zone.style.background = combo ? '#ffbe5c' : '#4be08d';
         el.querySelector('#qte-marker').style.left = `calc(${Math.min(1, Math.max(0, progress)) * 100}% - 5px)`;
     }
 

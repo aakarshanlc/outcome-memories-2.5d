@@ -9,19 +9,31 @@ export class HealthBars {
         style.textContent = `
             .hp-bar {
                 position: absolute;
-                width: 52px;
-                height: 14px;
-                margin-left: -26px;
-                background: rgba(0, 0, 0, 0.65);
-                border: 1px solid #111;
-                border-radius: 3px;
+                width: 64px;
+                height: 16px;
+                margin-left: -32px;
+                background: rgba(5, 5, 9, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
                 overflow: hidden;
                 z-index: 8000;
                 pointer-events: none;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(4px);
             }
             .hp-bar .hp-fill {
                 height: 100%;
-                background: #33ff66;
+                width: 100%;
+                background: #4be08d;
+                box-shadow: 0 0 12px currentColor;
+                transition: width 0.12s linear, background 0.2s;
+            }
+            .hp-bar::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 55%);
+                pointer-events: none;
             }
             .hp-bar .hp-text {
                 position: absolute;
@@ -29,10 +41,10 @@ export class HealthBars {
                 left: 0;
                 width: 100%;
                 text-align: center;
-                font: bold 10px Consolas, monospace;
+                font: 700 9.5px/15px Consolas, monospace;
+                letter-spacing: 0.4px;
                 color: #fff;
-                text-shadow: 1px 1px 2px #000;
-                line-height: 13px;
+                text-shadow: 0 1px 3px #000;
             }
         `;
         document.head.appendChild(style);
@@ -90,7 +102,7 @@ export class HealthBars {
                 const pct = Math.max(0, Math.min(1, p.health / p.maxHealth));
                 const width = Math.round(pct * 100);
                 if (bar.cache.width !== width) { bar.fill.style.width = width + '%'; bar.cache.width = width; }
-                const color = pct > 0.6 ? '#33ff66' : pct > 0.3 ? '#ffd700' : '#ff4444';
+                const color = pct > 0.6 ? '#4be08d' : pct > 0.3 ? '#ffbe5c' : '#ff2f47';
                 if (bar.cache.color !== color) { bar.fill.style.background = color; bar.cache.color = color; }
                 const text = `${Math.ceil(p.health)}/${p.maxHealth}`;
                 if (bar.cache.textValue !== text) { bar.text.textContent = text; bar.cache.textValue = text; }
